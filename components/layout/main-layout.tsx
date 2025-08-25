@@ -14,7 +14,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-camouflage-green-50">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -38,15 +38,15 @@ export function MainLayout({ children }: MainLayoutProps) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Mobile header */}
-        <header className="bg-white shadow-sm border-b border-gray-200 lg:hidden">
+        <header className="bg-white shadow-sm border-b border-camouflage-green-200 lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+              className="p-2 rounded-md text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
             >
               <Menu className="h-6 w-6" />
             </button>
-            <h1 className="text-lg font-semibold text-gray-900">Inventory Pro</h1>
+            <h1 className="text-lg font-semibold text-camouflage-green-800">Inventory Pro</h1>
             <div className="w-10" /> {/* Spacer for centering */}
           </div>
         </header>

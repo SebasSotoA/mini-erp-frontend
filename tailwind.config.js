@@ -42,6 +42,20 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // 🌿 Nueva paleta de colores camouflage-green
+        'camouflage-green': {
+          '50': '#f4f6f3',
+          '100': '#e5e9e2',
+          '200': '#cad4c6',
+          '300': '#a5b69f',
+          '400': '#6f8568',
+          '500': '#5b7554',
+          '600': '#455b40',
+          '700': '#364933',
+          '800': '#2d3b2a',
+          '900': '#253123',
+          '950': '#141b13',
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

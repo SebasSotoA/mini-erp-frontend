@@ -47,25 +47,25 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
   )
 
   return (
-    <div className="flex h-full w-64 flex-col bg-white border-r border-gray-200 shadow-sm">
+    <div className="flex h-full w-64 flex-col bg-camouflage-green-800 border-r border-camouflage-green-500 shadow-lg">
       {/* Mobile close button */}
       {onClose && (
         <div className="flex justify-end p-4 lg:hidden">
           <button
             onClick={onClose}
-            className="p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+            className="p-2 rounded-md text-camouflage-green-200 hover:text-white hover:bg-camouflage-green-700"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
       )}
       {/* Header */}
-      <div className="flex h-16 items-center px-6 border-b border-gray-200">
+      <div className="flex h-16 items-center px-6 border-b border-camouflage-green-700">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-camouflage-green-500 rounded-lg flex items-center justify-center shadow-md">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Inventory Pro</h1>
+          <h1 className="text-xl font-bold text-white">Inventory Pro</h1>
         </div>
       </div>
 
@@ -81,19 +81,22 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
               className={cn(
                 "group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
                 isActive
-                  ? "bg-blue-50 text-blue-700 border border-blue-200"
-                  : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                  ? "bg-camouflage-green-600 text-white border border-camouflage-green-500 shadow-md"
+                  : "text-camouflage-green-100 hover:bg-camouflage-green-700 hover:text-white",
               )}
             >
               <item.icon
                 className={cn(
                   "mr-3 h-5 w-5 transition-colors",
-                  isActive ? "text-blue-600" : "text-gray-500 group-hover:text-gray-700",
+                  isActive ? "text-white" : "text-camouflage-green-200 group-hover:text-white",
                 )}
               />
               <div>
                 <div>{item.name}</div>
-                <div className="text-xs text-gray-500">{item.description}</div>
+                <div className={cn(
+                  "text-xs transition-colors",
+                  isActive ? "text-camouflage-green-100" : "text-camouflage-green-300 group-hover:text-camouflage-green-200"
+                )}>{item.description}</div>
               </div>
             </Link>
           )
@@ -106,8 +109,8 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
             className={cn(
               "w-full group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
               pathname.startsWith("/inventory") || pathname.startsWith("/products") || pathname.startsWith("/stock")
-                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
+                ? "bg-camouflage-green-600 text-white border border-camouflage-green-500 shadow-md"
+                : "text-camouflage-green-100 hover:bg-camouflage-green-700 hover:text-white",
             )}
           >
             <div className="flex items-center">
@@ -115,25 +118,30 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
                 className={cn(
                   "mr-3 h-5 w-5 transition-colors",
                   pathname.startsWith("/inventory") || pathname.startsWith("/products") || pathname.startsWith("/stock")
-                    ? "text-blue-600"
-                    : "text-gray-500 group-hover:text-gray-700",
+                    ? "text-white"
+                    : "text-camouflage-green-200 group-hover:text-white",
                 )}
               />
               <div>
                 <div>Inventario</div>
-                <div className="text-xs text-gray-500">Gestión completa</div>
+                <div className={cn(
+                  "text-xs transition-colors",
+                  pathname.startsWith("/inventory") || pathname.startsWith("/products") || pathname.startsWith("/stock")
+                    ? "text-camouflage-green-100"
+                    : "text-camouflage-green-300 group-hover:text-camouflage-green-200"
+                )}>Gestión completa</div>
               </div>
             </div>
             {isInventoryOpen ? (
-              <ChevronDown className="h-4 w-4 text-gray-400" />
+              <ChevronDown className="h-4 w-4 text-camouflage-green-200" />
             ) : (
-              <ChevronRight className="h-4 w-4 text-gray-400" />
+              <ChevronRight className="h-4 w-4 text-camouflage-green-200" />
             )}
           </button>
 
           {/* Submenú de Inventario */}
           {isInventoryOpen && (
-            <div className="ml-6 space-y-1 border-l border-gray-200 pl-4">
+            <div className="ml-6 space-y-1 border-l border-camouflage-green-600 pl-4">
               {inventoryNavigation.map((item) => {
                 const isActive = pathname === item.href
                 return (
@@ -143,14 +151,14 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
                     className={cn(
                       "group flex items-center px-3 py-2 text-sm rounded-md transition-colors",
                       isActive
-                        ? "bg-blue-50 text-blue-700 font-medium"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                        ? "bg-camouflage-green-500 text-white font-medium shadow-sm"
+                        : "text-camouflage-green-200 hover:bg-camouflage-green-600 hover:text-white",
                     )}
                   >
                     <item.icon
                       className={cn(
                         "mr-2 h-4 w-4",
-                        isActive ? "text-blue-600" : "text-gray-400 group-hover:text-gray-600",
+                        isActive ? "text-white" : "text-camouflage-green-300 group-hover:text-white",
                       )}
                     />
                     {item.name}
@@ -163,14 +171,14 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-4 border-t border-camouflage-green-700">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-            <span className="text-sm font-medium text-gray-700">U</span>
+          <div className="w-8 h-8 bg-camouflage-green-500 rounded-full flex items-center justify-center shadow-md">
+            <span className="text-sm font-medium text-white">U</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">Usuario</p>
-            <p className="text-xs text-gray-500 truncate">admin@inventorypro.com</p>
+            <p className="text-sm font-medium text-white truncate">Usuario</p>
+            <p className="text-xs text-camouflage-green-200 truncate">admin@inventorypro.com</p>
           </div>
         </div>
       </div>

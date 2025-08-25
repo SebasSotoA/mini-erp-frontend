@@ -4,26 +4,48 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* 🌿 Esquema de colores con camouflage-green */
+    --background: 244 246 243; /* camouflage-green-50 */
+    --foreground: 20 27 19; /* camouflage-green-950 */
+    --card: 255 255 255; /* blanco puro para contraste */
+    --card-foreground: 20 27 19; /* camouflage-green-950 */
+    --popover: 255 255 255;
+    --popover-foreground: 20 27 19;
+    --primary: 91 117 84; /* camouflage-green-500 */
+    --primary-foreground: 244 246 243; /* camouflage-green-50 */
+    --secondary: 229 233 226; /* camouflage-green-100 */
+    --secondary-foreground: 54 73 51; /* camouflage-green-700 */
+    --muted: 202 212 198; /* camouflage-green-200 */
+    --muted-foreground: 111 133 104; /* camouflage-green-400 */
+    --accent: 165 182 159; /* camouflage-green-300 */
+    --accent-foreground: 45 91 64; /* camouflage-green-600 */
+    --destructive: 239 68 68; /* rojo suave para errores */
+    --destructive-foreground: 244 246 243;
+    --border: 202 212 198; /* camouflage-green-200 */
+    --input: 202 212 198;
+    --ring: 91 117 84; /* camouflage-green-500 */
     --radius: 0.5rem;
+  }
+  
+  /* 🌙 Modo oscuro opcional */
+  .dark {
+    --background: 20 27 19; /* camouflage-green-950 */
+    --foreground: 244 246 243; /* camouflage-green-50 */
+    --card: 37 59 42; /* camouflage-green-800 */
+    --card-foreground: 244 246 243;
+    --primary: 91 117 84; /* camouflage-green-500 */
+    --primary-foreground: 20 27 19;
+    --secondary: 45 91 64; /* camouflage-green-600 */
+    --secondary-foreground: 244 246 243;
+    --muted: 54 73 51; /* camouflage-green-700 */
+    --muted-foreground: 165 182 159;
+    --accent: 54 73 51;
+    --accent-foreground: 244 246 243;
+    --destructive: 220 38 38;
+    --destructive-foreground: 244 246 243;
+    --border: 54 73 51;
+    --input: 54 73 51;
+    --ring: 165 182 159;
   }
 }
 
