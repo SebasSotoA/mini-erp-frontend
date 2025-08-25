@@ -3,6 +3,23 @@
 import type React from "react"
 import { createContext, useContext, useState } from "react"
 
+export interface Warehouse {
+  id: string
+  name: string
+  location: string
+  capacity: number
+  manager: string
+  isActive: boolean
+}
+
+export interface ProductStock {
+  productId: string
+  warehouseId: string
+  quantity: number
+  reservedQuantity: number
+  lastUpdated: string
+}
+
 export interface Product {
   id: string
   name: string
@@ -21,6 +38,7 @@ export interface Product {
   totalSold: number // Total vendido histórico
   reorderPoint: number
   leadTime: number // Días de tiempo de entrega
+  warehouseId?: string // Bodega principal
 }
 
 export interface StockMovement {
@@ -66,6 +84,8 @@ interface InventoryContextType {
   products: Product[]
   stockMovements: StockMovement[]
   sales: Sale[]
+  warehouses: Warehouse[]
+  productStocks: ProductStock[]
   addProduct: (product: Omit<Product, "id" | "createdAt">) => void
   updateProduct: (id: string, product: Partial<Product>) => void
   deleteProduct: (id: string) => void
@@ -75,6 +95,7 @@ interface InventoryContextType {
   getLowStockProducts: () => Product[]
   getOverstockProducts: () => Product[]
   getStockByCategory: () => { category: string; stock: number; value: number }[]
+  getStockByWarehouse: () => { warehouse: string; stock: number; value: number; products: number }[]
   getRecentMovements: () => { date: string; in: number; out: number }[]
   getFinancialMetrics: () => FinancialMetrics
   getSalesAnalytics: () => {
@@ -86,9 +107,52 @@ interface InventoryContextType {
     productProfitability: { product: string; revenue: number; cost: number; profit: number; margin: number }[]
     monthlyTrends: { month: string; revenue: number; cost: number; profit: number }[]
   }
+  getStockHealthMetrics: () => {
+    totalProducts: number
+    lowStock: number
+    overStock: number
+    optimalStock: number
+    stockHealthPercentage: number
+  }
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
+
+// Datos mock de bodegas
+const initialWarehouses: Warehouse[] = [
+  {
+    id: "1",
+    name: "Bodega Central",
+    location: "Ciudad Principal",
+    capacity: 10000,
+    manager: "Juan Pérez",
+    isActive: true,
+  },
+  {
+    id: "2", 
+    name: "Bodega Norte",
+    location: "Zona Norte",
+    capacity: 5000,
+    manager: "María García",
+    isActive: true,
+  },
+  {
+    id: "3",
+    name: "Bodega Sur",
+    location: "Zona Sur", 
+    capacity: 7500,
+    manager: "Carlos Rodríguez",
+    isActive: true,
+  },
+  {
+    id: "4",
+    name: "Bodega Este (Inactiva)",
+    location: "Zona Este",
+    capacity: 3000,
+    manager: "Ana López",
+    isActive: false,
+  },
+]
 
 // Datos mock expandidos y realistas
 const initialProducts: Product[] = [
@@ -1004,10 +1068,25 @@ const initialSales: Sale[] = [
   },
 ]
 
+// Datos mock de stock por bodega
+const initialProductStocks: ProductStock[] = [
+  { productId: "1", warehouseId: "1", quantity: 25, reservedQuantity: 5, lastUpdated: "2024-01-25" },
+  { productId: "1", warehouseId: "2", quantity: 15, reservedQuantity: 2, lastUpdated: "2024-01-25" },
+  { productId: "1", warehouseId: "3", quantity: 5, reservedQuantity: 1, lastUpdated: "2024-01-25" },
+  { productId: "2", warehouseId: "1", quantity: 10, reservedQuantity: 1, lastUpdated: "2024-01-25" },
+  { productId: "2", warehouseId: "2", quantity: 15, reservedQuantity: 3, lastUpdated: "2024-01-25" },
+  { productId: "2", warehouseId: "3", quantity: 7, reservedQuantity: 0, lastUpdated: "2024-01-25" },
+  { productId: "3", warehouseId: "1", quantity: 12, reservedQuantity: 2, lastUpdated: "2024-01-25" },
+  { productId: "3", warehouseId: "2", quantity: 4, reservedQuantity: 1, lastUpdated: "2024-01-25" },
+  { productId: "3", warehouseId: "3", quantity: 2, reservedQuantity: 0, lastUpdated: "2024-01-25" },
+]
+
 export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [stockMovements, setStockMovements] = useState<StockMovement[]>(initialStockMovements)
   const [sales, setSales] = useState<Sale[]>(initialSales)
+  const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses)
+  const [productStocks, setProductStocks] = useState<ProductStock[]>(initialProductStocks)
 
   const addProduct = (product: Omit<Product, "id" | "createdAt">) => {
     const newProduct: Product = {
@@ -1062,6 +1141,45 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     })
 
     return Object.entries(categoryStock).map(([category, { stock, value }]) => ({ category, stock, value }))
+  }
+
+  const getStockByWarehouse = () => {
+    const warehouseStock: { [key: string]: { stock: number; value: number; products: number } } = {}
+
+    warehouses.forEach((warehouse) => {
+      warehouseStock[warehouse.name] = { stock: 0, value: 0, products: 0 }
+    })
+
+    productStocks.forEach((stock) => {
+      const warehouse = warehouses.find(w => w.id === stock.warehouseId)
+      const product = products.find(p => p.id === stock.productId)
+      
+      if (warehouse && product) {
+        warehouseStock[warehouse.name].stock += stock.quantity
+        warehouseStock[warehouse.name].value += product.price * stock.quantity
+        warehouseStock[warehouse.name].products += 1
+      }
+    })
+
+    return Object.entries(warehouseStock).map(([warehouse, { stock, value, products }]) => ({ 
+      warehouse, stock, value, products 
+    }))
+  }
+
+  const getStockHealthMetrics = () => {
+    const totalProducts = products.length
+    const lowStock = products.filter(p => p.stock <= p.minStock).length
+    const overStock = products.filter(p => p.stock >= p.maxStock).length
+    const optimalStock = totalProducts - lowStock - overStock
+    const stockHealthPercentage = Math.round((optimalStock / totalProducts) * 100)
+
+    return {
+      totalProducts,
+      lowStock,
+      overStock,
+      optimalStock,
+      stockHealthPercentage
+    }
   }
 
   const getRecentMovements = () => {
@@ -1234,6 +1352,8 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         products,
         stockMovements,
         sales,
+        warehouses,
+        productStocks,
         addProduct,
         updateProduct,
         deleteProduct,
@@ -1243,10 +1363,12 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         getLowStockProducts,
         getOverstockProducts,
         getStockByCategory,
+        getStockByWarehouse,
         getRecentMovements,
         getFinancialMetrics,
         getSalesAnalytics,
         getProfitabilityAnalysis,
+        getStockHealthMetrics,
       }}
     >
       {children}
