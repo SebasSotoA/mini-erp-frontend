@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronRight,
   BarChart3,
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -35,7 +36,11 @@ const inventoryNavigation = [
   { name: "Atributos", href: "/inventory/attributes", icon: Layers },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void
+}
+
+export function Sidebar({ onClose }: SidebarProps = {}) {
   const pathname = usePathname()
   const [isInventoryOpen, setIsInventoryOpen] = useState(
     pathname.startsWith("/inventory") || pathname.startsWith("/products") || pathname.startsWith("/stock"),
@@ -43,6 +48,17 @@ export function Sidebar() {
 
   return (
     <div className="flex h-full w-64 flex-col bg-white border-r border-gray-200 shadow-sm">
+      {/* Mobile close button */}
+      {onClose && (
+        <div className="flex justify-end p-4 lg:hidden">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-md text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex h-16 items-center px-6 border-b border-gray-200">
         <div className="flex items-center space-x-2">

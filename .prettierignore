@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Production builds
+.next/
+out/
+dist/
+
+# Environment variables
+.env*
+
+# Logs
+*.log
+
+# Editor directories
+.vscode/
+.idea/
+
+# Package manager files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Git
+.git/
+
+# Public assets
+public/

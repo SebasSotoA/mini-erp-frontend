@@ -1,0 +1,9 @@
+# API Routes Directory
+
+Esta carpeta contendrá las API routes de Next.js para:
+- Endpoints de productos
+- Endpoints de inventario  
+- Endpoints de autenticación
+- Integración con backend ASP.NET Core
+
+Por ahora se mantiene como placeholder hasta la implementación de las APIs.
