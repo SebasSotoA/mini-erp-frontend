@@ -5,6 +5,7 @@ import Link from "next/link"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useInventory } from "@/contexts/inventory-context"
 import { Search, Plus, Edit, Trash2, Eye, Settings, Filter } from "lucide-react"
 
@@ -13,7 +14,7 @@ export default function ItemManagement() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
 
-  const categories = [...new Set(products.map((product) => product.category))]
+  const categories = Array.from(new Set(products.map((product) => product.category)))
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -87,86 +88,119 @@ export default function ItemManagement() {
           <CardHeader>
             <CardTitle>Productos ({filteredProducts.length})</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent bg-gray-50">
+                  <TableHead className="w-[250px] text-gray-500 font-medium">
+                    <div className="pl-1.5">
                       Producto
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[120px] text-gray-500 font-medium">
+                    <div className="pl-1.5">
                       SKU
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[140px] text-gray-500 font-medium">
+                    <div className="pl-1.5">
                       Categoría
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[100px] text-gray-500 font-medium">
+                    <div className="pl-1.5">
                       Precio
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[120px] text-gray-500 font-medium">
+                    <div className="pl-1.5">
                       Stock
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[140px] text-gray-500 font-medium">
+                    <div className="pl-1.5">
                       Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                          <div className="text-sm text-gray-500 truncate max-w-xs">{product.description}</div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">{product.sku}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          {product.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${product.price.toFixed(2)}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.stock} unidades</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            product.stock < product.minStock
-                              ? "bg-red-100 text-red-800"
-                              : product.stock > product.maxStock
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {product.stock < product.minStock
-                            ? "Stock Bajo"
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[160px] text-gray-500 font-medium pl-1.5">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProducts.map((product) => (
+                  <TableRow 
+                    key={product.id}
+                    className="border-gray-200 hover:bg-gray-50/50 transition-colors"
+                  >
+                    <TableCell className="w-[250px] pl-1.5">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                        <div className="text-sm text-gray-500 truncate max-w-xs">{product.description}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="w-[120px] pl-1.5">
+                      <div className="text-sm text-gray-900 font-mono">{product.sku}</div>
+                    </TableCell>
+                    <TableCell className="w-[140px] pl-1.5">
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {product.category}
+                      </span>
+                    </TableCell>
+                    <TableCell className="w-[100px] pl-1.5">
+                      <div className="text-sm text-gray-900">${product.price.toFixed(2)}</div>
+                    </TableCell>
+                    <TableCell className="w-[120px] pl-1.5">
+                      <div className="text-sm text-gray-900">{product.stock} unidades</div>
+                    </TableCell>
+                    <TableCell className="w-[140px] pl-1.5">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          product.stock < product.minStock
+                            ? "bg-red-100 text-red-800"
                             : product.stock > product.maxStock
-                              ? "Sobrestock"
-                              : "Normal"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <Button variant="outline" size="sm" title="Ver detalles">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" title="Editar">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="danger" size="sm" onClick={() => handleDelete(product.id)} title="Eliminar">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-green-100 text-green-800"
+                        }`}
+                      >
+                        {product.stock < product.minStock
+                          ? "Stock Bajo"
+                          : product.stock > product.maxStock
+                            ? "Sobrestock"
+                            : "Normal"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="w-[160px]">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100 border-transparent hover:border-gray-200"
+                          title="Ver detalles"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100 border-transparent hover:border-gray-200"
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-100 border-transparent hover:border-gray-200"
+                          onClick={() => handleDelete(product.id)}
+                          title="Eliminar"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       </div>

@@ -228,21 +228,21 @@ export default function Dashboard() {
     <MainLayout>
       <div className="space-y-6">
         {/* Header de Bienvenida */}
-        <div className="bg-gradient-to-r from-camouflage-green-500 to-camouflage-green-800 rounded-lg p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-r from-camouflage-green-400 to-camouflage-green-800 rounded-xl p-6 text-white shadow-lg">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="text-3xl font-bold mb-2">¡Bienvenido de vuelta!</h1>
-              <p className="text-camouflage-green-100 text-lg">Aquí tienes un resumen de tu inventario y ventas</p>
+              <h1 className="text-3xl font-bold mb-2 text-white">¡Bienvenido de vuelta!</h1>
+              <p className="text-white text-lg">Aquí tienes un resumen de tu inventario y ventas</p>
               <p className="text-camouflage-green-200 text-sm mt-1">
                 Última actualización: {currentTime || "Cargando..."}
               </p>
             </div>
-            <div className="flex space-x-3">
+            <div className="flex space-x-3 items-center">
               <div className="relative">
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="bg-camouflage-green-600/50 border border-camouflage-green-500/50 text-white rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-camouflage-green-300"
+                  className="bg-camouflage-green-600/50 border border-camouflage-green-500/50 text-white rounded-lg pl-3 py-2 pr-3 focus:outline-none focus:ring-2 focus:ring-camouflage-green-300 text-base font-bold h-10"
                 >
                   {periodOptions.map((option) => (
                     <option key={option.value} value={option.value} className="text-camouflage-green-900">
@@ -250,11 +250,11 @@ export default function Dashboard() {
                     </option>
                   ))}
                 </select>
-                <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-camouflage-green-200 pointer-events-none" />
+                <Calendar className="absolute right-7 top-1/2 transform -translate-y-1/2 h-4 w-4 text-camouflage-green-200 pointer-events-none" />
               </div>
               <Button
                 onClick={() => setIsChartModalOpen(true)}
-                className="bg-camouflage-green-600/50 hover:bg-camouflage-green-500/70 border border-camouflage-green-500/50 text-white"
+                className="bg-camouflage-green-600/50 hover:bg-camouflage-green-500/70 border border-camouflage-green-500/50 text-white text-base font-bold h-10"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Gestionar Gráficas

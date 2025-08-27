@@ -88,7 +88,7 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
               <item.icon
                 className={cn(
                   "mr-3 h-5 w-5 transition-colors",
-                  isActive ? "text-white" : "text-camouflage-green-200 group-hover:text-white",
+                  isActive ? "text-white" : "text-camouflage-green-200 group-hover:text-white mr-3",
                 )}
               />
               <div>
@@ -123,7 +123,7 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
                 )}
               />
               <div>
-                <div>Inventario</div>
+                <div className="pr-8">Inventario</div>
                 <div className={cn(
                   "text-xs transition-colors",
                   pathname.startsWith("/inventory") || pathname.startsWith("/products") || pathname.startsWith("/stock")
