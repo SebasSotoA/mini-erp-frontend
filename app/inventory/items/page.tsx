@@ -5,6 +5,8 @@ import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Modal } from "@/components/ui/modal"
+import { NewItemForm } from "@/components/forms/new-item-form"
 import { useInventory } from "@/contexts/inventory-context"
 import { ShoppingCart, Plus, Search, Filter, Eye, Edit, Power, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, X } from "lucide-react"
 
@@ -14,6 +16,9 @@ export default function SalesItems() {
   // Estado para paginación
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
+  
+  // Estado para el modal de nuevo item
+  const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false)
   
   // Estado para filtros y ordenamiento
   const [showFilters, setShowFilters] = useState(false)
@@ -159,7 +164,11 @@ export default function SalesItems() {
             </h1>
             <p className="text-camouflage-green-600 mt-1">Crea, edita y controla tus ítems en un solo lugar.</p>
           </div>
-          <Button size="lg" className="bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white pl-4 pr-4">
+          <Button 
+            size="lg" 
+            className="bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white pl-4 pr-4"
+            onClick={() => setIsNewItemModalOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Nuevo item de venta
           </Button>
@@ -540,6 +549,21 @@ export default function SalesItems() {
           </div>
         </Card>
       </div>
+
+      {/* Modal para nuevo item */}
+      <Modal
+        isOpen={isNewItemModalOpen}
+        onClose={() => setIsNewItemModalOpen(false)}
+        title="Formulario básico de productos"
+      >
+        <NewItemForm
+          onClose={() => setIsNewItemModalOpen(false)}
+          onSuccess={() => {
+            // Resetear página actual cuando se agrega un nuevo producto
+            setCurrentPage(1)
+          }}
+        />
+      </Modal>
     </MainLayout>
   )
 }
