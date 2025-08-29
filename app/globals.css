@@ -21,8 +21,9 @@
     --accent-foreground: 45 91 64; /* camouflage-green-600 */
     --destructive: 239 68 68; /* rojo suave para errores */
     --destructive-foreground: 244 246 243;
-    --border: 202 212 198; /* camouflage-green-200 */
-    --input: 202 212 198;
+    /* Use neutral gray for borders/inputs to avoid yellow tint. These are HSL-compatible triples (h s% l%). */
+    --border: 0 0% 89.8%; /* neutral gray (shadcn default) */
+    --input: 0 0% 89.8%;
     --ring: 91 117 84; /* camouflage-green-500 */
     --radius: 0.5rem;
   }

@@ -88,3 +88,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Radix Select overrides: asegurar fondos neutros en dropdown */
+@layer base {
+  [role="listbox"] {
+    background-color: white !important;
+  }
+  [role="option"][data-highlighted],
+  [role="option"][data-state="checked"],
+  [role="option"]:hover {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+}

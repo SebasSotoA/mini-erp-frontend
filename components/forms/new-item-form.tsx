@@ -147,13 +147,29 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             type="product"
             label="Producto"
             isSelected={itemType === "product"}
-            onClick={() => setItemType("product")}
+            onClick={() => {
+              setItemType("product")
+              setFormData(prev => ({
+                ...prev,
+                type: "product",
+                // Restaurar valores típicos de producto
+                unitOfMeasure: prev.unitOfMeasure || "",
+              }))
+            }}
           />
           <ItemTypeButton
             type="service"
             label="Servicio"
             isSelected={itemType === "service"}
-            onClick={() => setItemType("service")}
+            onClick={() => {
+              setItemType("service")
+              setFormData(prev => ({
+                ...prev,
+                type: "service",
+                // Por defecto para servicio
+                unitOfMeasure: "Servicio",
+              }))
+            }}
           />
         </div>
         <p className="text-xs text-gray-700 flex items-center gap-2">
@@ -173,7 +189,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             type="text"
             value={formData.name}
             onChange={(e) => handleInputChange("name", e.target.value)}
-            className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-700 "
+            className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
             placeholder="Ingresa el nombre del producto"
             required
           />
@@ -193,74 +209,80 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             </Tooltip>
           </div>
           <Select value={formData.unitOfMeasure} onValueChange={(value) => handleInputChange("unitOfMeasure", value)}>
-            <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 transition-colors">
+            <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
               <SelectValue placeholder="Selecciona una unidad" className="text-gray-500" />
             </SelectTrigger>
-            <SelectContent>
-              {/* Unidad */}
-              <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0">
-                Unidad
-              </div>
-              <SelectItem value="Unidad">Unidad</SelectItem>
-              <SelectItem value="Pieza">Pieza</SelectItem>
-              <SelectItem value="Paquete">Paquete</SelectItem>
-              <SelectItem value="Caja">Caja</SelectItem>
-              <SelectItem value="Docena">Docena</SelectItem>
-              
-              {/* Longitud */}
-              <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
-                Longitud
-              </div>
-              <SelectItem value="Metro">Metro</SelectItem>
-              <SelectItem value="Centímetro">Centímetro</SelectItem>
-              <SelectItem value="Kilómetro">Kilómetro</SelectItem>
-              <SelectItem value="Pulgada">Pulgada</SelectItem>
-              <SelectItem value="Pie">Pie</SelectItem>
-              
-              {/* Área */}
-              <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
-                Área
-              </div>
-              <SelectItem value="Metro²">Metro²</SelectItem>
-              <SelectItem value="Centímetro²">Centímetro²</SelectItem>
-              <SelectItem value="Hectárea">Hectárea</SelectItem>
-              
-              {/* Volumen */}
-              <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
-                Volumen
-              </div>
-              <SelectItem value="Litro">Litro</SelectItem>
-              <SelectItem value="Mililitro">Mililitro</SelectItem>
-              <SelectItem value="Metro³">Metro³</SelectItem>
-              <SelectItem value="Galón">Galón</SelectItem>
-              
-              {/* Peso */}
-              <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
-                Peso
-              </div>
-              <SelectItem value="Kilogramo">Kilogramo</SelectItem>
-              <SelectItem value="Gramo">Gramo</SelectItem>
-              <SelectItem value="Tonelada">Tonelada</SelectItem>
-              <SelectItem value="Libra">Libra</SelectItem>
-              <SelectItem value="Onza">Onza</SelectItem>
-              
-              {/* AIU */}
-              <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
-                AIU
-              </div>
-              <SelectItem value="Servicio">Servicio</SelectItem>
-              <SelectItem value="Consultoría">Consultoría</SelectItem>
-              <SelectItem value="Proyecto">Proyecto</SelectItem>
-              
-              {/* Tiempo */}
-              <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
-                Tiempo
-              </div>
-              <SelectItem value="Hora">Hora</SelectItem>
-              <SelectItem value="Día">Día</SelectItem>
-              <SelectItem value="Semana">Semana</SelectItem>
-              <SelectItem value="Mes">Mes</SelectItem>
-              <SelectItem value="Año">Año</SelectItem>
+            <SelectContent side="bottom" align="start" avoidCollisions={false}>
+              {itemType === "product" ? (
+                <>
+                  {/* Unidad */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0">
+                    Unidad
+                  </div>
+                  <SelectItem value="Unidad">Unidad</SelectItem>
+                  <SelectItem value="Pieza">Pieza</SelectItem>
+                  <SelectItem value="Paquete">Paquete</SelectItem>
+                  <SelectItem value="Caja">Caja</SelectItem>
+                  <SelectItem value="Docena">Docena</SelectItem>
+                  
+                  {/* Longitud */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
+                    Longitud
+                  </div>
+                  <SelectItem value="Metro">Metro</SelectItem>
+                  <SelectItem value="Centímetro">Centímetro</SelectItem>
+                  <SelectItem value="Kilómetro">Kilómetro</SelectItem>
+                  <SelectItem value="Pulgada">Pulgada</SelectItem>
+                  <SelectItem value="Pie">Pie</SelectItem>
+                  
+                  {/* Área */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
+                    Área
+                  </div>
+                  <SelectItem value="Metro²">Metro²</SelectItem>
+                  <SelectItem value="Centímetro²">Centímetro²</SelectItem>
+                  <SelectItem value="Hectárea">Hectárea</SelectItem>
+                  
+                  {/* Volumen */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
+                    Volumen
+                  </div>
+                  <SelectItem value="Litro">Litro</SelectItem>
+                  <SelectItem value="Mililitro">Mililitro</SelectItem>
+                  <SelectItem value="Metro³">Metro³</SelectItem>
+                  <SelectItem value="Galón">Galón</SelectItem>
+                  
+                  {/* Peso */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
+                    Peso
+                  </div>
+                  <SelectItem value="Kilogramo">Kilogramo</SelectItem>
+                  <SelectItem value="Gramo">Gramo</SelectItem>
+                  <SelectItem value="Tonelada">Tonelada</SelectItem>
+                  <SelectItem value="Libra">Libra</SelectItem>
+                  <SelectItem value="Onza">Onza</SelectItem>
+                </>
+              ) : (
+                <>
+                  {/* Servicio */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0">
+                    Servicio
+                  </div>
+                  <SelectItem value="Servicio">Servicio</SelectItem>
+                  <SelectItem value="Consultoría">Consultoría</SelectItem>
+                  <SelectItem value="Proyecto">Proyecto</SelectItem>
+                  
+                  {/* Tiempo */}
+                  <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">
+                    Tiempo
+                  </div>
+                  <SelectItem value="Hora">Hora</SelectItem>
+                  <SelectItem value="Día">Día</SelectItem>
+                  <SelectItem value="Semana">Semana</SelectItem>
+                  <SelectItem value="Mes">Mes</SelectItem>
+                  <SelectItem value="Año">Año</SelectItem>
+                </>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -269,7 +291,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             Bodega <span className="text-red-500">*</span>
           </Label>
           <Select value={formData.warehouse} onValueChange={(value) => handleInputChange("warehouse", value)}>
-            <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 transition-colors">
+            <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
               <SelectValue placeholder="Selecciona una bodega" className="text-gray-500" />
             </SelectTrigger>
             <SelectContent>
@@ -295,7 +317,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               min="0"
               value={formData.basePrice}
               onChange={(e) => handleInputChange("basePrice", e.target.value)}
-              className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 transition-colors"
+              className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
               placeholder="0.00"
             />
           </div>
@@ -309,8 +331,8 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               Impuesto
             </Label>
             <Select value={formData.tax} onValueChange={(value) => handleInputChange("tax", value)}>
-              <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 transition-colors">
-                <SelectValue placeholder="0%" className="text-gray-500" />
+              <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
+                <SelectValue placeholder="Ninguno (0%)" className="text-gray-500" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="0">0%</SelectItem>
@@ -335,55 +357,57 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               min="0"
               value={formData.totalPrice}
               onChange={(e) => handleInputChange("totalPrice", e.target.value)}
-              className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 transition-colors"
+              className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
               placeholder="0.00"
             />
           </div>
         </div>
       </div>
 
-      {/* Tercera fila: Cantidad y Costo inicial */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="quantity" className="text-sm font-medium text-gray-700">
-            Cantidad <span className="text-red-500">*</span>
-          </Label>
-          <Input
-            id="quantity"
-            type="number"
-            min="0"
-            value={formData.quantity}
-            onChange={(e) => handleInputChange("quantity", e.target.value)}
-            className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 transition-colors"
-            placeholder="Ingresa la cantidad inicial"
-          />
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="initialCost" className="text-sm font-medium text-gray-700">
-              Costo inicial <span className="text-red-500">*</span>
+      {/* Tercera fila: Cantidad y Costo inicial (solo Producto) */}
+      {itemType === "product" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="quantity" className="text-sm font-medium text-gray-700">
+              Cantidad <span className="text-red-500">*</span>
             </Label>
-            <Tooltip>
-              <TooltipTrigger>
-                <HelpCircle className="h-4 w-4 text-gray-400 hover:text-camouflage-green-600 transition-colors" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Costo de adquisición o producción del ítem</p>
-              </TooltipContent>
-            </Tooltip>
+            <Input
+              id="quantity"
+              type="number"
+              min="0"
+              value={formData.quantity}
+              onChange={(e) => handleInputChange("quantity", e.target.value)}
+              className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+              placeholder="Ingresa la cantidad inicial"
+            />
           </div>
-          <Input
-            id="initialCost"
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.initialCost}
-            onChange={(e) => handleInputChange("initialCost", e.target.value)}
-            className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 transition-colors"
-            placeholder="0.00"
-          />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="initialCost" className="text-sm font-medium text-gray-700">
+                Costo inicial <span className="text-red-500">*</span>
+              </Label>
+              <Tooltip>
+                <TooltipTrigger>
+                  <HelpCircle className="h-4 w-4 text-gray-400 hover:text-camouflage-green-600 transition-colors" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Costo de adquisición o producción del ítem</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Input
+              id="initialCost"
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.initialCost}
+              onChange={(e) => handleInputChange("initialCost", e.target.value)}
+              className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+              placeholder="0.00"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
         {/* Acciones */}
         <div className="flex justify-between items-center pt-4 border-t">
