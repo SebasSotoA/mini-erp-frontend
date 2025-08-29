@@ -194,9 +194,9 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             required
           />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Label htmlFor="unit" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="unit" className="text-sm font-medium text-gray-700 mb-0">
               Unidad de medida <span className="text-red-500">*</span>
             </Label>
             <Tooltip>
@@ -411,13 +411,15 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
 
         {/* Acciones */}
         <div className="flex justify-between items-center pt-4 border-t">
-          <button
-            type="button"
+          <a
+            href="/inventory/items/add"
+            target="_blank"
+            rel="noopener noreferrer"
             className="text-sm text-gray-600 hover:text-camouflage-green-700 flex items-center gap-2 transition-colors"
           >
             <ExternalLink className="h-4 w-4" />
             Ir al formulario avanzado
-          </button>
+          </a>
         <div className="flex gap-3">
           <Button
             type="button"
