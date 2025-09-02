@@ -335,9 +335,9 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 <SelectValue placeholder="Ninguno (0%)" className="text-gray-500" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="0">0%</SelectItem>
-                <SelectItem value="5">5%</SelectItem>
-                <SelectItem value="19">19%</SelectItem>
+                <SelectItem value="0">Ninguno (0%)</SelectItem>
+                <SelectItem value="5">IVA - (5%)</SelectItem>
+                <SelectItem value="19">IVA - (19%)</SelectItem>
               </SelectContent>
             </Select>
           </div>

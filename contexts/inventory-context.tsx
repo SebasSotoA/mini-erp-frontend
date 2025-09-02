@@ -32,6 +32,8 @@ export interface Product {
   maxStock: number
   description: string
   supplier: string
+  unit?: string // Unidad de medida (opcional por compatibilidad)
+  isActive?: boolean
   expiryDate?: string
   createdAt: string
   lastSold?: string
@@ -1093,6 +1095,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       id: String(products.length + 1),
       createdAt: new Date().toISOString(),
       ...product,
+      isActive: product.isActive ?? true,
     }
     setProducts([...products, newProduct])
   }

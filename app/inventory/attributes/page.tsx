@@ -119,7 +119,7 @@ export default function Attributes() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Tipos de Atributos</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {[...new Set(attributes.map((attr) => attr.type))].length}
+                  {Array.from(new Set(attributes.map((attr) => attr.type))).length}
                 </p>
                 <p className="text-xs text-blue-600">Diferentes tipos</p>
               </div>

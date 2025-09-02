@@ -1,0 +1,213 @@
+"use client"
+
+import Image from "next/image"
+import { useParams, useRouter } from "next/navigation"
+import { MainLayout } from "@/components/layout/main-layout"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { useInventory } from "@/contexts/inventory-context"
+import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag } from "lucide-react"
+
+export default function ItemDetailsPage() {
+  const params = useParams<{ id: string }>()
+  const router = useRouter()
+  const { getProductById, updateProduct } = useInventory()
+
+  const id = Array.isArray(params?.id) ? params.id[0] : params?.id
+  const product = id ? getProductById(id) : undefined
+
+  // Derivados y placeholders para campos que aún no están en el modelo
+  const itemType = product ? (product.category === "Servicios" ? "Servicio" : "Producto") : "-"
+  const unitOfMeasure = "N/D" // pendiente de modelo
+  const reference = product?.sku ?? "N/D"
+  const codigoProductoServicio = reference // por ahora usamos la misma referencia
+  const descripcion = product?.description ?? "Sin descripción"
+
+  // Precios: el modelo guarda price como total. Impuesto y base aún no están modelados.
+  const precioTotal = product ? product.price : 0
+  const impuestoAplicado = "N/D" // pendiente de modelo (porcentaje)
+  const precioSinImpuesto = "N/D" // pendiente de cálculo
+  const costoInicial = product ? product.cost : 0
+  // Intentar detectar una URL de imagen si el modelo la provee en el futuro
+  const imageUrl = (product as any)?.imageUrl ?? (product as any)?.image ?? null
+
+  if (!product) {
+    return (
+      <MainLayout>
+        <div className="space-y-6">
+          <Card className="border-camouflage-green-200">
+            <CardHeader>
+              <CardTitle className="text-camouflage-green-900">Ítem no encontrado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <p className="text-camouflage-green-700">El ítem solicitado no existe o fue eliminado.</p>
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/inventory/items")}
+                  className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                >
+                  Volver a la lista
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  return (
+    <MainLayout>
+      <div className="space-y-6">
+        {/* Encabezado: Nombre del item */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-camouflage-green-900">{product.name}</h1>
+            <p className="text-camouflage-green-600 mt-1 font-bold">Detalle del {itemType.toLowerCase()} • Ref: {reference}</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => router.push("/inventory/items")}
+            className="text-base border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+            title="Volver a Items"
+          >
+            Volver
+          </Button>
+        </div>
+
+        {/* Acciones horizontales */}
+        <div className="flex flex-wrap gap-3">
+          <Button
+            className="text-base bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
+            title="Facturar item"
+          >
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Facturar item
+          </Button>
+          <Button
+            variant="outline"
+            className="text-base border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            title="Comprar item"
+          >
+            <ShoppingBag className="h-4 w-4 mr-2" />
+            Comprar item
+          </Button>
+          <Button
+            variant="outline"
+            className="text-base border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
+            onClick={() => {
+              const current = product.isActive ?? true
+              updateProduct(product.id, { isActive: !current })
+            }}
+          >
+            {(product.isActive ?? true) ? (
+              <Power className="h-4 w-4 mr-2" />
+            ) : (
+              <PowerOff className="h-4 w-4 mr-2" />
+            )}
+            {(product.isActive ?? true) ? "Activado" : "Desactivado"}
+          </Button>
+          <Button
+            variant="outline"
+            className="text-base border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            title="Editar"
+            onClick={() => router.push(`/inventory/items/${id}/edit`)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Editar
+          </Button>
+        </div>
+
+        {/* Contenido principal: datos a la izquierda, media/pricing a la derecha */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Datos principales */}
+          <Card className="lg:col-span-2 border-camouflage-green-200">
+            <CardHeader>
+              <CardTitle className="text-xl text-camouflage-green-900">Información del ítem</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <div className="text-base text-camouflage-green-600">Código</div>
+                  <div className="text-camouflage-green-900 font-medium">{product.id}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-base text-camouflage-green-600">Referencia</div>
+                  <div className="text-camouflage-green-900 font-medium">{reference}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-base text-camouflage-green-600">Categoría</div>
+                  <div className="text-camouflage-green-900 font-medium">{product.category}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-base text-camouflage-green-600">Tipo ítem</div>
+                  <div className="text-camouflage-green-900 font-medium">{itemType}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-base text-camouflage-green-600">Unidad de medida</div>
+                  <div className="text-camouflage-green-900 font-medium">{unitOfMeasure}</div>
+                </div>
+                <div className="space-y-1">
+                  <div className="text-base text-camouflage-green-600">Código del producto o servicio</div>
+                  <div className="text-camouflage-green-900 font-medium">{codigoProductoServicio}</div>
+                </div>
+                <div className="sm:col-span-2 space-y-1">
+                  <div className="text-base text-camouflage-green-600">Descripción</div>
+                  <div className="text-camouflage-green-900">{descripcion}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Media y precios */}
+          <div className="space-y-4">
+            <Card className="border-camouflage-green-200">
+              <CardContent className="p-0">
+                {imageUrl ? (
+                  <div className="aspect-square relative bg-camouflage-green-50/40">
+                    <Image
+                      src={imageUrl}
+                      alt={product.name}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 bg-white">
+                    <Tag className="h-14 w-14 text-gray-300" />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="border-camouflage-green-200">
+              <CardContent className="pt-4 pb-5">
+                <div className="space-y-2">
+                  <div className="text-base text-camouflage-green-600">Precio total</div>
+                  <div className="text-3xl font-bold text-camouflage-green-900">${precioTotal.toLocaleString()} COP</div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm text-camouflage-green-600">Precio sin impuesto</div>
+                    <div className="text-camouflage-green-900 font-semibold">{`${precioSinImpuesto} COP`}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-camouflage-green-600">Impuesto aplicado</div>
+                    <div className="text-camouflage-green-900 font-semibold">{impuestoAplicado}</div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="text-sm text-camouflage-green-600">Costo inicial</div>
+                  <div className="text-camouflage-green-900 font-semibold">${costoInicial.toLocaleString()} COP</div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
+  )
+}

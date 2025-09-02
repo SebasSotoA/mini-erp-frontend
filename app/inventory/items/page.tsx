@@ -8,10 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Modal } from "@/components/ui/modal"
 import { NewItemForm } from "@/components/forms/new-item-form"
 import { useInventory } from "@/contexts/inventory-context"
-import { ShoppingCart, Plus, Search, Filter, Eye, Edit, Power, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, X } from "lucide-react"
+import { ShoppingCart, Plus, Search, Filter, Eye, Edit, Power, PowerOff, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export default function SalesItems() {
-  const { products } = useInventory()
+  const { products, updateProduct } = useInventory()
+  const router = useRouter()
   
   // Estado para paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -440,6 +442,7 @@ export default function SalesItems() {
                           variant="outline"
                           className="h-8 w-8 p-0 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100 border-camouflage-green-300 hover:border-camouflage-green-400"
                           title="Ver detalles"
+                          onClick={() => router.push(`/inventory/items/${product.id}`)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -448,6 +451,7 @@ export default function SalesItems() {
                           variant="outline"
                           className="h-8 w-8 p-0 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100 border-camouflage-green-300 hover:border-camouflage-green-400"
                           title="Editar"
+                          onClick={() => router.push(`/inventory/items/${product.id}/edit`)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -455,9 +459,17 @@ export default function SalesItems() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 p-0 border-camouflage-green-300 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100 hover:border-camouflage-green-400"
-                          title={product.stock > 0 ? "Desactivar" : "Activar"}
+                          title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
+                          onClick={() => {
+                            const current = product.isActive ?? true
+                            updateProduct(product.id, { isActive: !current })
+                          }}
                         >
-                          <Power className="h-4 w-4" />
+                          {(product.isActive ?? true) ? (
+                            <Power className="h-4 w-4" />
+                          ) : (
+                            <PowerOff className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
                           size="sm"
