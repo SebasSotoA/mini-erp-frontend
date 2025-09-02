@@ -1,6 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -44,6 +47,48 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
     initialCost: ""
   })
 
+  const schema = z.object({
+    type: z.enum(["product", "service"]),
+    name: z.string().trim().min(1, "El nombre es requerido"),
+    unitOfMeasure: z.string().trim().min(1, "La unidad es requerida"),
+    warehouse: z.string().trim().min(1, "La bodega es requerida"),
+    basePrice: z.string().refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0, {
+      message: "Precio base inválido",
+    }),
+    tax: z.string().refine((v) => v === "" || !isNaN(parseFloat(v)), { message: "Impuesto inválido" }),
+    totalPrice: z.string().refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0, {
+      message: "Precio total inválido",
+    }),
+    quantity: z.string().optional(),
+    initialCost: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (data.type === "product") {
+      if (!data.quantity || isNaN(parseInt(data.quantity)) || parseInt(data.quantity) < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Cantidad inválida" })
+      }
+      if (!data.initialCost || isNaN(parseFloat(data.initialCost)) || parseFloat(data.initialCost) < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["initialCost"], message: "Costo inválido" })
+      }
+    }
+  })
+
+  type FormSchema = z.infer<typeof schema>
+
+  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<FormSchema>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      type: "product",
+      name: "",
+      unitOfMeasure: "",
+      warehouse: "Principal",
+      basePrice: "",
+      tax: "",
+      totalPrice: "",
+      quantity: "",
+      initialCost: "",
+    },
+  })
+
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value }
@@ -70,21 +115,16 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
       
       return updated
     })
+    setValue(field as any, value, { shouldValidate: true })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Validación básica
-    if (!formData.name.trim()) {
-      alert("Por favor ingresa un nombre")
-      return
-    }
-
+  const onSubmit = async () => {
     const newProduct = {
       name: formData.name,
       sku: `SKU-${Date.now()}`,
       description: `${itemType === "product" ? "Producto" : "Servicio"}: ${formData.name}`,
+      basePrice: parseFloat(formData.basePrice) || 0,
+      taxPercent: parseFloat(formData.tax) || 0,
       price: parseFloat(formData.totalPrice) || 0,
       cost: parseFloat(formData.initialCost) || 0,
       stock: parseInt(formData.quantity) || 0,
@@ -125,7 +165,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
   )
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={(e) => { e.preventDefault(); }} className="space-y-5">
       <TooltipProvider>
         {/* Tipo de Item */}
         <div className="space-y-3">
@@ -193,6 +233,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             placeholder="Ingresa el nombre del producto"
             required
           />
+          {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
         </div>
         <div className="space-y-3">
           <div className="flex items-center gap-2">
@@ -285,6 +326,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               )}
             </SelectContent>
           </Select>
+          {errors.unitOfMeasure && <p className="text-xs text-red-600">{errors.unitOfMeasure.message}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="warehouse" className="text-sm font-medium text-gray-700">
@@ -300,6 +342,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               <SelectItem value="Almacén">Almacén</SelectItem>
             </SelectContent>
           </Select>
+          {errors.warehouse && <p className="text-xs text-red-600">{errors.warehouse.message}</p>}
         </div>
       </div>
 
@@ -320,6 +363,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
               placeholder="0.00"
             />
+            {errors.basePrice && <p className="text-xs text-red-600">{errors.basePrice.message}</p>}
           </div>
           
           <div className="flex items-center justify-center mt-6">
@@ -340,6 +384,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 <SelectItem value="19">IVA - (19%)</SelectItem>
               </SelectContent>
             </Select>
+            {errors.tax && <p className="text-xs text-red-600">{errors.tax.message}</p>}
           </div>
           
           <div className="flex items-center justify-center mt-6">
@@ -360,6 +405,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
               placeholder="0.00"
             />
+            {errors.totalPrice && <p className="text-xs text-red-600">{errors.totalPrice.message}</p>}
           </div>
         </div>
       </div>
@@ -380,6 +426,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
               placeholder="Ingresa la cantidad inicial"
             />
+            {errors.quantity && <p className="text-xs text-red-600">{errors.quantity.message as string}</p>}
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -405,6 +452,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
               placeholder="0.00"
             />
+            {errors.initialCost && <p className="text-xs text-red-600">{errors.initialCost.message as string}</p>}
           </div>
         </div>
       )}
@@ -430,7 +478,8 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             Cancelar
           </Button>
           <Button
-            type="submit"
+            type="button"
+            onClick={handleSubmit(onSubmit)}
             className="px-6 bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
           >
             Crear {itemType === "product" ? "producto" : "servicio"}

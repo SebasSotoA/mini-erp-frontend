@@ -6,15 +6,21 @@ import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useInventory } from "@/contexts/inventory-context"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag } from "lucide-react"
 
 export default function ItemDetailsPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const { getProductById, updateProduct } = useInventory()
+  const { getProductById, updateProduct, stockMovements } = useInventory()
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
   const product = id ? getProductById(id) : undefined
+  const movementsForProduct = product ? stockMovements.filter(m => m.productId === product.id) : []
+  const recentMovements = movementsForProduct
+    .slice()
+    .sort((a, b) => (a.date < b.date ? 1 : -1))
+    .slice(0, 10)
 
   // Derivados y placeholders para campos que aún no están en el modelo
   const itemType = product ? (product.category === "Servicios" ? "Servicio" : "Producto") : "-"
@@ -25,8 +31,8 @@ export default function ItemDetailsPage() {
 
   // Precios: el modelo guarda price como total. Impuesto y base aún no están modelados.
   const precioTotal = product ? product.price : 0
-  const impuestoAplicado = "N/D" // pendiente de modelo (porcentaje)
-  const precioSinImpuesto = "N/D" // pendiente de cálculo
+  const impuestoAplicado = (product as any)?.taxPercent != null ? `${(product as any).taxPercent}%` : "N/D"
+  const precioSinImpuesto = (product as any)?.basePrice != null ? (product as any).basePrice.toLocaleString() : "N/D"
   const costoInicial = product ? product.cost : 0
   // Intentar detectar una URL de imagen si el modelo la provee en el futuro
   const imageUrl = (product as any)?.imageUrl ?? (product as any)?.image ?? null
@@ -207,6 +213,55 @@ export default function ItemDetailsPage() {
             </Card>
           </div>
         </div>
+
+        {/* Historial de movimientos */}
+        <Card className="border-camouflage-green-200">
+          <CardHeader>
+            <CardTitle className="text-xl text-camouflage-green-900">Historial de movimientos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentMovements.length === 0 ? (
+              <div className="text-sm text-camouflage-green-600">No hay movimientos registrados para este ítem.</div>
+            ) : (
+              <div className="overflow-x-auto -mx-2 sm:mx-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-camouflage-green-200">
+                      <TableHead className="text-camouflage-green-700 font-semibold">Fecha</TableHead>
+                      <TableHead className="text-camouflage-green-700 font-semibold">Tipo</TableHead>
+                      <TableHead className="text-camouflage-green-700 font-semibold text-right">Cantidad</TableHead>
+                      <TableHead className="text-camouflage-green-700 font-semibold">Motivo</TableHead>
+                      <TableHead className="text-camouflage-green-700 font-semibold">Referencia</TableHead>
+                      <TableHead className="text-camouflage-green-700 font-semibold text-right">Costo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentMovements.map(m => (
+                      <TableRow key={m.id} className="border-camouflage-green-100">
+                        <TableCell className="whitespace-nowrap text-camouflage-green-900">{new Date(m.date).toLocaleString()}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            m.type === 'in'
+                              ? 'bg-camouflage-green-100 text-camouflage-green-800'
+                              : m.type === 'out'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {m.type === 'in' ? 'Entrada' : m.type === 'out' ? 'Salida' : m.type === 'return' ? 'Devolución' : 'Ajuste'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right text-camouflage-green-900">{m.quantity}</TableCell>
+                        <TableCell className="text-camouflage-green-700">{m.reason}</TableCell>
+                        <TableCell className="text-camouflage-green-700">{m.reference || '-'}</TableCell>
+                        <TableCell className="text-right text-camouflage-green-900">{m.cost != null ? `$${m.cost.toLocaleString()}` : '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   )

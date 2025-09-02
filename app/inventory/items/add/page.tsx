@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { MainLayout } from "@/components/layout/main-layout"
@@ -34,6 +37,42 @@ export default function AddInventoryItemPage() {
   const [code, setCode] = useState("")
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
+
+  // Validación con Zod + RHF (controlamos el estado local y sincronizamos con RHF)
+  const addSchema = z.object({
+    type: z.enum(["product", "service"]),
+    name: z.string().trim().min(1, "El nombre es requerido"),
+    unit: z.string().trim().min(1, "La unidad es requerida"),
+    basePrice: z.string().refine(v => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Precio base inválido" }),
+    tax: z.string().refine(v => v === "" || !isNaN(parseFloat(v)), { message: "Impuesto inválido" }),
+    totalPrice: z.string().refine(v => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Precio total inválido" }),
+    quantity: z.string().optional(),
+    initialCost: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (data.type === "product") {
+      if (!data.quantity || isNaN(parseInt(data.quantity)) || parseInt(data.quantity) < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Cantidad inválida" })
+      }
+      if (!data.initialCost || isNaN(parseFloat(data.initialCost)) || parseFloat(data.initialCost) < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["initialCost"], message: "Costo inválido" })
+      }
+    }
+  })
+
+  type AddFormSchema = z.infer<typeof addSchema>
+  const { handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<AddFormSchema>({
+    resolver: zodResolver(addSchema),
+    defaultValues: {
+      type: itemType,
+      name,
+      unit,
+      basePrice,
+      tax,
+      totalPrice,
+      quantity,
+      initialCost,
+    },
+  })
 
   // Inventario por bodega (solo productos)
   type WarehouseEntry = {
@@ -79,6 +118,9 @@ export default function AddInventoryItemPage() {
     const taxP = parseFloat(t || "0")
     const total = base + (base * taxP) / 100
     setTotalPrice(total > 0 ? total.toFixed(2) : "")
+    setValue("basePrice", bp, { shouldValidate: true })
+    setValue("tax", t, { shouldValidate: true })
+    setValue("totalPrice", total > 0 ? total.toFixed(2) : "", { shouldValidate: true })
   }
   const handleTotalChange = (total: string) => {
     setTotalPrice(total)
@@ -90,6 +132,8 @@ export default function AddInventoryItemPage() {
     } else {
       setBasePrice(tot > 0 ? tot.toFixed(2) : "")
     }
+    setValue("totalPrice", total, { shouldValidate: true })
+    setValue("basePrice", (t > 0 ? (parseFloat(total || "0") / (1 + t / 100)) : parseFloat(total || "0")).toString(), { shouldValidate: true })
   }
 
   const priceToShow = useMemo(() => totalPrice || basePrice || "0.00", [totalPrice, basePrice])
@@ -104,7 +148,7 @@ export default function AddInventoryItemPage() {
     }
   }
 
-  const handleSubmit = (createAnother: boolean) => {
+  const doSubmit = async (createAnother: boolean) => {
     // Validaciones requeridas
     if (!name.trim()) return
     if (!unit.trim()) return
@@ -124,6 +168,8 @@ export default function AddInventoryItemPage() {
     addProduct({
       name: name.trim(),
       sku: (reference || code || name).trim(),
+      basePrice: base,
+      taxPercent: parseFloat(tax || "0"),
       price: total,
       cost: costValue,
       category: resolvedCategory,
@@ -136,6 +182,7 @@ export default function AddInventoryItemPage() {
       totalSold: 0,
       reorderPoint: 0,
       leadTime: 0,
+      imageUrl: imagePreview || undefined,
     })
 
     if (createAnother) {
@@ -229,10 +276,11 @@ export default function AddInventoryItemPage() {
                   <Input
                     id="name"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => { setName(e.target.value); setValue("name", e.target.value, { shouldValidate: true }) }}
                     placeholder="Nombre del producto o servicio"
                     className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
                   />
+                  {errors?.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -273,7 +321,8 @@ export default function AddInventoryItemPage() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm text-gray-700">Unidad de medida <span className="text-red-500">*</span></Label>
-                    <Select value={unit} onValueChange={setUnit}>
+                    <Select value={unit} onValueChange={(v) => { setUnit(v); setValue("unit", v, { shouldValidate: true }) }}>
+                  {errors?.unit && <p className="text-xs text-red-600">{errors.unit.message}</p>}
                       <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
                         <SelectValue placeholder="Selecciona una unidad" />
                       </SelectTrigger>
@@ -370,6 +419,7 @@ export default function AddInventoryItemPage() {
                       placeholder="0.00"
                       className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     />
+                  {errors?.basePrice && <p className="text-xs text-red-600">{errors.basePrice.message}</p>}
                   </div>
                   <div className="text-center pb-3 text-gray-400">+</div>
                   <div className="space-y-2">
@@ -397,6 +447,7 @@ export default function AddInventoryItemPage() {
                       placeholder="0.00"
                       className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     />
+                  {errors?.totalPrice && <p className="text-xs text-red-600">{errors.totalPrice.message}</p>}
                   </div>
                 </div>
               </CardContent>
@@ -491,7 +542,7 @@ export default function AddInventoryItemPage() {
                           </div>
                         )}
                       </div>
-                      <div className="mt-3">
+                      <div className="mt-3 space-y-2">
                         <input
                           id="image"
                           type="file"
@@ -499,6 +550,16 @@ export default function AddInventoryItemPage() {
                           onChange={(e) => onImageChange(e.target.files?.[0] || null)}
                           className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-camouflage-green-700 file:text-white hover:file:bg-camouflage-green-800"
                         />
+                        {imagePreview && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                            onClick={() => onImageChange(null)}
+                          >
+                            Eliminar imagen
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -529,18 +590,20 @@ export default function AddInventoryItemPage() {
                     Cancelar
                   </Button>
                   <Button
-                    className="w-full bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
-                    onClick={() => handleSubmit(false)}
+                    className="w-full bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white disabled:opacity-50"
+                    disabled={isSubmitting}
+                    onClick={handleSubmit(() => doSubmit(false))}
                   >
-                    Guardar
+                    {isSubmitting ? "Guardando..." : "Guardar"}
                   </Button>
                 </div>
                 <Button
                   variant="secondary"
-                  className="w-full bg-camouflage-green-600/20 text-camouflage-green-800 hover:bg-camouflage-green-600/30"
-                  onClick={() => handleSubmit(true)}
+                  className="w-full bg-camouflage-green-600/20 text-camouflage-green-800 hover:bg-camouflage-green-600/30 disabled:opacity-50"
+                  disabled={isSubmitting}
+                  onClick={handleSubmit(() => doSubmit(true))}
                 >
-                  Guardar y crear otro
+                  {isSubmitting ? "Guardando..." : "Guardar y crear otro"}
                 </Button>
               </div>
             </div>

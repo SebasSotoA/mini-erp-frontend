@@ -24,7 +24,9 @@ export interface Product {
   id: string
   name: string
   sku: string
-  price: number
+  price: number // Precio total con impuestos
+  basePrice: number // Precio base sin impuestos
+  taxPercent: number // Porcentaje de impuesto aplicado
   cost: number // Costo del producto
   category: string
   stock: number
@@ -41,6 +43,7 @@ export interface Product {
   reorderPoint: number
   leadTime: number // Días de tiempo de entrega
   warehouseId?: string // Bodega principal
+  imageUrl?: string
 }
 
 export interface StockMovement {
@@ -162,6 +165,8 @@ const initialProducts: Product[] = [
     id: "1",
     name: "iPhone 15 Pro Max",
     sku: "IPH-15PM-001",
+    basePrice: 1008.39,
+    taxPercent: 19,
     price: 1199.99,
     cost: 750.0,
     category: "Electronics",
@@ -180,6 +185,8 @@ const initialProducts: Product[] = [
     id: "2",
     name: "Samsung Galaxy S24 Ultra",
     sku: "SAM-S24U-002",
+    basePrice: 924.36,
+    taxPercent: 19,
     price: 1099.99,
     cost: 680.0,
     category: "Electronics",
@@ -198,6 +205,8 @@ const initialProducts: Product[] = [
     id: "3",
     name: "MacBook Pro 16 M3",
     sku: "MBP-16M3-003",
+    basePrice: 2100.83,
+    taxPercent: 19,
     price: 2499.99,
     cost: 1650.0,
     category: "Electronics",
@@ -216,6 +225,8 @@ const initialProducts: Product[] = [
     id: "4",
     name: "Sony WH-1000XM5",
     sku: "SNY-WH5-004",
+    basePrice: 336.13,
+    taxPercent: 19,
     price: 399.99,
     cost: 220.0,
     category: "Electronics",
@@ -234,6 +245,8 @@ const initialProducts: Product[] = [
     id: "5",
     name: "Dell XPS 15",
     sku: "DEL-XPS15-005",
+    basePrice: 1596.63,
+    taxPercent: 19,
     price: 1899.99,
     cost: 1200.0,
     category: "Electronics",
@@ -252,6 +265,8 @@ const initialProducts: Product[] = [
     id: "6",
     name: "iPad Pro 12.9 M2",
     sku: "IPD-PRO-006",
+    basePrice: 1092.43,
+    taxPercent: 19,
     price: 1299.99,
     cost: 820.0,
     category: "Electronics",
@@ -270,6 +285,8 @@ const initialProducts: Product[] = [
     id: "7",
     name: "Herman Miller Aeron Chair",
     sku: "HM-AERON-007",
+    basePrice: 1173.10,
+    taxPercent: 19,
     price: 1395.99,
     cost: 850.0,
     category: "Furniture",
@@ -288,6 +305,8 @@ const initialProducts: Product[] = [
     id: "8",
     name: "Standing Desk Pro",
     sku: "SDK-PRO-008",
+    basePrice: 672.26,
+    taxPercent: 19,
     price: 799.99,
     cost: 450.0,
     category: "Furniture",
@@ -306,6 +325,8 @@ const initialProducts: Product[] = [
     id: "9",
     name: "Logitech MX Master 3S",
     sku: "LOG-MX3S-009",
+    basePrice: 84.03,
+    taxPercent: 19,
     price: 99.99,
     cost: 55.0,
     category: "Electronics",
@@ -324,6 +345,8 @@ const initialProducts: Product[] = [
     id: "10",
     name: "LG UltraWide 34WP65C",
     sku: "LG-UW34-010",
+    basePrice: 462.18,
+    taxPercent: 19,
     price: 549.99,
     cost: 320.0,
     category: "Electronics",
@@ -342,6 +365,8 @@ const initialProducts: Product[] = [
     id: "11",
     name: "Mechanical Keyboard Pro",
     sku: "MKB-PRO-011",
+    basePrice: 151.25,
+    taxPercent: 19,
     price: 179.99,
     cost: 95.0,
     category: "Electronics",
@@ -360,6 +385,8 @@ const initialProducts: Product[] = [
     id: "12",
     name: "Webcam 4K Pro",
     sku: "WCM-4K-012",
+    basePrice: 168.06,
+    taxPercent: 19,
     price: 199.99,
     cost: 110.0,
     category: "Electronics",
@@ -378,6 +405,8 @@ const initialProducts: Product[] = [
     id: "13",
     name: "Office Lamp LED",
     sku: "OFL-LED-013",
+    basePrice: 75.62,
+    taxPercent: 19,
     price: 89.99,
     cost: 45.0,
     category: "Furniture",
@@ -396,6 +425,8 @@ const initialProducts: Product[] = [
     id: "14",
     name: "Notebook Premium A5",
     sku: "NBK-A5-014",
+    basePrice: 21.00,
+    taxPercent: 19,
     price: 24.99,
     cost: 8.0,
     category: "Stationery",
@@ -414,6 +445,8 @@ const initialProducts: Product[] = [
     id: "15",
     name: "Pen Set Luxury",
     sku: "PEN-LUX-015",
+    basePrice: 126.04,
+    taxPercent: 19,
     price: 149.99,
     cost: 65.0,
     category: "Stationery",
@@ -432,6 +465,8 @@ const initialProducts: Product[] = [
     id: "16",
     name: "Bluetooth Speaker Portable",
     sku: "BTS-PORT-016",
+    basePrice: 109.24,
+    taxPercent: 19,
     price: 129.99,
     cost: 70.0,
     category: "Electronics",
@@ -450,6 +485,8 @@ const initialProducts: Product[] = [
     id: "17",
     name: "Monitor Stand Adjustable",
     sku: "MST-ADJ-017",
+    basePrice: 67.22,
+    taxPercent: 19,
     price: 79.99,
     cost: 35.0,
     category: "Furniture",
@@ -468,6 +505,8 @@ const initialProducts: Product[] = [
     id: "18",
     name: "USB-C Hub Pro",
     sku: "USB-HUB-018",
+    basePrice: 75.62,
+    taxPercent: 19,
     price: 89.99,
     cost: 40.0,
     category: "Electronics",
@@ -486,6 +525,8 @@ const initialProducts: Product[] = [
     id: "19",
     name: "Coffee Maker Premium",
     sku: "CFM-PREM-019",
+    basePrice: 252.09,
+    taxPercent: 19,
     price: 299.99,
     cost: 180.0,
     category: "Kitchen",
@@ -504,6 +545,8 @@ const initialProducts: Product[] = [
     id: "20",
     name: "Water Bottle Smart",
     sku: "WTB-SMART-020",
+    basePrice: 42.01,
+    taxPercent: 19,
     price: 49.99,
     cost: 22.0,
     category: "Kitchen",
@@ -1096,6 +1139,10 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString(),
       ...product,
       isActive: product.isActive ?? true,
+    }
+    // Asegurar coherencia: si viene basePrice/taxPercent pero no price, calcular price
+    if (newProduct.basePrice != null && newProduct.taxPercent != null) {
+      newProduct.price = Number((newProduct.basePrice * (1 + newProduct.taxPercent / 100)).toFixed(2))
     }
     setProducts([...products, newProduct])
   }
