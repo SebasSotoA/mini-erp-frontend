@@ -13,7 +13,7 @@ export default function Products() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
 
-  const categories = [...new Set(products.map((product) => product.category))]
+  const categories = Array.from(new Set(products.map((product) => product.category)))
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =

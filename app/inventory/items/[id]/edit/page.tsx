@@ -1,8 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { useParams, useRouter } from "next/navigation"
 import { MainLayout } from "@/components/layout/main-layout"
+import { ExtendedProduct } from "@/lib/types/items"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,6 +16,7 @@ import { Modal } from "@/components/ui/modal"
 import { Plus, Tag } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useInventory } from "@/contexts/inventory-context"
+import { useToast } from "@/hooks/use-toast"
 
 export default function EditInventoryItemPage() {
   type ItemType = "product" | "service"
@@ -20,6 +25,7 @@ export default function EditInventoryItemPage() {
   const params = useParams<{ id: string }>()
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
   const { getProductById, updateProduct } = useInventory()
+  const { toast } = useToast()
 
   const product = id ? getProductById(id) : undefined
 
@@ -39,6 +45,42 @@ export default function EditInventoryItemPage() {
   const [code, setCode] = useState("")
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
+
+  // Validación con Zod + RHF (controlamos el estado local y sincronizamos con RHF)
+  const editSchema = z.object({
+    type: z.enum(["product", "service"]),
+    name: z.string().trim().min(1, "El nombre es requerido"),
+    unit: z.string().trim().min(1, "La unidad es requerida"),
+    basePrice: z.string().refine(v => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Precio base inválido" }),
+    tax: z.string().refine(v => v === "" || !isNaN(parseFloat(v)), { message: "Impuesto inválido" }),
+    totalPrice: z.string().refine(v => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Precio total inválido" }),
+    quantity: z.string().optional(),
+    initialCost: z.string().optional(),
+  }).superRefine((data, ctx) => {
+    if (data.type === "product") {
+      if (!data.quantity || isNaN(parseInt(data.quantity)) || parseInt(data.quantity) < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Cantidad inválida" })
+      }
+      if (!data.initialCost || isNaN(parseFloat(data.initialCost)) || parseFloat(data.initialCost) < 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["initialCost"], message: "Costo inválido" })
+      }
+    }
+  })
+
+  type EditFormSchema = z.infer<typeof editSchema>
+  const { handleSubmit, setValue, formState: { isSubmitting } } = useForm<EditFormSchema>({
+    resolver: zodResolver(editSchema),
+    defaultValues: {
+      type: "product",
+      name: "",
+      unit: "",
+      basePrice: "",
+      tax: "",
+      totalPrice: "",
+      quantity: "",
+      initialCost: "",
+    },
+  })
 
   // Inventario por bodega (solo productos) - placeholder local para UI
   type WarehouseEntry = {
@@ -65,13 +107,16 @@ export default function EditInventoryItemPage() {
     setCategory(product.category || "")
     setDescription(product.description || "")
     setTotalPrice(String(product.price))
-    setBasePrice(String(product.price))
-    setTax("0")
+    setBasePrice(String((product as ExtendedProduct).basePrice ?? product.price))
+    setTax(String((product as ExtendedProduct).taxPercent ?? 0))
     setQuantity(String(product.stock))
     setInitialCost(String(product.cost))
-    setUnit((product as any).unit ?? (deducedType === "service" ? "Servicio" : unit))
+    setUnit((product as ExtendedProduct).unit ?? (deducedType === "service" ? "Servicio" : "Unidad"))
+    setImagePreview((product as ExtendedProduct).imageUrl ?? null)
     setWarehouse("Principal")
   }, [product])
+
+
 
   const resetWarehouseModal = () => {
     setMwWarehouse("Principal")
@@ -127,31 +172,66 @@ export default function EditInventoryItemPage() {
     }
   }
 
-  const handleSubmit = (createAnother: boolean = false) => {
+  const validateForm = () => {
+    const errors: string[] = []
+    
+    if (!name.trim()) errors.push("El nombre es requerido")
+    if (!unit.trim()) errors.push("La unidad es requerida")
+    if (!basePrice || parseFloat(basePrice) <= 0) errors.push("El precio base debe ser mayor a 0")
+    if (!totalPrice || parseFloat(totalPrice) <= 0) errors.push("El precio total debe ser mayor a 0")
+    if (itemType === "product") {
+      if (!quantity || parseInt(quantity) < 0) errors.push("La cantidad debe ser mayor o igual a 0")
+      if (!initialCost || parseFloat(initialCost) < 0) errors.push("El costo inicial debe ser mayor o igual a 0")
+    }
+    
+    return errors
+  }
+
+  const doSubmit = async (createAnother: boolean = false) => {
     if (!id || !product) return
-    // Validaciones requeridas
-    if (!name.trim()) return
-    if (!unit.trim()) return
-    if (!basePrice || parseFloat(basePrice) <= 0) return
-    if (!totalPrice || parseFloat(totalPrice) <= 0) return
-    if (itemType === "product" && (!initialCost || parseFloat(initialCost) < 0)) return
+    
+    const validationErrors = validateForm()
+    if (validationErrors.length > 0) {
+      toast({
+        title: "Error de validación",
+        description: validationErrors.join(", "),
+        variant: "destructive",
+      })
+      return
+    }
 
-    // Mapear a Product parcial y actualizar en contexto
-    updateProduct(id, {
-      name,
-      sku: reference,
-      category,
-      description,
-      unit,
-      price: totalPrice ? parseFloat(totalPrice) : product.price,
-      stock: quantity ? parseInt(quantity) : product.stock,
-      cost: initialCost ? parseFloat(initialCost) : product.cost,
-    })
+    try {
+      // Mapear a Product parcial y actualizar en contexto
+      updateProduct(id, {
+        name,
+        sku: reference,
+        category,
+        description,
+        unit,
+        basePrice: basePrice ? parseFloat(basePrice) : (product as ExtendedProduct).basePrice,
+        taxPercent: tax ? parseFloat(tax) : (product as ExtendedProduct).taxPercent,
+        price: totalPrice ? parseFloat(totalPrice) : product.price,
+        stock: quantity ? parseInt(quantity) : product.stock,
+        cost: initialCost ? parseFloat(initialCost) : product.cost,
+        imageUrl: imagePreview === null ? undefined : (imagePreview || (product as ExtendedProduct).imageUrl),
+      })
 
-    if (createAnother) {
-      router.push(`/inventory/items/add`)
-    } else {
-      router.push(`/inventory/items/${id}`)
+      toast({
+        title: "¡Éxito!",
+        description: "El ítem ha sido actualizado correctamente.",
+      })
+
+      if (createAnother) {
+        router.push(`/inventory/items/add`)
+      } else {
+        router.push(`/inventory/items/${id}`)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo actualizar el ítem. Inténtalo de nuevo.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -249,6 +329,7 @@ export default function EditInventoryItemPage() {
                     placeholder="Nombre del producto o servicio"
                     className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
                   />
+
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -345,6 +426,7 @@ export default function EditInventoryItemPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm text-gray-700" htmlFor="description">Descripción</Label>
@@ -378,6 +460,7 @@ export default function EditInventoryItemPage() {
                       placeholder="0.00"
                       className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     />
+
                   </div>
                   <div className="text-center pb-3 text-gray-400">+</div>
                   <div className="space-y-2">
@@ -405,6 +488,7 @@ export default function EditInventoryItemPage() {
                       placeholder="0.00"
                       className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     />
+
                   </div>
                 </div>
               </CardContent>
@@ -503,6 +587,16 @@ export default function EditInventoryItemPage() {
                           onChange={(e) => onImageChange(e.target.files?.[0] || null)}
                           className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-camouflage-green-700 file:text-white hover:file:bg-camouflage-green-800"
                         />
+                        {imagePreview && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="w-full mt-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                            onClick={() => onImageChange(null)}
+                          >
+                            Eliminar imagen
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -532,18 +626,20 @@ export default function EditInventoryItemPage() {
                     Cancelar
                   </Button>
                   <Button
-                    className="w-full bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
-                    onClick={() => handleSubmit(false)}
+                    className="w-full bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white disabled:opacity-50"
+                    disabled={isSubmitting}
+                    onClick={() => doSubmit(false)}
                   >
-                    Guardar
+                    {isSubmitting ? "Guardando..." : "Guardar"}
                   </Button>
                 </div>
                 <Button
                   variant="secondary"
-                  className="w-full bg-camouflage-green-600/20 text-camouflage-green-800 hover:bg-camouflage-green-600/30"
-                  onClick={() => handleSubmit(true)}
+                  className="w-full bg-camouflage-green-600/20 text-camouflage-green-800 hover:bg-camouflage-green-600/30 disabled:opacity-50"
+                  disabled={isSubmitting}
+                  onClick={() => doSubmit(true)}
                 >
-                  Guardar y crear otro
+                  {isSubmitting ? "Guardando..." : "Guardar y crear otro"}
                 </Button>
               </div>
             </div>

@@ -16,12 +16,14 @@ import { Modal } from "@/components/ui/modal"
 import { Plus, Tag } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useInventory } from "@/contexts/inventory-context"
+import { useToast } from "@/hooks/use-toast"
 
 export default function AddInventoryItemPage() {
   type ItemType = "product" | "service"
 
   const router = useRouter()
   const { addProduct } = useInventory()
+  const { toast } = useToast()
   const [itemType, setItemType] = useState<ItemType>("product")
   const [name, setName] = useState("")
   const [unit, setUnit] = useState("Unidad")
@@ -165,25 +167,39 @@ export default function AddInventoryItemPage() {
     const resolvedCategory = category || (itemType === "service" ? "Servicios" : "Productos")
     const costValue = itemType === "product" ? parseFloat(initialCost || "0") : 0
     const stockValue = itemType === "product" ? parseInt(quantity || "0") || 0 : 0
-    addProduct({
-      name: name.trim(),
-      sku: (reference || code || name).trim(),
-      basePrice: base,
-      taxPercent: parseFloat(tax || "0"),
-      price: total,
-      cost: costValue,
-      category: resolvedCategory,
-      stock: stockValue,
-      minStock: 0,
-      maxStock: 0,
-      description: description || "",
-      supplier: "",
-      unit,
-      totalSold: 0,
-      reorderPoint: 0,
-      leadTime: 0,
-      imageUrl: imagePreview || undefined,
-    })
+    try {
+      addProduct({
+        name: name.trim(),
+        sku: (reference || code || name).trim(),
+        basePrice: base,
+        taxPercent: parseFloat(tax || "0"),
+        price: total,
+        cost: costValue,
+        category: resolvedCategory,
+        stock: stockValue,
+        minStock: 0,
+        maxStock: 0,
+        description: description || "",
+        supplier: "",
+        unit,
+        totalSold: 0,
+        reorderPoint: 0,
+        leadTime: 0,
+        imageUrl: imagePreview || undefined,
+      })
+
+      toast({
+        title: "¡Éxito!",
+        description: "El ítem ha sido creado correctamente.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "No se pudo crear el ítem. Inténtalo de nuevo.",
+        variant: "destructive",
+      })
+      return
+    }
 
     if (createAnother) {
       // reset manteniendo tipo

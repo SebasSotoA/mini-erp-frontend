@@ -34,10 +34,18 @@ export default function NewProduct() {
       name: formData.name,
       sku: formData.sku,
       price: Number.parseFloat(formData.price),
+      basePrice: Number.parseFloat(formData.price),
+      taxPercent: 0,
+      cost: Number.parseFloat(formData.price) * 0.7, // 70% del precio como costo estimado
       category: formData.category,
       stock: Number.parseInt(formData.stock),
       minStock: Number.parseInt(formData.minStock),
+      maxStock: Number.parseInt(formData.stock) * 2,
       description: formData.description,
+      supplier: "Proveedor por defecto",
+      totalSold: 0,
+      reorderPoint: Number.parseInt(formData.minStock),
+      leadTime: 7,
     })
 
     router.push("/products")

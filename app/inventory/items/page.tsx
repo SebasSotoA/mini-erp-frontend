@@ -9,6 +9,8 @@ import { Modal } from "@/components/ui/modal"
 import { NewItemForm } from "@/components/forms/new-item-form"
 import { useInventory } from "@/contexts/inventory-context"
 import { ShoppingCart, Plus, Search, Filter, Eye, Edit, Power, PowerOff, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, X } from "lucide-react"
+import { ItemFilters, SortConfig, SortField, SortDirection } from "@/lib/types/items"
+import { applyFiltersAndSort } from "@/lib/utils/item-filters"
 import { useRouter } from "next/navigation"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
@@ -38,7 +40,7 @@ export default function SalesItems() {
   
   // Estado para filtros y ordenamiento
   const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<ItemFilters>({
     name: '',
     sku: '',
     price: '',
@@ -49,8 +51,8 @@ export default function SalesItems() {
     stockMaxValue: '',
     status: ''
   })
-  const [sortField, setSortField] = useState<string | null>(null)
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [sortField, setSortField] = useState<SortField | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   
   // Selección múltiple
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -66,73 +68,13 @@ export default function SalesItems() {
   }
   const clearSelection = () => setSelectedIds(new Set())
   
-  // Función para evaluar filtro de stock por rango
-  const evaluateStockFilter = (stock: number, operator: string, value: string, minValue: string = '', maxValue: string = '') => {
-    if (!operator) return true
-    
-    switch (operator) {
-      case 'between': {
-        const min = parseInt(minValue)
-        const max = parseInt(maxValue)
-        if (isNaN(min) || isNaN(max)) return true
-        return stock >= min && stock <= max
-      }
-      default: {
-        if (!value) return true
-        const numValue = parseInt(value)
-        if (isNaN(numValue)) return true
-        
-        switch (operator) {
-          case 'equal': return stock === numValue
-          case 'greater': return stock > numValue
-          case 'greaterEqual': return stock >= numValue
-          case 'less': return stock < numValue
-          case 'lessEqual': return stock <= numValue
-          default: return true
-        }
-      }
-    }
-  }
-
-  // Funciones para filtros y ordenamiento
-  const filterProducts = (products: any[]) => {
-    return products.filter(product => {
-      const matchesName = !filters.name || product.name.toLowerCase().includes(filters.name.toLowerCase())
-      const matchesSku = !filters.sku || product.sku.toLowerCase().includes(filters.sku.toLowerCase())
-      const matchesPrice = !filters.price || product.price.toString().includes(filters.price)
-      const matchesDescription = !filters.description || product.description.toLowerCase().includes(filters.description.toLowerCase())
-      const matchesStock = evaluateStockFilter(product.stock, filters.stockOperator, filters.stockValue, filters.stockMinValue, filters.stockMaxValue)
-      const matchesStatus = !filters.status || 
-        (filters.status === 'active' && product.stock > 0) ||
-        (filters.status === 'inactive' && product.stock === 0)
-      
-      return matchesName && matchesSku && matchesPrice && matchesDescription && matchesStock && matchesStatus
-    })
+  // Configuración de ordenamiento
+  const sortConfig: SortConfig = {
+    field: sortField,
+    direction: sortDirection
   }
   
-  const sortProducts = (products: any[]) => {
-    if (!sortField) return products
-    
-    return [...products].sort((a, b) => {
-      let aValue = a[sortField]
-      let bValue = b[sortField]
-      
-      // Handle different data types
-      if (sortField === 'price' || sortField === 'stock') {
-        aValue = Number(aValue)
-        bValue = Number(bValue)
-      } else {
-        aValue = String(aValue).toLowerCase()
-        bValue = String(bValue).toLowerCase()
-      }
-      
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-      return 0
-    })
-  }
-  
-  const handleSort = (field: string) => {
+  const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -141,7 +83,7 @@ export default function SalesItems() {
     }
   }
   
-  const handleFilterChange = (field: string, value: string) => {
+  const handleFilterChange = (field: keyof ItemFilters, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }))
     setCurrentPage(1) // Reset to first page when filtering
   }
@@ -162,8 +104,7 @@ export default function SalesItems() {
   }
   
   // Apply filters and sorting
-  const filteredProducts = filterProducts(products)
-  const sortedProducts = sortProducts(filteredProducts)
+  const sortedProducts = applyFiltersAndSort(products, filters, sortConfig)
   
   // Calcular paginación con productos filtrados
   const totalItems = sortedProducts.length
@@ -238,6 +179,14 @@ export default function SalesItems() {
                 {selectedCount > 0 && (
                   <div className="flex items-center gap-2 bg-camouflage-green-50/60 border border-camouflage-green-200 rounded-lg px-2 py-1 text-sm text-camouflage-green-800">
                     <span>{selectedCount} seleccionado(s)</span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 w-6 p-0 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+                      onClick={() => setSelectedIds(new Set())}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                     <div className="flex items-center gap-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -310,6 +259,9 @@ export default function SalesItems() {
                 {/* Fila de filtros con transición suave - SOLO cuando showFilters es true */}
                 {showFilters && (
                   <TableRow className="hover:bg-transparent border-camouflage-green-200 bg-camouflage-green-50/30 animate-in slide-in-from-top-2 duration-300">
+                    <TableHead className="w-[36px]">
+                      {/* Columna vacía para alinear con checkbox */}
+                    </TableHead>
                     <TableHead className="w-[200px]">
                       <div className=" py-3">
                         <input
