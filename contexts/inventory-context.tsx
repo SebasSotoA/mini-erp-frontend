@@ -119,6 +119,10 @@ interface InventoryContextType {
     optimalStock: number
     stockHealthPercentage: number
   }
+  // Funciones para el módulo de Valor de Inventario
+  getInventoryValueProducts: () => any[]
+  getWarehouses: () => string[]
+  getCategories: () => string[]
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
@@ -1419,6 +1423,20 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         getSalesAnalytics,
         getProfitabilityAnalysis,
         getStockHealthMetrics,
+        // Funciones para el módulo de Valor de Inventario
+        getInventoryValueProducts: () => products.map(product => ({
+          ...product,
+          warehouse: product.warehouseId || 'Principal',
+          total: product.cost * product.stock
+        })),
+        getWarehouses: () => {
+          const warehouseSet = new Set(products.map(p => p.warehouseId || 'Principal'))
+          return Array.from(warehouseSet).filter(Boolean)
+        },
+        getCategories: () => {
+          const categorySet = new Set(products.map(p => p.category))
+          return Array.from(categorySet).filter(Boolean)
+        },
       }}
     >
       {children}

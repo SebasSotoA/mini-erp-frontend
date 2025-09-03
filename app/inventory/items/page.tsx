@@ -8,8 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Modal } from "@/components/ui/modal"
 import { NewItemForm } from "@/components/forms/new-item-form"
 import { useInventory } from "@/contexts/inventory-context"
-import { ShoppingCart, Plus, Search, Filter, Eye, Edit, Power, PowerOff, Trash2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ChevronUp, ChevronDown, X } from "lucide-react"
+import { ShoppingCart, Plus, Search, Filter, Eye, Edit, Power, PowerOff, Trash2, ChevronUp, ChevronDown, X } from "lucide-react"
 import { ItemFilters, SortConfig, SortField, SortDirection } from "@/lib/types/items"
+import { PaginationConfig } from "@/lib/types/inventory-value"
 import { applyFiltersAndSort } from "@/lib/utils/item-filters"
 import { useRouter } from "next/navigation"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -25,6 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 
 export default function SalesItems() {
   const { products, updateProduct, deleteProduct } = useInventory()
@@ -106,12 +108,25 @@ export default function SalesItems() {
   // Apply filters and sorting
   const sortedProducts = applyFiltersAndSort(products, filters, sortConfig)
   
-  // Calcular paginación con productos filtrados
-  const totalItems = sortedProducts.length
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const currentProducts = sortedProducts.slice(startIndex, endIndex)
+  // Calcular configuración de paginación
+  const pagination: PaginationConfig = useMemo(() => {
+    const totalItems = sortedProducts.length
+    const totalPages = Math.ceil(totalItems / itemsPerPage)
+    
+    return {
+      currentPage,
+      itemsPerPage,
+      totalItems,
+      totalPages
+    }
+  }, [sortedProducts.length, currentPage, itemsPerPage])
+  
+  // Productos para mostrar en la página actual
+  const currentProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    return sortedProducts.slice(startIndex, endIndex)
+  }, [sortedProducts, currentPage, itemsPerPage])
   const allCurrentSelected = useMemo(() => currentProducts.length > 0 && currentProducts.every(p => selectedIds.has(p.id)), [currentProducts, selectedIds])
   const toggleSelectAllCurrent = () => {
     setSelectedIds(prev => {
@@ -137,12 +152,6 @@ export default function SalesItems() {
     toast({ title: "Ítems eliminados", description: `${selectedIds.size} ítem(s) eliminados.` })
     clearSelection()
   }
-  
-  // Funciones de navegación
-  const goToFirstPage = () => setCurrentPage(1)
-  const goToPreviousPage = () => setCurrentPage(prev => Math.max(prev - 1, 1))
-  const goToNextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages))
-  const goToLastPage = () => setCurrentPage(totalPages)
   
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage)
@@ -174,7 +183,7 @@ export default function SalesItems() {
         <Card className="border-camouflage-green-200">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-camouflage-green-900">Items Disponibles ({totalItems})</CardTitle>
+              <CardTitle className="text-camouflage-green-900">Items Disponibles ({pagination.totalItems.toLocaleString()})</CardTitle>
               <div className="flex items-center gap-2">
                 {selectedCount > 0 && (
                   <div className="flex items-center gap-2 bg-camouflage-green-50/60 border border-camouflage-green-200 rounded-lg px-2 py-1 text-sm text-camouflage-green-800">
@@ -585,77 +594,11 @@ export default function SalesItems() {
           </CardContent>
           
           {/* Paginación */}
-          <div className="flex items-center justify-between px-6 py-4 border-t border-camouflage-green-200 bg-camouflage-green-50/30">
-            <div className="flex items-center gap-6 text-sm text-camouflage-green-600">
-              <span>
-                Página {currentPage} de {totalPages}
-              </span>
-              <span>
-                Mostrando {startIndex + 1}-{Math.min(endIndex, totalItems)} de {totalItems}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              {/* Resultados por página */}
-              <div className="flex items-center gap-2 text-sm text-camouflage-green-600">
-                <span>Resultados por página</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                  className="border border-camouflage-green-300 rounded px-2 py-1 text-camouflage-green-700 bg-white focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-              
-              {/* Botones de navegación */}
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={goToFirstPage}
-                  disabled={currentPage === 1}
-                  className="h-8 w-8 p-0 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Primera página"
-                >
-                  <ChevronsLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={goToPreviousPage}
-                  disabled={currentPage === 1}
-                  className="h-8 w-8 p-0 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Página anterior"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  className="h-8 w-8 p-0 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Página siguiente"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={goToLastPage}
-                  disabled={currentPage === totalPages}
-                  className="h-8 w-8 p-0 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Última página"
-                >
-                  <ChevronsRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
+          <PaginationControls
+            pagination={pagination}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
         </Card>
       </div>
 
