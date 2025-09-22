@@ -23,7 +23,7 @@ export default function InventoryValue() {
     warehouse: 'all',
     dateUntil: null,
     category: 'all',
-    status: ''
+    status: 'all'
   })
   
   // Estado para ordenamiento

@@ -6,7 +6,7 @@ export interface InventoryValueFilters {
   warehouse: string
   dateUntil: Date | null
   category: string
-  status: 'active' | 'inactive' | ''
+  status: 'active' | 'inactive' | 'all' | ''
 }
 
 // Configuración de ordenamiento

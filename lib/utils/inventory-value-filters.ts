@@ -14,14 +14,14 @@ export const evaluateSearchFilter: FilterFunction = (product, filters) => {
   return (
     product.name.toLowerCase().includes(searchTerm) ||
     product.sku.toLowerCase().includes(searchTerm) ||
-    (product.description && product.description.toLowerCase().includes(searchTerm))
+    (!!product.description && product.description.toLowerCase().includes(searchTerm))
   )
 }
 
 // Función para evaluar filtro de bodega
 export const evaluateWarehouseFilter: FilterFunction = (product, filters) => {
   if (!filters.warehouse || filters.warehouse === 'all') return true
-  return product.warehouse === filters.warehouse
+  return product.warehouseId === filters.warehouse
 }
 
 // Función para evaluar filtro de categoría
@@ -32,7 +32,7 @@ export const evaluateCategoryFilter: FilterFunction = (product, filters) => {
 
 // Función para evaluar filtro de estado
 export const evaluateStatusFilter: FilterFunction = (product, filters) => {
-  if (!filters.status) return true
+  if (!filters.status || filters.status === 'all') return true
   return filters.status === 'active' ? (product.isActive ?? true) : !(product.isActive ?? true)
 }
 
@@ -125,8 +125,9 @@ export const calculateInventoryMetrics = (
   // Calcular distribución por bodega
   const warehouseMap = new Map<string, number>()
   filteredProducts.forEach(product => {
-    const current = warehouseMap.get(product.warehouse) || 0
-    warehouseMap.set(product.warehouse, current + product.total)
+    const warehouse = product.warehouseId || 'Sin bodega'
+    const current = warehouseMap.get(warehouse) || 0
+    warehouseMap.set(warehouse, current + product.total)
   })
   
   const warehouseDistribution = Array.from(warehouseMap.entries()).map(([warehouse, value]) => ({

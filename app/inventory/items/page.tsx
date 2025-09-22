@@ -467,7 +467,7 @@ export default function SalesItems() {
                         onClick={() => handleSort('stock')}
                         className="flex items-center gap-1 hover:text-camouflage-green-900 transition-colors group"
                       >
-                        Unidades
+                        Cantidad
                         <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
                           <ChevronUp className={`h-3 w-3 ${sortField === 'stock' && sortDirection === 'asc' ? 'text-camouflage-green-900' : ''}`} />
                           <ChevronDown className={`h-3 w-3 ${sortField === 'stock' && sortDirection === 'desc' ? 'text-camouflage-green-900' : ''}`} />

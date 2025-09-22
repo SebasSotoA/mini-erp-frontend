@@ -107,8 +107,18 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
                   {product.description || '-'}
                 </div>
               </TableCell>
-              <TableCell className="w-[120px] text-camouflage-green-900 font-semibold">
-                {product.stock.toLocaleString()}
+              <TableCell className="w-[120px]">
+                <div className="">
+                  <span
+                    className={`px-4 py-2 text-sm font-semibold rounded-full min-w-[50px] text-center ${
+                      product.stock > 0 
+                        ? "bg-camouflage-green-100 text-camouflage-green-800" 
+                        : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {product.stock.toLocaleString()}
+                  </span>
+                </div>
               </TableCell>
               <TableCell className="w-[120px] text-camouflage-green-700">
                 {product.unit || 'Unidad'}
@@ -118,8 +128,8 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
                   variant={product.isActive ? "default" : "secondary"}
                   className={
                     product.isActive 
-                      ? "bg-camouflage-green-100 text-camouflage-green-800 border-camouflage-green-300" 
-                      : "bg-gray-100 text-gray-600 border-gray-300"
+                      ? "bg-camouflage-green-100 text-camouflage-green-800 border-camouflage-green-300 hover:bg-camouflage-green-100" 
+                      : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-100"
                   }
                 >
                   {product.isActive ? 'Activo' : 'Inactivo'}
