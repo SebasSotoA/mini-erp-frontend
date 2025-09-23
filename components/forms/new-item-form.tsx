@@ -318,7 +318,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
         </div>
 
         {/* Segunda fila: Precios */}
-        <div className="space-y-3">
+        <div className="space-y-1">
           <div className="flex items-center gap-3">
             <div className="flex-1 relative">
               <Label htmlFor="basePrice" className="text-sm font-medium text-gray-700">

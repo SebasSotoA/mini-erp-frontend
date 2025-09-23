@@ -25,14 +25,6 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
     }).format(value)
   }
 
-  const getSortIcon = (field: SortField) => {
-    if (sortConfig.field !== field) {
-      return <ChevronUp className="h-4 w-4 text-gray-400" />
-    }
-    return sortConfig.direction === 'asc' 
-      ? <ChevronUp className="h-4 w-4 text-camouflage-green-600" />
-      : <ChevronDown className="h-4 w-4 text-camouflage-green-600" />
-  }
 
   const handleSort = (field: SortField) => {
     onSort(field)
@@ -42,45 +34,73 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
     <div className="border border-camouflage-green-200 rounded-lg overflow-hidden">
              <Table>
          <TableHeader>
-           <TableRow className="bg-camouflage-green-50/50 hover:bg-camouflage-green-50/70">
+           <TableRow className="hover:bg-transparent border-camouflage-green-200">
              <TableHead 
-               className="w-[220px] cursor-pointer hover:bg-camouflage-green-100/50 text-camouflage-green-700 font-semibold"
-               onClick={() => handleSort('name')}
+               className="w-[220px] text-camouflage-green-700 font-semibold"
              >
-               <div className="flex items-center gap-2">
-                 Ítem
-                 {getSortIcon('name')}
+               <div>
+                 <button
+                   onClick={() => handleSort('name')}
+                   className="flex items-center gap-1 hover:text-camouflage-green-900 transition-colors group"
+                 >
+                   Ítem
+                   <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                     <ChevronUp className={`h-3 w-3 ${sortConfig.field === 'name' && sortConfig.direction === 'asc' ? 'text-camouflage-green-900' : ''}`} />
+                     <ChevronDown className={`h-3 w-3 ${sortConfig.field === 'name' && sortConfig.direction === 'desc' ? 'text-camouflage-green-900' : ''}`} />
+                   </div>
+                 </button>
                </div>
              </TableHead>
              <TableHead className="w-[140px] text-camouflage-green-700 font-semibold">Referencia</TableHead>
              <TableHead className="w-[250px] text-camouflage-green-700 font-semibold">Descripción</TableHead>
              <TableHead 
-               className="w-[120px] cursor-pointer hover:bg-camouflage-green-100/50 text-camouflage-green-700 font-semibold"
-               onClick={() => handleSort('stock')}
+               className="w-[120px] text-camouflage-green-700 font-semibold"
              >
-               <div className="flex items-center gap-2">
-                 Cantidad
-                 {getSortIcon('stock')}
+               <div>
+                 <button
+                   onClick={() => handleSort('stock')}
+                   className="flex items-center gap-1 hover:text-camouflage-green-900 transition-colors group"
+                 >
+                   Cantidad
+                   <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                     <ChevronUp className={`h-3 w-3 ${sortConfig.field === 'stock' && sortConfig.direction === 'asc' ? 'text-camouflage-green-900' : ''}`} />
+                     <ChevronDown className={`h-3 w-3 ${sortConfig.field === 'stock' && sortConfig.direction === 'desc' ? 'text-camouflage-green-900' : ''}`} />
+                   </div>
+                 </button>
                </div>
              </TableHead>
              <TableHead className="w-[120px] text-camouflage-green-700 font-semibold">Unidad</TableHead>
              <TableHead className="w-[120px] text-camouflage-green-700 font-semibold">Estado</TableHead>
              <TableHead 
-               className="w-[140px] cursor-pointer hover:bg-camouflage-green-100/50 text-camouflage-green-700 font-semibold"
-               onClick={() => handleSort('cost')}
+               className="w-[140px] text-camouflage-green-700 font-semibold"
              >
-               <div className="flex items-center gap-2 whitespace-nowrap">
-                 Costo promedio
-                 {getSortIcon('cost')}
+               <div>
+                 <button
+                   onClick={() => handleSort('cost')}
+                   className="flex items-center gap-1 hover:text-camouflage-green-900 transition-colors group"
+                 >
+                   <span className="whitespace-nowrap">Costo promedio</span>
+                   <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                     <ChevronUp className={`h-3 w-3 ${sortConfig.field === 'cost' && sortConfig.direction === 'asc' ? 'text-camouflage-green-900' : ''}`} />
+                     <ChevronDown className={`h-3 w-3 ${sortConfig.field === 'cost' && sortConfig.direction === 'desc' ? 'text-camouflage-green-900' : ''}`} />
+                   </div>
+                 </button>
                </div>
              </TableHead>
              <TableHead 
-               className="w-[140px] cursor-pointer hover:bg-camouflage-green-100/50 text-camouflage-green-700 font-semibold"
-               onClick={() => handleSort('total')}
+               className="w-[140px] text-camouflage-green-700 font-semibold"
              >
-               <div className="flex items-center gap-2">
-                 Total
-                 {getSortIcon('total')}
+               <div>
+                 <button
+                   onClick={() => handleSort('total')}
+                   className="flex items-center gap-1 hover:text-camouflage-green-900 transition-colors group"
+                 >
+                   Total
+                   <div className="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity">
+                     <ChevronUp className={`h-3 w-3 ${sortConfig.field === 'total' && sortConfig.direction === 'asc' ? 'text-camouflage-green-900' : ''}`} />
+                     <ChevronDown className={`h-3 w-3 ${sortConfig.field === 'total' && sortConfig.direction === 'desc' ? 'text-camouflage-green-900' : ''}`} />
+                   </div>
+                 </button>
                </div>
              </TableHead>
            </TableRow>
@@ -89,7 +109,7 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
           {products.map((product) => (
             <TableRow 
               key={product.id} 
-              className="hover:bg-camouflage-green-50/30 border-camouflage-green-100"
+              className="border-camouflage-green-100 hover:bg-camouflage-green-50/50 transition-colors"
             >
               <TableCell className="w-[220px]">
                 <button

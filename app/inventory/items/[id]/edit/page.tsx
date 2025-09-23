@@ -448,47 +448,48 @@ export default function EditInventoryItemPage() {
                 <CardTitle className="text-camouflage-green-900">Precio</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_180px_auto_1fr] items-end gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm text-gray-700" htmlFor="basePrice">Precio base <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="basePrice"
-                      type="number"
-                      step="0.01"
-                      value={basePrice}
-                      onChange={(e) => handleBaseOrTaxChange(e.target.value, tax)}
-                      placeholder="0.00"
-                      className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
-                    />
-
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm text-gray-700" htmlFor="basePrice">Precio base <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="basePrice"
+                        type="number"
+                        step="0.01"
+                        value={basePrice}
+                        onChange={(e) => handleBaseOrTaxChange(e.target.value, tax)}
+                        placeholder="0.00"
+                        className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm text-gray-700">Impuesto</Label>
+                      <Select value={tax} onValueChange={(v) => handleBaseOrTaxChange(basePrice, v)}>
+                        <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
+                          <SelectValue placeholder="Ninguno (0%)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">Ninguno (0%)</SelectItem>
+                          <SelectItem value="5">IVA - (5%)</SelectItem>
+                          <SelectItem value="19">IVA - (19%)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm text-gray-700" htmlFor="totalPrice">Precio total <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="totalPrice"
+                        type="number"
+                        step="0.01"
+                        value={totalPrice}
+                        onChange={(e) => handleTotalChange(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                  <div className="text-center pb-3 text-gray-400">+</div>
-                  <div className="space-y-2">
-                    <Label className="text-sm text-gray-700">Impuesto</Label>
-                    <Select value={tax} onValueChange={(v) => handleBaseOrTaxChange(basePrice, v)}>
-                      <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
-                        <SelectValue placeholder="Ninguno (0%)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">Ninguno (0%)</SelectItem>
-                        <SelectItem value="5">IVA - (5%)</SelectItem>
-                        <SelectItem value="19">IVA - (19%)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="text-center pb-3 text-gray-400">=</div>
-                  <div className="space-y-2">
-                    <Label className="text-sm text-gray-700" htmlFor="totalPrice">Precio total <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="totalPrice"
-                      type="number"
-                      step="0.01"
-                      value={totalPrice}
-                      onChange={(e) => handleTotalChange(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
-                    />
-
+                  <div className="text-center text-sm text-gray-500 bg-gray-50 py-2 px-4 rounded-lg">
+                    Fórmula: Precio base + (Precio base × Impuesto) = Precio total
                   </div>
                 </div>
               </CardContent>

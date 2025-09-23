@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,14 @@ export default function SalesItems() {
   const router = useRouter()
   const { toast } = useToast()
   
+  // Estado local para los productos (similar a bodegas)
+  const [localProducts, setLocalProducts] = useState(products)
+  
+  // Sincronizar el estado local con el contexto cuando cambien los productos
+  useEffect(() => {
+    setLocalProducts(products)
+  }, [products])
+  
   // Estado para paginación
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
@@ -59,16 +67,29 @@ export default function SalesItems() {
   // Selección múltiple
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const selectedCount = selectedIds.size
+  console.log('Current selectedCount:', selectedCount, 'selectedIds:', Array.from(selectedIds))
   const isSelected = (id: string) => selectedIds.has(id)
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(id)) {
+        console.log('Removing from selection:', id)
+        next.delete(id)
+      } else {
+        console.log('Adding to selection:', id)
+        next.add(id)
+      }
+      console.log('New selectedIds:', Array.from(next))
       return next
     })
   }
   const clearSelection = () => setSelectedIds(new Set())
+
+  // Lógica para determinar el estado de los botones de acciones masivas
+  const selectedProducts = localProducts.filter(p => selectedIds.has(p.id))
+  const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every(p => p.isActive ?? true)
+  const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every(p => !(p.isActive ?? true))
+  const hasMixedStates = selectedProducts.length > 0 && !allSelectedActive && !allSelectedInactive
   
   // Configuración de ordenamiento
   const sortConfig: SortConfig = {
@@ -83,11 +104,15 @@ export default function SalesItems() {
       setSortField(field)
       setSortDirection('asc')
     }
+    // Limpiar selección al cambiar ordenamiento
+    clearSelection()
   }
   
   const handleFilterChange = (field: keyof ItemFilters, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }))
     setCurrentPage(1) // Reset to first page when filtering
+    // Limpiar selección al cambiar filtros
+    clearSelection()
   }
   
   const clearFilters = () => {
@@ -103,10 +128,12 @@ export default function SalesItems() {
       status: ''
     })
     setCurrentPage(1)
+    // Limpiar selección al limpiar filtros
+    clearSelection()
   }
   
   // Apply filters and sorting
-  const sortedProducts = applyFiltersAndSort(products, filters, sortConfig)
+  const sortedProducts = applyFiltersAndSort(localProducts, filters, sortConfig)
   
   // Calcular configuración de paginación
   const pagination: PaginationConfig = useMemo(() => {
@@ -132,23 +159,38 @@ export default function SalesItems() {
     setSelectedIds(prev => {
       const next = new Set(prev)
       if (allCurrentSelected) {
+        console.log('Deselecting all current products:', currentProducts.map(p => ({ id: p.id, name: p.name })))
         currentProducts.forEach(p => next.delete(p.id))
       } else {
+        console.log('Selecting all current products:', currentProducts.map(p => ({ id: p.id, name: p.name })))
         currentProducts.forEach(p => next.add(p.id))
       }
+      console.log('New selectedIds after toggle all:', Array.from(next))
       return next
     })
   }
 
-  // Acciones masivas
+  // Acciones masivas (similar a bodegas)
   const bulkSetActive = (isActive: boolean) => {
+    console.log('bulkSetActive called with:', { isActive, selectedIds: Array.from(selectedIds) })
     if (selectedIds.size === 0) return
-    selectedIds.forEach(id => updateProduct(id, { isActive }))
+    
+    setLocalProducts(prevProducts => 
+      prevProducts.map(product => 
+        selectedIds.has(product.id) ? { ...product, isActive } : product
+      )
+    )
     toast({ title: isActive ? "Ítems activados" : "Ítems desactivados", description: `${selectedIds.size} ítem(s) actualizados.` })
+    clearSelection()
   }
+  
   const bulkDelete = () => {
+    console.log('bulkDelete called with selectedIds:', Array.from(selectedIds))
     if (selectedIds.size === 0) return
-    selectedIds.forEach(id => deleteProduct(id))
+    
+    setLocalProducts(prevProducts => 
+      prevProducts.filter(product => !selectedIds.has(product.id))
+    )
     toast({ title: "Ítems eliminados", description: `${selectedIds.size} ítem(s) eliminados.` })
     clearSelection()
   }
@@ -199,7 +241,14 @@ export default function SalesItems() {
                     <div className="flex items-center gap-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="h-8 px-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100">Activar</Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedActive}
+                          >
+                            Activar
+                          </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
@@ -215,7 +264,14 @@ export default function SalesItems() {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="h-8 px-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100">Desactivar</Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedInactive}
+                          >
+                            Desactivar
+                          </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
@@ -401,7 +457,14 @@ export default function SalesItems() {
                 <TableRow className="hover:bg-transparent border-camouflage-green-200">
                   <TableHead className="w-[36px]">
                     <div className="pl-3">
-                      <Checkbox checked={allCurrentSelected} onCheckedChange={toggleSelectAllCurrent} aria-label="Seleccionar todos" />
+                      <Checkbox 
+                        checked={allCurrentSelected} 
+                        onCheckedChange={(checked) => {
+                          console.log('Select all checkbox changed:', { checked, currentProducts: currentProducts.map(p => ({ id: p.id, name: p.name })) })
+                          toggleSelectAllCurrent()
+                        }} 
+                        aria-label="Seleccionar todos" 
+                      />
                     </div>
                   </TableHead>
                   <TableHead className="w-[200px] text-camouflage-green-700 font-semibold">
@@ -486,11 +549,23 @@ export default function SalesItems() {
                   >
                     <TableCell className="w-[36px]">
                       <div className="pl-3">
-                        <Checkbox checked={isSelected(product.id)} onCheckedChange={() => toggleSelect(product.id)} aria-label={`Seleccionar ${product.name}`} />
+                        <Checkbox 
+                          checked={isSelected(product.id)} 
+                          onCheckedChange={() => {
+                            console.log('Individual checkbox clicked for product:', product.name, 'ID:', product.id)
+                            toggleSelect(product.id)
+                          }} 
+                          aria-label={`Seleccionar ${product.name}`} 
+                        />
                       </div>
                     </TableCell>
                     <TableCell className="w-[200px]">
-                      <div className="font-medium text-camouflage-green-900">{product.name}</div>
+                      <button
+                        onClick={() => router.push(`/inventory/items/${product.id}`)}
+                        className="font-medium text-camouflage-green-900 hover:text-camouflage-green-700 hover:underline transition-colors text-left"
+                      >
+                        {product.name}
+                      </button>
                     </TableCell>
                     <TableCell className="w-[120px]">
                       <div className="text-camouflage-green-600 font-mono text-sm">{product.sku}</div>
@@ -543,7 +618,11 @@ export default function SalesItems() {
                           title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
                           onClick={() => {
                             const current = product.isActive ?? true
-                            updateProduct(product.id, { isActive: !current })
+                            setLocalProducts(prevProducts =>
+                              prevProducts.map(p =>
+                                p.id === product.id ? { ...p, isActive: !current } : p
+                              )
+                            )
                           }}
                         >
                           {(product.isActive ?? true) ? (
@@ -573,7 +652,9 @@ export default function SalesItems() {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => {
-                                deleteProduct(product.id)
+                                setLocalProducts(prevProducts => 
+                                  prevProducts.filter(p => p.id !== product.id)
+                                )
                                 toast({ title: "Ítem eliminado", description: `Se eliminó "${product.name}".` })
                                 // si estaba seleccionado, lo sacamos
                                 setSelectedIds(prev => {
@@ -589,6 +670,35 @@ export default function SalesItems() {
                     </TableCell>
                   </TableRow>
               ))}
+              {currentProducts.length === 0 && (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={7} className="text-center py-12">
+                    <div className="flex flex-col items-center gap-4">
+                      <ShoppingCart className="h-12 w-12 text-camouflage-green-300" />
+                      <div>
+                        <p className="text-camouflage-green-600 font-medium">
+                          {sortedProducts.length === 0 ? 'No hay items registrados' : 'No se encontraron items'}
+                        </p>
+                        <p className="text-camouflage-green-500 text-sm mt-1">
+                          {sortedProducts.length === 0 
+                            ? 'Comienza agregando tu primer item de venta'
+                            : 'Intenta ajustar los filtros de búsqueda'
+                          }
+                        </p>
+                      </div>
+                      {sortedProducts.length === 0 && (
+                        <Button
+                          onClick={() => setIsNewItemModalOpen(true)}
+                          className="bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Crea tu primer item
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
               </TableBody>
             </Table>
           </CardContent>

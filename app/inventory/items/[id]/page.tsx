@@ -83,25 +83,28 @@ export default function ItemDetailsPage() {
         </div>
 
         {/* Acciones horizontales */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <Button
-            className="text-base bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
+            size="sm"
+            className="bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
             title="Facturar item"
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
             Facturar item
           </Button>
           <Button
+            size="sm"
             variant="outline"
-            className="text-base border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            className="border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
             title="Comprar item"
           >
             <ShoppingBag className="h-4 w-4 mr-2" />
             Comprar item
           </Button>
           <Button
+            size="sm"
             variant="outline"
-            className="text-base border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            className="border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
             title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
             onClick={() => {
               const current = product.isActive ?? true
@@ -116,8 +119,9 @@ export default function ItemDetailsPage() {
             {(product.isActive ?? true) ? "Activado" : "Desactivado"}
           </Button>
           <Button
+            size="sm"
             variant="outline"
-            className="text-base border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            className="border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
             title="Editar"
             onClick={() => router.push(`/inventory/items/${id}/edit`)}
           >

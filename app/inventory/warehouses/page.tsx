@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { MainLayout } from "@/components/layout/main-layout"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -24,7 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-const warehouses = [
+const initialWarehouses = [
   {
     id: "1",
     name: "Bodega Principal",
@@ -63,11 +64,24 @@ const warehouses = [
 ]
 
 export default function Warehouses() {
+  const router = useRouter()
   const { toast } = useToast()
+  
+  // Estado para las bodegas
+  const [warehouses, setWarehouses] = useState(initialWarehouses)
   
   // Estado para el modal de nueva bodega
   const [isNewWarehouseModalOpen, setIsNewWarehouseModalOpen] = useState(false)
   const [newWarehouseData, setNewWarehouseData] = useState({
+    name: '',
+    location: '',
+    observations: ''
+  })
+  
+  // Estado para el modal de edición
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingWarehouse, setEditingWarehouse] = useState<typeof warehouses[0] | null>(null)
+  const [editWarehouseData, setEditWarehouseData] = useState({
     name: '',
     location: '',
     observations: ''
@@ -79,16 +93,29 @@ export default function Warehouses() {
   // Estado para selección múltiple
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const selectedCount = selectedIds.size
+  console.log('Current selectedCount:', selectedCount, 'selectedIds:', Array.from(selectedIds))
   const isSelected = (id: string) => selectedIds.has(id)
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(id)) {
+        console.log('Removing from selection:', id)
+        next.delete(id)
+      } else {
+        console.log('Adding to selection:', id)
+        next.add(id)
+      }
+      console.log('New selectedIds:', Array.from(next))
       return next
     })
   }
   const clearSelection = () => setSelectedIds(new Set())
+
+  // Lógica para determinar el estado de los botones de acciones masivas
+  const selectedWarehouses = warehouses.filter(w => selectedIds.has(w.id))
+  const allSelectedActive = selectedWarehouses.length > 0 && selectedWarehouses.every(w => w.isActive)
+  const allSelectedInactive = selectedWarehouses.length > 0 && selectedWarehouses.every(w => !w.isActive)
+  const hasMixedStates = selectedWarehouses.length > 0 && !allSelectedActive && !allSelectedInactive
   
   // Estado para ordenamiento
   const [sortField, setSortField] = useState<'name' | 'location' | null>(null)
@@ -101,6 +128,8 @@ export default function Warehouses() {
       setSortField(field)
       setSortDirection('asc')
     }
+    // Limpiar selección al cambiar ordenamiento
+    clearSelection()
   }
   
   // Función para filtrar y ordenar las bodegas
@@ -131,38 +160,61 @@ export default function Warehouses() {
   
   // Acciones masivas
   const bulkSetActive = (isActive: boolean) => {
-    if (selectedIds.size === 0) return
+    console.log('bulkSetActive called with:', { isActive, selectedIds: Array.from(selectedIds) })
+    const currentSelectedIds = selectedIds
+    if (currentSelectedIds.size === 0) return
+    setWarehouses(prevWarehouses => {
+      console.log('Updating warehouses:', prevWarehouses.map(w => ({ id: w.id, name: w.name, isActive: w.isActive })))
+      return prevWarehouses.map(warehouse => 
+        currentSelectedIds.has(warehouse.id) ? { ...warehouse, isActive } : warehouse
+      )
+    })
     toast({ 
       title: isActive ? "Bodegas activadas" : "Bodegas desactivadas", 
-      description: `${selectedIds.size} bodega(s) actualizadas.` 
+      description: `${currentSelectedIds.size} bodega(s) actualizadas.` 
     })
     clearSelection()
   }
   
   const bulkDelete = () => {
-    if (selectedIds.size === 0) return
+    console.log('bulkDelete called with selectedIds:', Array.from(selectedIds))
+    const currentSelectedIds = selectedIds
+    if (currentSelectedIds.size === 0) return
+    setWarehouses(prevWarehouses => {
+      console.log('Deleting warehouses:', prevWarehouses.filter(w => currentSelectedIds.has(w.id)).map(w => ({ id: w.id, name: w.name })))
+      return prevWarehouses.filter(warehouse => !currentSelectedIds.has(warehouse.id))
+    })
     toast({ 
       title: "Bodegas eliminadas", 
-      description: `${selectedIds.size} bodega(s) eliminadas.` 
+      description: `${currentSelectedIds.size} bodega(s) eliminadas.` 
     })
     clearSelection()
   }
   
   // Función para cambiar estado de una bodega
   const toggleWarehouseStatus = (id: string) => {
-    const warehouse = warehouses.find(w => w.id === id)
-    if (warehouse) {
-      toast({ 
-        title: warehouse.isActive ? "Bodega desactivada" : "Bodega activada", 
-        description: `"${warehouse.name}" ha sido ${warehouse.isActive ? 'desactivada' : 'activada'}.` 
+    setWarehouses(prevWarehouses => 
+      prevWarehouses.map(warehouse => {
+        if (warehouse.id === id) {
+          const updatedWarehouse = { ...warehouse, isActive: !warehouse.isActive }
+          toast({ 
+            title: updatedWarehouse.isActive ? "Bodega activada" : "Bodega desactivada", 
+            description: `"${warehouse.name}" ha sido ${updatedWarehouse.isActive ? 'activada' : 'desactivada'}.` 
+          })
+          return updatedWarehouse
+        }
+        return warehouse
       })
-    }
+    )
   }
   
   // Función para eliminar una bodega
   const deleteWarehouse = (id: string) => {
     const warehouse = warehouses.find(w => w.id === id)
     if (warehouse) {
+      setWarehouses(prevWarehouses => 
+        prevWarehouses.filter(w => w.id !== id)
+      )
       toast({ 
         title: "Bodega eliminada", 
         description: `"${warehouse.name}" ha sido eliminada.` 
@@ -203,6 +255,47 @@ export default function Warehouses() {
     setIsNewWarehouseModalOpen(false)
   }
 
+  // Funciones para el modal de edición
+  const handleEditWarehouse = (warehouse: typeof warehouses[0]) => {
+    setEditingWarehouse(warehouse)
+    setEditWarehouseData({
+      name: warehouse.name,
+      location: warehouse.location,
+      observations: warehouse.observations
+    })
+    setIsEditModalOpen(true)
+  }
+
+  const handleEditWarehouseInputChange = (field: keyof typeof editWarehouseData, value: string) => {
+    setEditWarehouseData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleSaveEditWarehouse = () => {
+    if (!editWarehouseData.name.trim()) {
+      toast({ title: "Error", description: "El nombre es obligatorio", variant: "destructive" })
+      return
+    }
+    
+    toast({ 
+      title: "Bodega actualizada", 
+      description: `"${editWarehouseData.name}" fue actualizada exitosamente.` 
+    })
+    setIsEditModalOpen(false)
+    setEditingWarehouse(null)
+  }
+
+  const handleCancelEditWarehouse = () => {
+    if (editingWarehouse) {
+      setEditWarehouseData({
+        name: editingWarehouse.name,
+        location: editingWarehouse.location,
+        observations: editingWarehouse.observations
+      })
+    }
+    setIsEditModalOpen(false)
+    setEditingWarehouse(null)
+  }
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -221,14 +314,22 @@ export default function Warehouses() {
               <Input
                 placeholder="Buscar por nombre..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  // Limpiar selección al filtrar
+                  clearSelection()
+                }}
                 className="w-64 border-0 focus:ring-0 focus:outline-none bg-transparent placeholder:text-gray-400 text-sm h-full"
               />
               {searchTerm && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => setSearchTerm('')}
+                  onClick={() => {
+                    setSearchTerm('')
+                    // Limpiar selección al limpiar filtro
+                    clearSelection()
+                  }}
                   className="h-4 w-4 p-0 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-transparent"
                 >
                   <X className="h-3 w-3" />
@@ -273,7 +374,12 @@ export default function Warehouses() {
                     <div className="flex items-center gap-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="h-8 px-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedActive}
+                          >
                             Activar
                           </Button>
                         </AlertDialogTrigger>
@@ -291,7 +397,12 @@ export default function Warehouses() {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="h-8 px-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-8 px-2 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedInactive}
+                          >
                             Desactivar
                           </Button>
                         </AlertDialogTrigger>
@@ -339,11 +450,15 @@ export default function Warehouses() {
                   <TableHead className="w-[36px]">
                     <div className="pl-3">
                       <Checkbox 
-                        checked={selectedCount === warehouses.length && warehouses.length > 0}
+                        checked={selectedCount === filteredAndSortedWarehouses.length && filteredAndSortedWarehouses.length > 0}
                         onCheckedChange={(checked) => {
+                          console.log('Select all checkbox changed:', { checked, filteredAndSortedWarehouses: filteredAndSortedWarehouses.map(w => ({ id: w.id, name: w.name })) })
                           if (checked) {
-                            setSelectedIds(new Set(warehouses.map(w => w.id)))
+                            const newSelection = new Set(filteredAndSortedWarehouses.map(w => w.id))
+                            console.log('Setting selectedIds to:', Array.from(newSelection))
+                            setSelectedIds(newSelection)
                           } else {
+                            console.log('Clearing selectedIds')
                             setSelectedIds(new Set())
                           }
                         }}
@@ -397,13 +512,21 @@ export default function Warehouses() {
                       <div className="pl-3">
                         <Checkbox 
                           checked={isSelected(warehouse.id)} 
-                          onCheckedChange={() => toggleSelect(warehouse.id)} 
+                          onCheckedChange={() => {
+                            console.log('Individual checkbox clicked for warehouse:', warehouse.name, 'ID:', warehouse.id)
+                            toggleSelect(warehouse.id)
+                          }} 
                           aria-label={`Seleccionar ${warehouse.name}`} 
                     />
                   </div>
                     </TableCell>
                     <TableCell className="w-[200px]">
-                      <div className="font-medium text-camouflage-green-900">{warehouse.name}</div>
+                      <button
+                        onClick={() => router.push(`/inventory/warehouses/${warehouse.id}`)}
+                        className="font-medium text-camouflage-green-900 hover:text-camouflage-green-700 hover:underline transition-colors text-left"
+                      >
+                        {warehouse.name}
+                      </button>
                     </TableCell>
                     <TableCell className="w-[300px]">
                       <div className="text-camouflage-green-600 text-sm">{warehouse.location}</div>
@@ -420,6 +543,7 @@ export default function Warehouses() {
                           variant="outline"
                           className="h-8 w-8 p-0 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100 border-camouflage-green-300 hover:border-camouflage-green-400"
                           title="Ver detalles"
+                        onClick={() => router.push(`/inventory/warehouses/${warehouse.id}`)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -428,6 +552,7 @@ export default function Warehouses() {
                           variant="outline"
                           className="h-8 w-8 p-0 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100 border-camouflage-green-300 hover:border-camouflage-green-400"
                           title="Editar"
+                          onClick={() => handleEditWarehouse(warehouse)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -484,26 +609,6 @@ export default function Warehouses() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {filteredAndSortedWarehouses.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-12">
-                      <div className="flex flex-col items-center gap-3">
-                        <Warehouse className="h-12 w-12 text-camouflage-green-300" />
-                        <div>
-                          <p className="text-camouflage-green-600 font-medium">
-                            {searchTerm ? 'No se encontraron bodegas' : 'No hay bodegas registradas'}
-                          </p>
-                          <p className="text-camouflage-green-500 text-sm mt-1">
-                            {searchTerm 
-                              ? `No se encontraron bodegas que coincidan con "${searchTerm}"`
-                              : 'Comienza agregando tu primera bodega'
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
               </TableBody>
             </Table>
               </CardContent>
@@ -582,6 +687,80 @@ export default function Warehouses() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Modal para editar bodega */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={handleCancelEditWarehouse}
+        title="Editar Bodega"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-warehouse-name" className="text-camouflage-green-700 font-medium">
+              Nombre <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="edit-warehouse-name"
+              type="text"
+              placeholder="Ingresa el nombre de la bodega"
+              value={editWarehouseData.name}
+              onChange={(e) => handleEditWarehouseInputChange('name', e.target.value)}
+              className="border-camouflage-green-300 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 bg-white placeholder:text-gray-400"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-warehouse-location" className="text-camouflage-green-700 font-medium">
+              Dirección
+            </Label>
+            <Input
+              id="edit-warehouse-location"
+              type="text"
+              placeholder="Ingresa la dirección de la bodega"
+              value={editWarehouseData.location}
+              onChange={(e) => handleEditWarehouseInputChange('location', e.target.value)}
+              className="border-camouflage-green-300 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 bg-white placeholder:text-gray-400"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-warehouse-observations" className="text-camouflage-green-700 font-medium">
+              Observaciones
+            </Label>
+            <Textarea
+              id="edit-warehouse-observations"
+              placeholder="Ingresa observaciones adicionales sobre la bodega"
+              value={editWarehouseData.observations}
+              onChange={(e) => handleEditWarehouseInputChange('observations', e.target.value)}
+              className="border-camouflage-green-300 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 bg-white placeholder:text-gray-400 min-h-[80px] resize-none scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100"
+              style={{
+                outline: 'none',
+                boxShadow: 'none'
+              }}
+              onFocus={(e) => {
+                e.target.style.outline = 'none'
+                e.target.style.boxShadow = 'none'
+              }}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleCancelEditWarehouse}
+              className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveEditWarehouse}
+              className="bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
+            >
+              Guardar cambios
+            </Button>
+        </div>
+      </div>
       </Modal>
     </MainLayout>
   )
