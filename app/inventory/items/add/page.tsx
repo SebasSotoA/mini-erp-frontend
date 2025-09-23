@@ -35,6 +35,7 @@ export default function AddInventoryItemPage() {
   const [initialCost, setInitialCost] = useState("")
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [isImageDragOver, setIsImageDragOver] = useState(false)
   const [reference, setReference] = useState("")
   const [code, setCode] = useState("")
   const [category, setCategory] = useState("")
@@ -148,6 +149,38 @@ export default function AddInventoryItemPage() {
     } else {
       setImagePreview(null)
     }
+  }
+
+  const handleImageDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsImageDragOver(true)
+  }
+
+  const handleImageDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsImageDragOver(false)
+  }
+
+  const handleImageDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsImageDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file && file.type.startsWith('image/')) {
+      onImageChange(file)
+    }
+  }
+
+  const handleImageAreaClick = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        onImageChange(file)
+      }
+    }
+    input.click()
   }
 
   const doSubmit = async (createAnother: boolean) => {
@@ -548,13 +581,26 @@ export default function AddInventoryItemPage() {
                   <div className="space-y-4">
                     {/* Image uploader */}
                     <div>
-                      <div className="w-full aspect-square rounded-lg overflow-hidden">
+                      <div 
+                        className={`w-full aspect-square rounded-lg overflow-hidden cursor-pointer transition-colors ${
+                          isImageDragOver 
+                            ? 'border-2 border-camouflage-green-500 bg-camouflage-green-50' 
+                            : 'border-2 border-dashed border-gray-300 hover:border-camouflage-green-400 hover:bg-camouflage-green-25'
+                        }`}
+                        onClick={!imagePreview ? handleImageAreaClick : undefined}
+                        onDragOver={handleImageDragOver}
+                        onDragLeave={handleImageDragLeave}
+                        onDrop={handleImageDrop}
+                      >
                         {imagePreview ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 bg-white">
-                            <Tag className="h-14 w-14 text-gray-300" />
+                          <div className="aspect-square flex flex-col items-center justify-center bg-white">
+                            <Tag className="h-14 w-14 text-gray-300 mb-2" />
+                            <p className="text-xs text-gray-500 text-center px-2">
+                              Haz clic o arrastra una imagen aquí
+                            </p>
                           </div>
                         )}
                       </div>
@@ -571,7 +617,10 @@ export default function AddInventoryItemPage() {
                             type="button"
                             variant="outline"
                             className="w-full border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-                            onClick={() => onImageChange(null)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onImageChange(null)
+                            }}
                           >
                             Eliminar imagen
                           </Button>

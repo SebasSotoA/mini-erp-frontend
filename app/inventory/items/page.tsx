@@ -170,7 +170,7 @@ export default function SalesItems() {
             <p className="text-camouflage-green-600 mt-1">Crea, edita y controla tus ítems en un solo lugar.</p>
           </div>
           <Button 
-            size="lg" 
+            size="md2" 
             className="bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white pl-4 pr-4"
             onClick={() => setIsNewItemModalOpen(true)}
           >

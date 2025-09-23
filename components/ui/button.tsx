@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "danger" | "outline" | "ghost"
-  size?: "sm" | "md" | "lg" | "icon"
+  size?: "sm" | "md" | "md2" | "lg" | "icon"
 }
 
 export const buttonVariants = (variant: ButtonProps["variant"] = "primary", size: ButtonProps["size"] = "md") => {
@@ -21,6 +21,7 @@ export const buttonVariants = (variant: ButtonProps["variant"] = "primary", size
   const sizes = {
     sm: "px-3 py-1.5 text-sm",
     md: "px-4 py-2 text-sm",
+    md2: "px-4 py-2.5 text-sm",
     lg: "px-6 py-3 text-base",
     icon: "h-10 w-10",
   }
