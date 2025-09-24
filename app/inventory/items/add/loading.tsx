@@ -9,13 +9,13 @@ export default function Loading() {
         {/* Header skeleton */}
         <div>
           <SkeletonStyled className="h-8 w-64" />
-          <SkeletonStyled className="h-4 w-96 mt-2" />
+          <SkeletonStyled className="mt-2 h-4 w-96" />
         </div>
 
         {/* Content skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left side - Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Type selection card */}
             <Card className="border-camouflage-green-200">
               <CardHeader>
@@ -26,7 +26,7 @@ export default function Loading() {
                   <SkeletonStyled className="h-12 w-full" />
                   <SkeletonStyled className="h-12 w-full" />
                 </div>
-                <SkeletonStyled className="h-4 w-80 mt-3" />
+                <SkeletonStyled className="mt-3 h-4 w-80" />
               </CardContent>
             </Card>
 
@@ -40,7 +40,7 @@ export default function Loading() {
                   <SkeletonStyled className="h-4 w-16" />
                   <SkeletonStyled className="h-10 w-full" />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <SkeletonStyled className="h-4 w-20" />
                     <SkeletonStyled className="h-10 w-full" />
@@ -50,7 +50,7 @@ export default function Loading() {
                     <SkeletonStyled className="h-10 w-full" />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <SkeletonStyled className="h-4 w-20" />
                     <SkeletonStyled className="h-10 w-full" />
@@ -73,20 +73,20 @@ export default function Loading() {
                 <SkeletonStyled className="h-6 w-20" />
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_180px_auto_1fr] items-end gap-4">
+                <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-[1fr_auto_180px_auto_1fr]">
                   <div className="space-y-2">
                     <SkeletonStyled className="h-4 w-24" />
                     <SkeletonStyled className="h-10 w-full" />
                   </div>
-                  <div className="text-center pb-3">
-                    <SkeletonStyled className="h-4 w-4 mx-auto" />
+                  <div className="pb-3 text-center">
+                    <SkeletonStyled className="mx-auto h-4 w-4" />
                   </div>
                   <div className="space-y-2">
                     <SkeletonStyled className="h-4 w-16" />
                     <SkeletonStyled className="h-10 w-full" />
                   </div>
-                  <div className="text-center pb-3">
-                    <SkeletonStyled className="h-4 w-4 mx-auto" />
+                  <div className="pb-3 text-center">
+                    <SkeletonStyled className="mx-auto h-4 w-4" />
                   </div>
                   <div className="space-y-2">
                     <SkeletonStyled className="h-4 w-24" />
@@ -116,7 +116,7 @@ export default function Loading() {
                 <SkeletonStyled className="h-6 w-16" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 max-w-sm">
+                <div className="max-w-sm space-y-2">
                   <SkeletonStyled className="h-4 w-32" />
                   <SkeletonStyled className="h-10 w-full" />
                 </div>
@@ -126,12 +126,12 @@ export default function Loading() {
 
           {/* Right side - Preview & actions */}
           <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-6 space-y-4">
+            <div className="space-y-4 lg:sticky lg:top-6">
               {/* Preview card */}
               <Card className="border-camouflage-green-200">
                 <CardContent className="pt-6">
                   <div className="space-y-4">
-                    <div className="w-full aspect-square rounded-lg overflow-hidden bg-camouflage-green-50 flex items-center justify-center">
+                    <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg bg-camouflage-green-50">
                       <SkeletonStyled className="h-14 w-14" />
                     </div>
                     <div className="space-y-1">

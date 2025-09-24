@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
-import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { useInventory } from "@/contexts/inventory-context"
 import { Download, FileText, TrendingUp, Package, DollarSign, AlertTriangle } from "lucide-react"
+import { useState } from "react"
+
+import { MainLayout } from "@/components/layout/main-layout"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useInventory } from "@/contexts/inventory-context"
 
 export default function Reports() {
   const { products, stockMovements, sales, getFinancialMetrics } = useInventory()
@@ -147,11 +148,11 @@ export default function Reports() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">Reportes y Análisis</h1>
           <div className="flex space-x-4">
             <select
-              className="px-4 py-2 border border-gray-300 rounded-md"
+              className="rounded-md border border-gray-300 px-4 py-2"
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
             >
@@ -161,19 +162,19 @@ export default function Reports() {
               <option value="365">Último año</option>
             </select>
             <Button onClick={() => exportToCSV(selectedReportData?.data || [], selectedReportData?.name || "reporte")}>
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="mr-2 h-4 w-4" />
               Exportar CSV
             </Button>
           </div>
         </div>
 
         {/* Selector de Reportes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {reportTypes.map((report) => (
             <Card
               key={report.id}
               className={`cursor-pointer transition-all ${
-                selectedReport === report.id ? "ring-2 ring-blue-500 bg-blue-50" : "hover:shadow-md"
+                selectedReport === report.id ? "bg-blue-50 ring-2 ring-blue-500" : "hover:shadow-md"
               }`}
               onClick={() => setSelectedReport(report.id)}
             >
@@ -194,17 +195,17 @@ export default function Reports() {
 
         {/* Resumen Ejecutivo */}
         {selectedReport === "inventory" && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <Card>
               <CardContent className="p-4 text-center">
-                <Package className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <Package className="mx-auto mb-2 h-8 w-8 text-blue-600" />
                 <p className="text-2xl font-bold text-gray-900">{products.length}</p>
                 <p className="text-sm text-gray-600">Total Productos</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <DollarSign className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                <DollarSign className="mx-auto mb-2 h-8 w-8 text-green-600" />
                 <p className="text-2xl font-bold text-gray-900">
                   {formatCurrency(financialMetrics.totalInventoryValue)}
                 </p>
@@ -213,14 +214,14 @@ export default function Reports() {
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <TrendingUp className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                <TrendingUp className="mx-auto mb-2 h-8 w-8 text-purple-600" />
                 <p className="text-2xl font-bold text-gray-900">{financialMetrics.inventoryTurnover.toFixed(1)}x</p>
                 <p className="text-sm text-gray-600">Rotación</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4 text-center">
-                <AlertTriangle className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                <AlertTriangle className="mx-auto mb-2 h-8 w-8 text-orange-600" />
                 <p className="text-2xl font-bold text-gray-900">{financialMetrics.deadStock.length}</p>
                 <p className="text-sm text-gray-600">Stock Muerto</p>
               </CardContent>
@@ -232,7 +233,7 @@ export default function Reports() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
-              {selectedReportData?.icon && <selectedReportData.icon className="h-5 w-5 mr-2" />}
+              {selectedReportData?.icon && <selectedReportData.icon className="mr-2 h-5 w-5" />}
               {selectedReportData?.name}
             </CardTitle>
           </CardHeader>
@@ -245,18 +246,18 @@ export default function Reports() {
                       Object.keys(selectedReportData.data[0]).map((header) => (
                         <th
                           key={header}
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
                         >
                           {header}
                         </th>
                       ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-200 bg-white">
                   {selectedReportData?.data.map((row, index) => (
                     <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                       {Object.values(row).map((value, cellIndex) => (
-                        <td key={cellIndex} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td key={cellIndex} className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
                           {String(value)}
                         </td>
                       ))}
@@ -274,22 +275,22 @@ export default function Reports() {
             <CardTitle>Insights y Recomendaciones</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="p-4 bg-green-50 rounded-lg">
-                <h4 className="font-semibold text-green-800 mb-2">Productos Estrella</h4>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="rounded-lg bg-green-50 p-4">
+                <h4 className="mb-2 font-semibold text-green-800">Productos Estrella</h4>
                 <p className="text-sm text-green-700">
                   Los productos de categoría A representan el 80% del valor del inventario. Mantener stock adecuado.
                 </p>
               </div>
-              <div className="p-4 bg-yellow-50 rounded-lg">
-                <h4 className="font-semibold text-yellow-800 mb-2">Atención Requerida</h4>
+              <div className="rounded-lg bg-yellow-50 p-4">
+                <h4 className="mb-2 font-semibold text-yellow-800">Atención Requerida</h4>
                 <p className="text-sm text-yellow-700">
                   {financialMetrics.slowMovingItems.length} productos con movimiento lento requieren estrategia de
                   liquidación.
                 </p>
               </div>
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-semibold text-blue-800 mb-2">Oportunidad de Mejora</h4>
+              <div className="rounded-lg bg-blue-50 p-4">
+                <h4 className="mb-2 font-semibold text-blue-800">Oportunidad de Mejora</h4>
                 <p className="text-sm text-blue-700">
                   La rotación actual de {financialMetrics.inventoryTurnover.toFixed(1)}x puede mejorarse optimizando el
                   stock.

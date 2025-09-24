@@ -12,11 +12,11 @@ export default function Loading() {
             <SkeletonStyled className="h-8 w-8" />
             <SkeletonStyled className="h-8 w-80" />
           </div>
-          <SkeletonStyled className="h-4 w-96 mt-2" />
+          <SkeletonStyled className="mt-2 h-4 w-96" />
         </div>
 
         {/* Cards principales skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Card: Importar Nuevos Items */}
           <Card className="border-camouflage-green-200">
             <CardHeader>
@@ -27,12 +27,12 @@ export default function Loading() {
             </CardHeader>
             <CardContent className="space-y-4">
               <SkeletonStyled className="h-4 w-full" />
-              
+
               {/* Información simplificada skeleton */}
-              <div className="bg-camouflage-green-50 border border-camouflage-green-200 rounded-lg p-3">
+              <div className="rounded-lg border border-camouflage-green-200 bg-camouflage-green-50 p-3">
                 <div className="flex items-start gap-2">
-                  <SkeletonStyled className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="space-y-2 flex-1">
+                  <SkeletonStyled className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
                     <SkeletonStyled className="h-4 w-32" />
                     <SkeletonStyled className="h-3 w-full" />
                   </div>
@@ -40,10 +40,10 @@ export default function Loading() {
               </div>
 
               {/* Recomendaciones skeleton */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <div className="flex items-start gap-2">
-                  <SkeletonStyled className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="space-y-2 flex-1">
+                  <SkeletonStyled className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
                     <SkeletonStyled className="h-4 w-28" />
                     <SkeletonStyled className="h-3 w-full" />
                     <SkeletonStyled className="h-3 w-3/4" />
@@ -55,13 +55,13 @@ export default function Loading() {
               {/* Drag & Drop Area skeleton */}
               <div className="space-y-2">
                 <SkeletonStyled className="h-4 w-32" />
-                <div className="border-2 border-dashed border-camouflage-green-300 rounded-lg p-6 text-center">
+                <div className="rounded-lg border-2 border-dashed border-camouflage-green-300 p-6 text-center">
                   <div className="space-y-3">
                     <div className="flex justify-center">
                       <SkeletonStyled className="h-8 w-8" />
                     </div>
-                    <SkeletonStyled className="h-4 w-64 mx-auto" />
-                    <SkeletonStyled className="h-3 w-40 mx-auto" />
+                    <SkeletonStyled className="mx-auto h-4 w-64" />
+                    <SkeletonStyled className="mx-auto h-3 w-40" />
                   </div>
                 </div>
               </div>
@@ -81,12 +81,12 @@ export default function Loading() {
             </CardHeader>
             <CardContent className="space-y-4">
               <SkeletonStyled className="h-4 w-full" />
-              
+
               {/* Información simplificada skeleton */}
-              <div className="bg-camouflage-green-50 border border-camouflage-green-200 rounded-lg p-3">
+              <div className="rounded-lg border border-camouflage-green-200 bg-camouflage-green-50 p-3">
                 <div className="flex items-start gap-2">
-                  <SkeletonStyled className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="space-y-2 flex-1">
+                  <SkeletonStyled className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
                     <SkeletonStyled className="h-4 w-24" />
                     <SkeletonStyled className="h-3 w-full" />
                   </div>
@@ -94,10 +94,10 @@ export default function Loading() {
               </div>
 
               {/* Recomendaciones skeleton */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
                 <div className="flex items-start gap-2">
-                  <SkeletonStyled className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="space-y-2 flex-1">
+                  <SkeletonStyled className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                  <div className="flex-1 space-y-2">
                     <SkeletonStyled className="h-4 w-28" />
                     <SkeletonStyled className="h-3 w-full" />
                     <SkeletonStyled className="h-3 w-3/4" />
@@ -108,13 +108,13 @@ export default function Loading() {
               {/* Drag & Drop Area skeleton */}
               <div className="space-y-2">
                 <SkeletonStyled className="h-4 w-32" />
-                <div className="border-2 border-dashed border-camouflage-green-300 rounded-lg p-6 text-center">
+                <div className="rounded-lg border-2 border-dashed border-camouflage-green-300 p-6 text-center">
                   <div className="space-y-3">
                     <div className="flex justify-center">
                       <SkeletonStyled className="h-8 w-8" />
                     </div>
-                    <SkeletonStyled className="h-4 w-64 mx-auto" />
-                    <SkeletonStyled className="h-3 w-40 mx-auto" />
+                    <SkeletonStyled className="mx-auto h-4 w-64" />
+                    <SkeletonStyled className="mx-auto h-3 w-40" />
                   </div>
                 </div>
               </div>

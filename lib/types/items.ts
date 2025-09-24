@@ -1,7 +1,7 @@
 import { Product } from "@/contexts/inventory-context"
 
 // Tipo extendido para Product con campos opcionales que pueden no estar en el modelo actual
-export interface ExtendedProduct extends Omit<Product, 'basePrice' | 'taxPercent' | 'unit' | 'imageUrl'> {
+export interface ExtendedProduct extends Omit<Product, "basePrice" | "taxPercent" | "unit" | "imageUrl"> {
   basePrice?: number
   taxPercent?: number
   unit?: string
@@ -22,8 +22,11 @@ export interface ItemFilters {
 }
 
 // Tipos para ordenamiento
-export type SortField = keyof Pick<Product, 'name' | 'sku' | 'price' | 'stock' | 'category' | 'description' | 'createdAt'>
-export type SortDirection = 'asc' | 'desc'
+export type SortField = keyof Pick<
+  Product,
+  "name" | "sku" | "price" | "stock" | "category" | "description" | "createdAt"
+>
+export type SortDirection = "asc" | "desc"
 
 export interface SortConfig {
   field: SortField | null
@@ -31,22 +34,22 @@ export interface SortConfig {
 }
 
 // Tipos para operadores de stock
-export type StockOperator = 'equal' | 'greater' | 'greaterEqual' | 'less' | 'lessEqual' | 'between'
+export type StockOperator = "equal" | "greater" | "greaterEqual" | "less" | "lessEqual" | "between"
 
 // Tipos para funciones puras
 export type FilterFunction = (products: Product[], filters: ItemFilters) => Product[]
 export type SortFunction = (products: Product[], sortConfig: SortConfig) => Product[]
 export type StockFilterFunction = (
-  stock: number, 
-  operator: StockOperator, 
-  value: string, 
-  minValue?: string, 
-  maxValue?: string
+  stock: number,
+  operator: StockOperator,
+  value: string,
+  minValue?: string,
+  maxValue?: string,
 ) => boolean
 
 // Tipos para acciones de selección múltiple
 export interface BulkAction {
-  type: 'activate' | 'deactivate' | 'delete'
+  type: "activate" | "deactivate" | "delete"
   productIds: string[]
 }
 

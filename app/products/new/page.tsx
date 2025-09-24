@@ -1,15 +1,16 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { useInventory } from "@/contexts/inventory-context"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import type React from "react"
+import { useState } from "react"
+
+import { MainLayout } from "@/components/layout/main-layout"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useInventory } from "@/contexts/inventory-context"
+
 
 export default function NewProduct() {
   const router = useRouter()
@@ -64,7 +65,7 @@ export default function NewProduct() {
         <div className="flex items-center space-x-4">
           <Link href="/products">
             <Button variant="outline" size="sm">
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Products
             </Button>
           </Link>
@@ -77,51 +78,51 @@ export default function NewProduct() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Product Name *</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Product Name *</label>
                   <input
                     type="text"
                     name="name"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     value={formData.name}
                     onChange={handleChange}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">SKU *</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">SKU *</label>
                   <input
                     type="text"
                     name="sku"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     value={formData.sku}
                     onChange={handleChange}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Price *</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Price *</label>
                   <input
                     type="number"
                     name="price"
                     step="0.01"
                     min="0"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     value={formData.price}
                     onChange={handleChange}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Category *</label>
                   <select
                     name="category"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     value={formData.category}
                     onChange={handleChange}
                   >
@@ -135,26 +136,26 @@ export default function NewProduct() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Stock *</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Current Stock *</label>
                   <input
                     type="number"
                     name="stock"
                     min="0"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     value={formData.stock}
                     onChange={handleChange}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Minimum Stock *</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Minimum Stock *</label>
                   <input
                     type="number"
                     name="minStock"
                     min="0"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                     value={formData.minStock}
                     onChange={handleChange}
                   />
@@ -162,11 +163,11 @@ export default function NewProduct() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Description</label>
                 <textarea
                   name="description"
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:ring-2 focus:ring-blue-500"
                   value={formData.description}
                   onChange={handleChange}
                 />

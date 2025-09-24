@@ -1,8 +1,5 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useState } from "react"
 import {
   Home,
   Package,
@@ -16,6 +13,10 @@ import {
   BarChart3,
   X,
 } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { useState } from "react"
+
 import { cn } from "@/lib/utils"
 
 const navigation = [
@@ -47,22 +48,22 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
   )
 
   return (
-    <div className="flex h-full w-64 flex-col bg-camouflage-green-800 border-r border-camouflage-green-500 shadow-lg">
+    <div className="flex h-full w-64 flex-col border-r border-camouflage-green-500 bg-camouflage-green-800 shadow-lg">
       {/* Mobile close button */}
       {onClose && (
         <div className="flex justify-end p-4 lg:hidden">
           <button
             onClick={onClose}
-            className="p-2 rounded-md text-camouflage-green-200 hover:text-white hover:bg-camouflage-green-700"
+            className="rounded-md p-2 text-camouflage-green-200 hover:bg-camouflage-green-700 hover:text-white"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
       )}
       {/* Header */}
-      <div className="flex h-16 items-center px-6 border-b border-camouflage-green-700">
+      <div className="flex h-16 items-center border-b border-camouflage-green-700 px-6">
         <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-camouflage-green-500 rounded-lg flex items-center justify-center shadow-md">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-camouflage-green-500 shadow-md">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
           <h1 className="text-xl font-bold text-white">Inventory Pro</h1>
@@ -79,24 +80,30 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
               key={item.name}
               href={item.href}
               className={cn(
-                "group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
+                "group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
                 isActive
-                  ? "bg-camouflage-green-600 text-white border border-camouflage-green-500 shadow-md"
+                  ? "border border-camouflage-green-500 bg-camouflage-green-600 text-white shadow-md"
                   : "text-camouflage-green-100 hover:bg-camouflage-green-700 hover:text-white",
               )}
             >
               <item.icon
                 className={cn(
                   "mr-3 h-5 w-5 transition-colors",
-                  isActive ? "text-white" : "text-camouflage-green-200 group-hover:text-white mr-3",
+                  isActive ? "text-white" : "mr-3 text-camouflage-green-200 group-hover:text-white",
                 )}
               />
               <div>
                 <div>{item.name}</div>
-                <div className={cn(
-                  "text-xs transition-colors",
-                  isActive ? "text-camouflage-green-100" : "text-camouflage-green-300 group-hover:text-camouflage-green-200"
-                )}>{item.description}</div>
+                <div
+                  className={cn(
+                    "text-xs transition-colors",
+                    isActive
+                      ? "text-camouflage-green-100"
+                      : "text-camouflage-green-300 group-hover:text-camouflage-green-200",
+                  )}
+                >
+                  {item.description}
+                </div>
               </div>
             </Link>
           )
@@ -107,9 +114,9 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
           <button
             onClick={() => setIsInventoryOpen(!isInventoryOpen)}
             className={cn(
-              "w-full group flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
+              "group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
               pathname.startsWith("/inventory") || pathname.startsWith("/products") || pathname.startsWith("/stock")
-                ? "bg-camouflage-green-600 text-white border border-camouflage-green-500 shadow-md"
+                ? "border border-camouflage-green-500 bg-camouflage-green-600 text-white shadow-md"
                 : "text-camouflage-green-100 hover:bg-camouflage-green-700 hover:text-white",
             )}
           >
@@ -124,12 +131,18 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
               />
               <div>
                 <div className="pr-8">Inventario</div>
-                <div className={cn(
-                  "text-xs transition-colors",
-                  pathname.startsWith("/inventory") || pathname.startsWith("/products") || pathname.startsWith("/stock")
-                    ? "text-camouflage-green-100"
-                    : "text-camouflage-green-300 group-hover:text-camouflage-green-200"
-                )}>Gestión completa</div>
+                <div
+                  className={cn(
+                    "text-xs transition-colors",
+                    pathname.startsWith("/inventory") ||
+                      pathname.startsWith("/products") ||
+                      pathname.startsWith("/stock")
+                      ? "text-camouflage-green-100"
+                      : "text-camouflage-green-300 group-hover:text-camouflage-green-200",
+                  )}
+                >
+                  Gestión completa
+                </div>
               </div>
             </div>
             {isInventoryOpen ? (
@@ -149,9 +162,9 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
                     key={item.name}
                     href={item.href}
                     className={cn(
-                      "group flex items-center px-3 py-2 text-sm rounded-md transition-colors",
+                      "group flex items-center rounded-md px-3 py-2 text-sm transition-colors",
                       isActive
-                        ? "bg-camouflage-green-500 text-white font-medium shadow-sm"
+                        ? "bg-camouflage-green-500 font-medium text-white shadow-sm"
                         : "text-camouflage-green-200 hover:bg-camouflage-green-600 hover:text-white",
                     )}
                   >
@@ -171,14 +184,14 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-camouflage-green-700">
+      <div className="border-t border-camouflage-green-700 p-4">
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-camouflage-green-500 rounded-full flex items-center justify-center shadow-md">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-camouflage-green-500 shadow-md">
             <span className="text-sm font-medium text-white">U</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">Usuario</p>
-            <p className="text-xs text-camouflage-green-200 truncate">admin@inventorypro.com</p>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-white">Usuario</p>
+            <p className="truncate text-xs text-camouflage-green-200">admin@inventorypro.com</p>
           </div>
         </div>
       </div>

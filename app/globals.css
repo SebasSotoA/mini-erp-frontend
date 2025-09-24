@@ -27,7 +27,7 @@
     --ring: 91 117 84; /* camouflage-green-500 */
     --radius: 0.5rem;
   }
-  
+
   /* 🌙 Modo oscuro opcional */
   .dark {
     --background: 20 27 19; /* camouflage-green-950 */

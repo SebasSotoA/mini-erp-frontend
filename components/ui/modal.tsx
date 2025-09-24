@@ -1,9 +1,9 @@
 "use client"
 
-import type React from "react"
-
-import { useEffect } from "react"
 import { X } from "lucide-react"
+import type React from "react"
+import { useEffect } from "react"
+
 import { Button } from "./button"
 
 interface ModalProps {
@@ -32,8 +32,8 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black bg-opacity-25" onClick={onClose} />
-        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full">
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="relative w-full max-w-4xl rounded-lg bg-white shadow-xl">
+          <div className="flex items-center justify-between border-b border-gray-200 p-6">
             <h3 className="text-lg font-semibold">{title}</h3>
             <Button variant="outline" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />

@@ -7,7 +7,7 @@ export default function Loading() {
     <MainLayout>
       <div className="space-y-6">
         {/* Encabezado */}
-        <div className="flex justify-between items-center">
+        <div className="flex items-center justify-between">
           <div className="space-y-2">
             <SkeletonStyled className="h-8 w-64" />
             <SkeletonStyled className="h-4 w-96" />
@@ -20,7 +20,7 @@ export default function Loading() {
             <SkeletonStyled className="h-6 w-32" />
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex flex-col gap-4 lg:flex-row">
               <SkeletonStyled className="h-10 w-48" />
               <SkeletonStyled className="h-10 w-48" />
               <SkeletonStyled className="h-10 w-64" />
@@ -33,7 +33,7 @@ export default function Loading() {
         </Card>
 
         {/* Métricas principales */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
             <Card key={i} className="border-camouflage-green-200">
               <CardContent className="flex items-center p-6">
@@ -54,7 +54,7 @@ export default function Loading() {
             <SkeletonStyled className="h-6 w-48" />
           </CardHeader>
           <CardContent className="p-0">
-            <div className="border border-camouflage-green-200 rounded-lg overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-camouflage-green-200">
               {/* Header de tabla */}
               <div className="bg-camouflage-green-50/50 p-4">
                 <div className="grid grid-cols-8 gap-4">
@@ -63,7 +63,7 @@ export default function Loading() {
                   ))}
                 </div>
               </div>
-              
+
               {/* Filas de tabla */}
               <div className="divide-y divide-camouflage-green-100">
                 {Array.from({ length: 10 }).map((_, i) => (

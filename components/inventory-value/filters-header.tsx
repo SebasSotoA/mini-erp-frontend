@@ -1,11 +1,12 @@
 "use client"
 
+import { Search, Filter, Download, Calendar, Warehouse, X } from "lucide-react"
 import { useState, useMemo } from "react"
+
 import { Button } from "@/components/ui/button"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DatePicker } from "@/components/ui/date-picker"
-import { Search, Filter, Download, Calendar, Warehouse, X } from "lucide-react"
 import { InventoryValueFilters } from "@/lib/types/inventory-value"
 
 interface FiltersHeaderProps {
@@ -19,26 +20,26 @@ interface FiltersHeaderProps {
 
 // Valores por defecto para los filtros
 const DEFAULT_FILTERS: InventoryValueFilters = {
-  search: '',
-  warehouse: 'all',
+  search: "",
+  warehouse: "all",
   dateUntil: null,
-  category: 'all',
-  status: 'all'
+  category: "all",
+  status: "all",
 }
 
-export function FiltersHeader({ 
-  filters, 
-  onFiltersChange, 
-  onExport, 
+export function FiltersHeader({
+  filters,
+  onFiltersChange,
+  onExport,
   warehouses = [], // Valor por defecto
   categories = [], // Valor por defecto
-  isLoading = false
+  isLoading = false,
 }: FiltersHeaderProps) {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
 
   // Memoizar si hay filtros activos
   const hasActiveFilters = useMemo(() => {
-    return Object.keys(filters).some(key => {
+    return Object.keys(filters).some((key) => {
       const filterKey = key as keyof InventoryValueFilters
       const defaultValue = DEFAULT_FILTERS[filterKey]
       return filters[filterKey] !== defaultValue
@@ -48,7 +49,7 @@ export function FiltersHeader({
   const handleFilterChange = (key: keyof InventoryValueFilters, value: any) => {
     onFiltersChange({
       ...filters,
-      [key]: value
+      [key]: value,
     })
   }
 
@@ -61,50 +62,50 @@ export function FiltersHeader({
   const activeFiltersCount = useMemo(() => {
     let count = 0
     if (filters.search) count++
-    if (filters.warehouse && filters.warehouse !== 'all') count++
+    if (filters.warehouse && filters.warehouse !== "all") count++
     if (filters.dateUntil) count++
-    if (filters.category && filters.category !== 'all') count++
-    if (filters.status && filters.status !== 'all') count++
+    if (filters.category && filters.category !== "all") count++
+    if (filters.status && filters.status !== "all") count++
     return count
   }, [filters])
 
   return (
     <div className="space-y-4">
       {/* Fila principal de filtros */}
-      <div className="flex flex-col xl:flex-row gap-4 items-stretch xl:items-center justify-between">
+      <div className="flex flex-col items-stretch justify-between gap-4 xl:flex-row xl:items-center">
         {/* Filtros principales */}
-        <div className="flex flex-col sm:flex-row gap-3 flex-1 min-h-[40px]">
+        <div className="flex min-h-[40px] flex-1 flex-col gap-3 sm:flex-row">
           {/* Selector de fecha */}
-          <div className="flex items-center gap-2 h-10">
+          <div className="flex h-10 items-center gap-2">
             <DatePicker
               value={filters.dateUntil ?? undefined}
-              onChange={(d) => handleFilterChange('dateUntil', d ?? null)}
+              onChange={(d) => handleFilterChange("dateUntil", d ?? null)}
               placeholder="Fecha hasta"
-              className="w-full sm:w-[180px] h-10"
+              className="h-10 w-full sm:w-[180px]"
               disabled={isLoading}
               showIcon={true}
             />
           </div>
 
           {/* Selector de bodega */}
-          <div className="flex items-center gap-2 h-10">
-            <Warehouse className="h-4 w-4 text-camouflage-green-600 flex-shrink-0" />
+          <div className="flex h-10 items-center gap-2">
+            <Warehouse className="h-4 w-4 flex-shrink-0 text-camouflage-green-600" />
             <Select
               value={filters.warehouse}
-              onValueChange={(value) => handleFilterChange('warehouse', value)}
+              onValueChange={(value) => handleFilterChange("warehouse", value)}
               disabled={isLoading}
             >
-              <SelectTrigger className="w-full sm:w-[230px] h-10 border-camouflage-green-300 focus:border-camouflage-green-500 bg-white text-camouflage-green-900">
+              <SelectTrigger className="h-10 w-full border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500 sm:w-[230px]">
                 <SelectValue placeholder="Todas las bodegas" />
               </SelectTrigger>
-              <SelectContent className="bg-white border-camouflage-green-200">
+              <SelectContent className="border-camouflage-green-200 bg-white">
                 <SelectItem value="all" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Todas las bodegas
                 </SelectItem>
                 {warehouses.map((warehouse) => (
-                  <SelectItem 
-                    key={warehouse} 
-                    value={warehouse} 
+                  <SelectItem
+                    key={warehouse}
+                    value={warehouse}
                     className="text-camouflage-green-900 hover:bg-camouflage-green-50"
                   >
                     {warehouse}
@@ -115,13 +116,13 @@ export function FiltersHeader({
           </div>
 
           {/* Búsqueda */}
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-camouflage-green-600" />
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-camouflage-green-600" />
             <Input
               placeholder="Buscar por nombre o referencia..."
               value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="h-10 pl-10 border-camouflage-green-300 focus:border-camouflage-green-500 bg-white text-camouflage-green-900 placeholder:text-camouflage-green-500"
+              onChange={(e) => handleFilterChange("search", e.target.value)}
+              className="h-10 border-camouflage-green-300 bg-white pl-10 text-camouflage-green-900 placeholder:text-camouflage-green-500 focus:border-camouflage-green-500"
               disabled={isLoading}
             />
             {/* Botón para limpiar búsqueda */}
@@ -129,8 +130,8 @@ export function FiltersHeader({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleFilterChange('search', '')}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-camouflage-green-100"
+                onClick={() => handleFilterChange("search", "")}
+                className="absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 transform p-0 hover:bg-camouflage-green-100"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -139,24 +140,24 @@ export function FiltersHeader({
         </div>
 
         {/* Botones de acción */}
-        <div className="flex flex-col sm:flex-row gap-2 h-10">
+        <div className="flex h-10 flex-col gap-2 sm:flex-row">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            className="h-10 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50 relative"
+            className="relative h-10 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
             disabled={isLoading}
           >
-            <Filter className="h-4 w-4 mr-2" />
+            <Filter className="mr-2 h-4 w-4" />
             Filtros
             {/* Indicador de filtros activos */}
             {activeFiltersCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 w-5 bg-camouflage-green-600 text-white text-xs rounded-full flex items-center justify-center">
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-camouflage-green-600 text-xs text-white">
                 {activeFiltersCount}
               </span>
             )}
           </Button>
-          
+
           <Button
             variant="outline"
             size="sm"
@@ -164,7 +165,7 @@ export function FiltersHeader({
             className="h-10 bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
             disabled={isLoading}
           >
-            <Download className="h-4 w-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Exportar
           </Button>
         </div>
@@ -172,28 +173,26 @@ export function FiltersHeader({
 
       {/* Filtros avanzados */}
       {showAdvancedFilters && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 bg-camouflage-green-50/30 border border-camouflage-green-200 rounded-lg animate-in slide-in-from-top-2 duration-300">
+        <div className="animate-in slide-in-from-top-2 grid grid-cols-1 gap-4 rounded-lg border border-camouflage-green-200 bg-camouflage-green-50/30 p-4 duration-300 sm:grid-cols-2 lg:grid-cols-3">
           {/* Filtro por categoría */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-camouflage-green-700">
-              Categoría
-            </label>
+            <label className="text-sm font-medium text-camouflage-green-700">Categoría</label>
             <Select
               value={filters.category}
-              onValueChange={(value) => handleFilterChange('category', value)}
+              onValueChange={(value) => handleFilterChange("category", value)}
               disabled={isLoading}
             >
-              <SelectTrigger className="border-camouflage-green-300 focus:border-camouflage-green-500 bg-white text-camouflage-green-900">
+              <SelectTrigger className="border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500">
                 <SelectValue placeholder="Todas las categorías" />
               </SelectTrigger>
-              <SelectContent className="bg-white border-camouflage-green-200">
+              <SelectContent className="border-camouflage-green-200 bg-white">
                 <SelectItem value="all" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Todas las categorías
                 </SelectItem>
                 {categories.map((category) => (
-                  <SelectItem 
-                    key={category} 
-                    value={category} 
+                  <SelectItem
+                    key={category}
+                    value={category}
                     className="text-camouflage-green-900 hover:bg-camouflage-green-50"
                   >
                     {category}
@@ -205,18 +204,16 @@ export function FiltersHeader({
 
           {/* Filtro por estado */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-camouflage-green-700">
-              Estado
-            </label>
+            <label className="text-sm font-medium text-camouflage-green-700">Estado</label>
             <Select
               value={filters.status}
-              onValueChange={(value) => handleFilterChange('status', value)}
+              onValueChange={(value) => handleFilterChange("status", value)}
               disabled={isLoading}
             >
-              <SelectTrigger className="border-camouflage-green-300 focus:border-camouflage-green-500 bg-white text-camouflage-green-900">
+              <SelectTrigger className="border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500">
                 <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
-              <SelectContent className="bg-white border-camouflage-green-200">
+              <SelectContent className="border-camouflage-green-200 bg-white">
                 <SelectItem value="all" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Todos los estados
                 </SelectItem>
@@ -239,7 +236,7 @@ export function FiltersHeader({
               className="flex-1 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
               disabled={isLoading || !hasActiveFilters}
             >
-              <X className="h-4 w-4 mr-2" />
+              <X className="mr-2 h-4 w-4" />
               Limpiar
             </Button>
           </div>

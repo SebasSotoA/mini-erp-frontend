@@ -4,22 +4,22 @@ export default function Loading() {
   return (
     <div className="space-y-6">
       {/* Header skeleton */}
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <SkeletonStyled className="h-8 w-48" />
-          <SkeletonStyled className="h-4 w-96 mt-2" />
+          <SkeletonStyled className="mt-2 h-4 w-96" />
         </div>
         <SkeletonStyled className="h-12 w-48" />
       </div>
 
       {/* Stats cards skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white p-6 rounded-lg border border-camouflage-green-200">
+          <div key={i} className="rounded-lg border border-camouflage-green-200 bg-white p-6">
             <div className="flex items-center justify-between">
               <div>
                 <SkeletonStyled className="h-4 w-20" />
-                <SkeletonStyled className="h-8 w-16 mt-2" />
+                <SkeletonStyled className="mt-2 h-8 w-16" />
               </div>
               <SkeletonStyled className="h-8 w-8 rounded" />
             </div>
@@ -28,31 +28,34 @@ export default function Loading() {
       </div>
 
       {/* Charts section skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Sales chart */}
-        <div className="bg-white p-6 rounded-lg border border-camouflage-green-200">
-          <SkeletonStyled className="h-6 w-32 mb-4" />
+        <div className="rounded-lg border border-camouflage-green-200 bg-white p-6">
+          <SkeletonStyled className="mb-4 h-6 w-32" />
           <SkeletonStyled className="h-64 w-full" />
         </div>
-        
+
         {/* Inventory chart */}
-        <div className="bg-white p-6 rounded-lg border border-camouflage-green-200">
-          <SkeletonStyled className="h-6 w-32 mb-4" />
+        <div className="rounded-lg border border-camouflage-green-200 bg-white p-6">
+          <SkeletonStyled className="mb-4 h-6 w-32" />
           <SkeletonStyled className="h-64 w-full" />
         </div>
       </div>
 
       {/* Recent activity skeleton */}
-      <div className="bg-white p-6 rounded-lg border border-camouflage-green-200">
-        <SkeletonStyled className="h-6 w-40 mb-4" />
+      <div className="rounded-lg border border-camouflage-green-200 bg-white p-6">
+        <SkeletonStyled className="mb-4 h-6 w-40" />
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between p-3 border border-camouflage-green-100 rounded-lg">
+            <div
+              key={i}
+              className="flex items-center justify-between rounded-lg border border-camouflage-green-100 p-3"
+            >
               <div className="flex items-center gap-3">
                 <SkeletonStyled className="h-8 w-8 rounded-full" />
                 <div>
                   <SkeletonStyled className="h-4 w-32" />
-                  <SkeletonStyled className="h-3 w-20 mt-1" />
+                  <SkeletonStyled className="mt-1 h-3 w-20" />
                 </div>
               </div>
               <SkeletonStyled className="h-4 w-16" />

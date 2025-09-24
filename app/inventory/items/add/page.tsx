@@ -1,19 +1,20 @@
 "use client"
 
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Plus, Tag } from "lucide-react"
+import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { useState, useMemo } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useRouter } from "next/navigation"
-import Image from "next/image"
+
 import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
-import { Plus, Tag } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
@@ -42,28 +43,38 @@ export default function AddInventoryItemPage() {
   const [description, setDescription] = useState("")
 
   // Validación con Zod + RHF (controlamos el estado local y sincronizamos con RHF)
-  const addSchema = z.object({
-    type: z.enum(["product", "service"]),
-    name: z.string().trim().min(1, "El nombre es requerido"),
-    unit: z.string().trim().min(1, "La unidad es requerida"),
-    basePrice: z.string().refine(v => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Precio base inválido" }),
-    tax: z.string().refine(v => v === "" || !isNaN(parseFloat(v)), { message: "Impuesto inválido" }),
-    totalPrice: z.string().refine(v => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Precio total inválido" }),
-    quantity: z.string().optional(),
-    initialCost: z.string().optional(),
-  }).superRefine((data, ctx) => {
-    if (data.type === "product") {
-      if (!data.quantity || isNaN(parseInt(data.quantity)) || parseInt(data.quantity) < 0) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Cantidad inválida" })
+  const addSchema = z
+    .object({
+      type: z.enum(["product", "service"]),
+      name: z.string().trim().min(1, "El nombre es requerido"),
+      unit: z.string().trim().min(1, "La unidad es requerida"),
+      basePrice: z
+        .string()
+        .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Precio base inválido" }),
+      tax: z.string().refine((v) => v === "" || !isNaN(parseFloat(v)), { message: "Impuesto inválido" }),
+      totalPrice: z
+        .string()
+        .refine((v) => !isNaN(parseFloat(v)) && parseFloat(v) > 0, { message: "Precio total inválido" }),
+      quantity: z.string().optional(),
+      initialCost: z.string().optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.type === "product") {
+        if (!data.quantity || isNaN(parseInt(data.quantity)) || parseInt(data.quantity) < 0) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["quantity"], message: "Cantidad inválida" })
+        }
+        if (!data.initialCost || isNaN(parseFloat(data.initialCost)) || parseFloat(data.initialCost) < 0) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["initialCost"], message: "Costo inválido" })
+        }
       }
-      if (!data.initialCost || isNaN(parseFloat(data.initialCost)) || parseFloat(data.initialCost) < 0) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["initialCost"], message: "Costo inválido" })
-      }
-    }
-  })
+    })
 
   type AddFormSchema = z.infer<typeof addSchema>
-  const { handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<AddFormSchema>({
+  const {
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<AddFormSchema>({
     resolver: zodResolver(addSchema),
     defaultValues: {
       type: itemType,
@@ -104,9 +115,9 @@ export default function AddInventoryItemPage() {
     const minV = mwQtyMin ? parseInt(mwQtyMin) : undefined
     const maxV = mwQtyMax ? parseInt(mwQtyMax) : undefined
 
-    setInventoryByWarehouse(prev => {
+    setInventoryByWarehouse((prev) => {
       // si ya existe la bodega, reemplazar
-      const others = prev.filter(e => e.warehouse !== mwWarehouse)
+      const others = prev.filter((e) => e.warehouse !== mwWarehouse)
       return [...others, { warehouse: mwWarehouse, qtyInit: init, qtyMin: minV, qtyMax: maxV }]
     })
     setIsWarehouseModalOpen(false)
@@ -136,7 +147,9 @@ export default function AddInventoryItemPage() {
       setBasePrice(tot > 0 ? tot.toFixed(2) : "")
     }
     setValue("totalPrice", total, { shouldValidate: true })
-    setValue("basePrice", (t > 0 ? (parseFloat(total || "0") / (1 + t / 100)) : parseFloat(total || "0")).toString(), { shouldValidate: true })
+    setValue("basePrice", (t > 0 ? parseFloat(total || "0") / (1 + t / 100) : parseFloat(total || "0")).toString(), {
+      shouldValidate: true,
+    })
   }
 
   const priceToShow = useMemo(() => totalPrice || basePrice || "0.00", [totalPrice, basePrice])
@@ -165,15 +178,15 @@ export default function AddInventoryItemPage() {
     e.preventDefault()
     setIsImageDragOver(false)
     const file = e.dataTransfer.files[0]
-    if (file && file.type.startsWith('image/')) {
+    if (file && file.type.startsWith("image/")) {
       onImageChange(file)
     }
   }
 
   const handleImageAreaClick = () => {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
+    const input = document.createElement("input")
+    input.type = "file"
+    input.accept = "image/*"
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
@@ -262,16 +275,16 @@ export default function AddInventoryItemPage() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold text-camouflage-green-900">Nuevo ítem de venta</h1>
-            <p className="text-camouflage-green-600 mt-1 max-w-3xl">
+            <p className="mt-1 max-w-3xl text-camouflage-green-600">
               Crea tus productos inventariables y/o servicios que ofreces para registrar en tus ventas.
             </p>
           </div>
         </div>
 
         {/* Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left - Form */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Tipo */}
             <Card className="border-camouflage-green-200">
               <CardHeader>
@@ -285,7 +298,7 @@ export default function AddInventoryItemPage() {
                       setItemType("product")
                       setUnit("Unidad")
                     }}
-                    className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
+                    className={`flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
                       itemType === "product"
                         ? "border-camouflage-green-500 bg-camouflage-green-50 text-camouflage-green-700"
                         : "border-gray-200 bg-white text-gray-600 hover:border-camouflage-green-300 hover:bg-camouflage-green-50"
@@ -299,7 +312,7 @@ export default function AddInventoryItemPage() {
                       setItemType("service")
                       setUnit("Servicio")
                     }}
-                    className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
+                    className={`flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
                       itemType === "service"
                         ? "border-camouflage-green-500 bg-camouflage-green-50 text-camouflage-green-700"
                         : "border-gray-200 bg-white text-gray-600 hover:border-camouflage-green-300 hover:bg-camouflage-green-50"
@@ -308,7 +321,7 @@ export default function AddInventoryItemPage() {
                     Servicio
                   </button>
                 </div>
-                <p className="text-xs text-gray-700 mt-3">
+                <p className="mt-3 text-xs text-gray-700">
                   Ten en cuenta que, una vez creado, no podrás cambiar el tipo de ítem ni su condición variable.
                 </p>
               </CardContent>
@@ -321,43 +334,52 @@ export default function AddInventoryItemPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label className="text-sm text-gray-700" htmlFor="name">Nombre <span className="text-red-500">*</span></Label>
+                  <Label className="text-sm text-gray-700" htmlFor="name">
+                    Nombre <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="name"
                     value={name}
-                    onChange={(e) => { setName(e.target.value); setValue("name", e.target.value, { shouldValidate: true }) }}
+                    onChange={(e) => {
+                      setName(e.target.value)
+                      setValue("name", e.target.value, { shouldValidate: true })
+                    }}
                     placeholder="Nombre del producto o servicio"
-                    className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                    className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                   />
                   {errors?.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-700" htmlFor="reference">Referencia</Label>
+                    <Label className="text-sm text-gray-700" htmlFor="reference">
+                      Referencia
+                    </Label>
                     <Input
                       id="reference"
                       value={reference}
                       onChange={(e) => setReference(e.target.value)}
                       placeholder="Referencia interna"
-                      className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-700" htmlFor="code">Código del producto o servicio</Label>
+                    <Label className="text-sm text-gray-700" htmlFor="code">
+                      Código del producto o servicio
+                    </Label>
                     <Input
                       id="code"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
                       placeholder="SKU / Código"
-                      className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label className="text-sm text-gray-700">Categoría</Label>
                     <Select value={category} onValueChange={setCategory}>
-                      <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
+                      <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
                         <SelectValue placeholder="Selecciona una categoría" />
                       </SelectTrigger>
                       <SelectContent>
@@ -369,17 +391,27 @@ export default function AddInventoryItemPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-700">Unidad de medida <span className="text-red-500">*</span></Label>
-                    <Select value={unit} onValueChange={(v) => { setUnit(v); setValue("unit", v, { shouldValidate: true }) }}>
-                  {errors?.unit && <p className="text-xs text-red-600">{errors.unit.message}</p>}
-                      <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
+                    <Label className="text-sm text-gray-700">
+                      Unidad de medida <span className="text-red-500">*</span>
+                    </Label>
+                    <Select
+                      value={unit}
+                      onValueChange={(v) => {
+                        setUnit(v)
+                        setValue("unit", v, { shouldValidate: true })
+                      }}
+                    >
+                      {errors?.unit && <p className="text-xs text-red-600">{errors.unit.message}</p>}
+                      <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
                         <SelectValue placeholder="Selecciona una unidad" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start" avoidCollisions={false}>
                         {itemType === "product" ? (
                           <>
                             {/* Unidad */}
-                            <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0">Unidad</div>
+                            <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Unidad
+                            </div>
                             <SelectItem value="Unidad">Unidad</SelectItem>
                             <SelectItem value="Pieza">Pieza</SelectItem>
                             <SelectItem value="Paquete">Paquete</SelectItem>
@@ -387,7 +419,9 @@ export default function AddInventoryItemPage() {
                             <SelectItem value="Docena">Docena</SelectItem>
 
                             {/* Longitud */}
-                            <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">Longitud</div>
+                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Longitud
+                            </div>
                             <SelectItem value="Metro">Metro</SelectItem>
                             <SelectItem value="Centímetro">Centímetro</SelectItem>
                             <SelectItem value="Kilómetro">Kilómetro</SelectItem>
@@ -395,20 +429,26 @@ export default function AddInventoryItemPage() {
                             <SelectItem value="Pie">Pie</SelectItem>
 
                             {/* Área */}
-                            <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">Área</div>
+                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Área
+                            </div>
                             <SelectItem value="Metro²">Metro²</SelectItem>
                             <SelectItem value="Centímetro²">Centímetro²</SelectItem>
                             <SelectItem value="Hectárea">Hectárea</SelectItem>
 
                             {/* Volumen */}
-                            <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">Volumen</div>
+                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Volumen
+                            </div>
                             <SelectItem value="Litro">Litro</SelectItem>
                             <SelectItem value="Mililitro">Mililitro</SelectItem>
                             <SelectItem value="Metro³">Metro³</SelectItem>
                             <SelectItem value="Galón">Galón</SelectItem>
 
                             {/* Peso */}
-                            <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">Peso</div>
+                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Peso
+                            </div>
                             <SelectItem value="Kilogramo">Kilogramo</SelectItem>
                             <SelectItem value="Gramo">Gramo</SelectItem>
                             <SelectItem value="Tonelada">Tonelada</SelectItem>
@@ -418,13 +458,17 @@ export default function AddInventoryItemPage() {
                         ) : (
                           <>
                             {/* Servicio */}
-                            <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0">Servicio</div>
+                            <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Servicio
+                            </div>
                             <SelectItem value="Servicio">Servicio</SelectItem>
                             <SelectItem value="Consultoría">Consultoría</SelectItem>
                             <SelectItem value="Proyecto">Proyecto</SelectItem>
 
                             {/* Tiempo */}
-                            <div className="px-2 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50 sticky top-0 mt-2">Tiempo</div>
+                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                              Tiempo
+                            </div>
                             <SelectItem value="Hora">Hora</SelectItem>
                             <SelectItem value="Día">Día</SelectItem>
                             <SelectItem value="Semana">Semana</SelectItem>
@@ -437,13 +481,15 @@ export default function AddInventoryItemPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm text-gray-700" htmlFor="description">Descripción</Label>
+                  <Label className="text-sm text-gray-700" htmlFor="description">
+                    Descripción
+                  </Label>
                   <Textarea
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Descripción del producto o servicio"
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     rows={4}
                   />
                 </div>
@@ -456,9 +502,11 @@ export default function AddInventoryItemPage() {
                 <CardTitle className="text-camouflage-green-900">Precio</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_180px_auto_1fr] items-end gap-4">
+                <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-[1fr_auto_180px_auto_1fr]">
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-700" htmlFor="basePrice">Precio base <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm text-gray-700" htmlFor="basePrice">
+                      Precio base <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="basePrice"
                       type="number"
@@ -466,15 +514,15 @@ export default function AddInventoryItemPage() {
                       value={basePrice}
                       onChange={(e) => handleBaseOrTaxChange(e.target.value, tax)}
                       placeholder="0.00"
-                      className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     />
-                  {errors?.basePrice && <p className="text-xs text-red-600">{errors.basePrice.message}</p>}
+                    {errors?.basePrice && <p className="text-xs text-red-600">{errors.basePrice.message}</p>}
                   </div>
-                  <div className="text-center pb-3 text-gray-400">+</div>
+                  <div className="pb-3 text-center text-gray-400">+</div>
                   <div className="space-y-2">
                     <Label className="text-sm text-gray-700">Impuesto</Label>
                     <Select value={tax} onValueChange={(v) => handleBaseOrTaxChange(basePrice, v)}>
-                      <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
+                      <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
                         <SelectValue placeholder="Ninguno (0%)" />
                       </SelectTrigger>
                       <SelectContent>
@@ -484,9 +532,11 @@ export default function AddInventoryItemPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="text-center pb-3 text-gray-400">=</div>
+                  <div className="pb-3 text-center text-gray-400">=</div>
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-700" htmlFor="totalPrice">Precio total <span className="text-red-500">*</span></Label>
+                    <Label className="text-sm text-gray-700" htmlFor="totalPrice">
+                      Precio total <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       id="totalPrice"
                       type="number"
@@ -494,9 +544,9 @@ export default function AddInventoryItemPage() {
                       value={totalPrice}
                       onChange={(e) => handleTotalChange(e.target.value)}
                       placeholder="0.00"
-                      className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     />
-                  {errors?.totalPrice && <p className="text-xs text-red-600">{errors.totalPrice.message}</p>}
+                    {errors?.totalPrice && <p className="text-xs text-red-600">{errors.totalPrice.message}</p>}
                   </div>
                 </div>
               </CardContent>
@@ -514,8 +564,8 @@ export default function AddInventoryItemPage() {
                   </p>
                   {/* Lista de bodegas agregadas */}
                   {inventoryByWarehouse.length > 0 ? (
-                    <div className="border border-camouflage-green-200 rounded-lg overflow-hidden">
-                      <div className="grid grid-cols-4 bg-camouflage-green-50/50 text-sm font-semibold text-camouflage-green-800 px-4 py-2">
+                    <div className="overflow-hidden rounded-lg border border-camouflage-green-200">
+                      <div className="grid grid-cols-4 bg-camouflage-green-50/50 px-4 py-2 text-sm font-semibold text-camouflage-green-800">
                         <div>Bodega</div>
                         <div className="text-right">Cant. inicial</div>
                         <div className="text-right">Cant. mínima</div>
@@ -523,11 +573,14 @@ export default function AddInventoryItemPage() {
                       </div>
                       <div>
                         {inventoryByWarehouse.map((w) => (
-                          <div key={w.warehouse} className="grid grid-cols-4 px-4 py-2 border-t border-camouflage-green-100 text-sm">
+                          <div
+                            key={w.warehouse}
+                            className="grid grid-cols-4 border-t border-camouflage-green-100 px-4 py-2 text-sm"
+                          >
                             <div className="text-camouflage-green-900">{w.warehouse}</div>
                             <div className="text-right">{w.qtyInit}</div>
-                            <div className="text-right">{w.qtyMin ?? '-'}</div>
-                            <div className="text-right">{w.qtyMax ?? '-'}</div>
+                            <div className="text-right">{w.qtyMin ?? "-"}</div>
+                            <div className="text-right">{w.qtyMax ?? "-"}</div>
                           </div>
                         ))}
                       </div>
@@ -542,7 +595,7 @@ export default function AddInventoryItemPage() {
                       className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
                       onClick={() => setIsWarehouseModalOpen(true)}
                     >
-                      <Plus className="h-4 w-4 mr-2" /> Agregar bodega
+                      <Plus className="mr-2 h-4 w-4" /> Agregar bodega
                     </Button>
                   </div>
                 </CardContent>
@@ -555,7 +608,7 @@ export default function AddInventoryItemPage() {
                 <CardTitle className="text-camouflage-green-900">Costo</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 max-w-sm">
+                <div className="max-w-sm space-y-2">
                   <Label className="text-sm text-gray-700" htmlFor="initialCost">
                     Costo inicial {itemType === "product" && <span className="text-red-500">*</span>}
                   </Label>
@@ -566,7 +619,7 @@ export default function AddInventoryItemPage() {
                     value={initialCost}
                     onChange={(e) => setInitialCost(e.target.value)}
                     placeholder="0.00"
-                    className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                    className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                   />
                 </div>
               </CardContent>
@@ -575,17 +628,17 @@ export default function AddInventoryItemPage() {
 
           {/* Right - Sticky preview & actions */}
           <div className="lg:col-span-1">
-            <div className="lg:sticky lg:top-6 space-y-4">
+            <div className="space-y-4 lg:sticky lg:top-6">
               <Card className="border-camouflage-green-200">
                 <CardContent className="pt-6">
                   <div className="space-y-4">
                     {/* Image uploader */}
                     <div>
-                      <div 
-                        className={`w-full aspect-square rounded-lg overflow-hidden cursor-pointer transition-colors ${
-                          isImageDragOver 
-                            ? 'border-2 border-camouflage-green-500 bg-camouflage-green-50' 
-                            : 'border-2 border-dashed border-gray-300 hover:border-camouflage-green-400 hover:bg-camouflage-green-25'
+                      <div
+                        className={`aspect-square w-full cursor-pointer overflow-hidden rounded-lg transition-colors ${
+                          isImageDragOver
+                            ? "border-2 border-camouflage-green-500 bg-camouflage-green-50"
+                            : "hover:bg-camouflage-green-25 border-2 border-dashed border-gray-300 hover:border-camouflage-green-400"
                         }`}
                         onClick={!imagePreview ? handleImageAreaClick : undefined}
                         onDragOver={handleImageDragOver}
@@ -594,11 +647,11 @@ export default function AddInventoryItemPage() {
                       >
                         {imagePreview ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                          <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
                         ) : (
-                          <div className="aspect-square flex flex-col items-center justify-center bg-white">
-                            <Tag className="h-14 w-14 text-gray-300 mb-2" />
-                            <p className="text-xs text-gray-500 text-center px-2">
+                          <div className="flex aspect-square flex-col items-center justify-center bg-white">
+                            <Tag className="mb-2 h-14 w-14 text-gray-300" />
+                            <p className="px-2 text-center text-xs text-gray-500">
                               Haz clic o arrastra una imagen aquí
                             </p>
                           </div>
@@ -610,7 +663,7 @@ export default function AddInventoryItemPage() {
                           type="file"
                           accept="image/*"
                           onChange={(e) => onImageChange(e.target.files?.[0] || null)}
-                          className="block w-full text-sm text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-camouflage-green-700 file:text-white hover:file:bg-camouflage-green-800"
+                          className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-camouflage-green-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-camouflage-green-800"
                         />
                         {imagePreview && (
                           <Button
@@ -630,12 +683,8 @@ export default function AddInventoryItemPage() {
 
                     {/* Name & price preview */}
                     <div className="space-y-1">
-                      <div className="text-lg font-semibold text-camouflage-green-900">
-                        {name || "Nombre del ítem"}
-                      </div>
-                      <div className="text-camouflage-green-700 font-medium">
-                        ${priceToShow || "0.00"}
-                      </div>
+                      <div className="text-lg font-semibold text-camouflage-green-900">{name || "Nombre del ítem"}</div>
+                      <div className="font-medium text-camouflage-green-700">${priceToShow || "0.00"}</div>
                       <div className="text-xs text-camouflage-green-600">
                         {itemType === "product" ? "Producto" : "Servicio"}
                       </div>
@@ -655,7 +704,7 @@ export default function AddInventoryItemPage() {
                     Cancelar
                   </Button>
                   <Button
-                    className="w-full bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white disabled:opacity-50"
+                    className="w-full bg-camouflage-green-700 text-white hover:bg-camouflage-green-800 disabled:opacity-50"
                     disabled={isSubmitting}
                     onClick={handleSubmit(() => doSubmit(false))}
                   >
@@ -687,9 +736,11 @@ export default function AddInventoryItemPage() {
         >
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm text-gray-700">Bodega <span className="text-red-500">*</span></Label>
+              <Label className="text-sm text-gray-700">
+                Bodega <span className="text-red-500">*</span>
+              </Label>
               <Select value={mwWarehouse} onValueChange={setMwWarehouse}>
-                <SelectTrigger className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none">
+                <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
                   <SelectValue placeholder="Selecciona una bodega" />
                 </SelectTrigger>
                 <SelectContent>
@@ -699,15 +750,17 @@ export default function AddInventoryItemPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <Label className="text-sm text-gray-700">Cantidad inicial <span className="text-red-500">*</span></Label>
+                <Label className="text-sm text-gray-700">
+                  Cantidad inicial <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   type="number"
                   min="0"
                   value={mwQtyInit}
                   onChange={(e) => setMwQtyInit(e.target.value)}
-                  className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                 />
               </div>
               <div className="space-y-2">
@@ -717,7 +770,7 @@ export default function AddInventoryItemPage() {
                   min="0"
                   value={mwQtyMin}
                   onChange={(e) => setMwQtyMin(e.target.value)}
-                  className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                 />
               </div>
               <div className="space-y-2">
@@ -727,12 +780,15 @@ export default function AddInventoryItemPage() {
                   min="0"
                   value={mwQtyMax}
                   onChange={(e) => setMwQtyMax(e.target.value)}
-                  className="w-full h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                 />
               </div>
             </div>
             <div className="flex justify-end">
-              <Button className="bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white" onClick={saveWarehouseEntry}>
+              <Button
+                className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                onClick={saveWarehouseEntry}
+              >
                 Guardar
               </Button>
             </div>

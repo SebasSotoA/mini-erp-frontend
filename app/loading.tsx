@@ -4,14 +4,14 @@ export default function Loading() {
   return (
     <div className="flex h-screen bg-camouflage-green-50">
       {/* Sidebar skeleton */}
-      <div className="hidden lg:flex w-64 bg-white border-r border-camouflage-green-200">
-        <div className="w-full p-6 space-y-6">
+      <div className="hidden w-64 border-r border-camouflage-green-200 bg-white lg:flex">
+        <div className="w-full space-y-6 p-6">
           {/* Logo skeleton */}
           <div className="flex items-center space-x-3">
             <SkeletonStyled className="h-8 w-8 rounded" />
             <SkeletonStyled className="h-6 w-32" />
           </div>
-          
+
           {/* Navigation skeleton */}
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -25,9 +25,9 @@ export default function Loading() {
       </div>
 
       {/* Main content skeleton */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex flex-1 flex-col">
         {/* Mobile header skeleton */}
-        <div className="bg-white shadow-sm border-b border-camouflage-green-200 lg:hidden">
+        <div className="border-b border-camouflage-green-200 bg-white shadow-sm lg:hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <SkeletonStyled className="h-6 w-6 rounded" />
             <SkeletonStyled className="h-6 w-32" />
@@ -40,22 +40,22 @@ export default function Loading() {
           <div className="p-4 sm:p-6 lg:p-8">
             <div className="space-y-6">
               {/* Header skeleton */}
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <div>
                   <SkeletonStyled className="h-8 w-48" />
-                  <SkeletonStyled className="h-4 w-96 mt-2" />
+                  <SkeletonStyled className="mt-2 h-4 w-96" />
                 </div>
                 <SkeletonStyled className="h-12 w-48" />
               </div>
 
               {/* Cards skeleton */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="bg-white p-6 rounded-lg border border-camouflage-green-200">
+                  <div key={i} className="rounded-lg border border-camouflage-green-200 bg-white p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <SkeletonStyled className="h-4 w-20" />
-                        <SkeletonStyled className="h-8 w-16 mt-2" />
+                        <SkeletonStyled className="mt-2 h-8 w-16" />
                       </div>
                       <SkeletonStyled className="h-8 w-8 rounded" />
                     </div>
@@ -64,8 +64,8 @@ export default function Loading() {
               </div>
 
               {/* Chart skeleton */}
-              <div className="bg-white p-6 rounded-lg border border-camouflage-green-200">
-                <SkeletonStyled className="h-6 w-32 mb-4" />
+              <div className="rounded-lg border border-camouflage-green-200 bg-white p-6">
+                <SkeletonStyled className="mb-4 h-6 w-32" />
                 <SkeletonStyled className="h-64 w-full" />
               </div>
             </div>

@@ -1,7 +1,8 @@
+import { ArrowLeft, Package } from "lucide-react"
+
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { SkeletonStyled } from "@/components/ui/skeleton-styled"
-import { ArrowLeft, Package } from "lucide-react"
 
 export default function Loading() {
   return (
@@ -12,21 +13,21 @@ export default function Loading() {
           <SkeletonStyled className="h-10 w-10" />
           <div>
             <SkeletonStyled className="h-8 w-64" />
-            <SkeletonStyled className="h-4 w-48 mt-2" />
+            <SkeletonStyled className="mt-2 h-4 w-48" />
           </div>
         </div>
 
         {/* Content skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left side - Main content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 lg:col-span-2">
             {/* Basic info card */}
             <Card className="border-camouflage-green-200">
               <CardHeader>
                 <SkeletonStyled className="h-6 w-32" />
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <SkeletonStyled className="h-4 w-16" />
                     <SkeletonStyled className="h-10 w-full" />
@@ -49,7 +50,7 @@ export default function Loading() {
                 <SkeletonStyled className="h-6 w-20" />
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <SkeletonStyled className="h-4 w-24" />
                     <SkeletonStyled className="h-8 w-full" />
@@ -74,17 +75,20 @@ export default function Loading() {
               <CardContent>
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 border border-camouflage-green-100 rounded-lg">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-lg border border-camouflage-green-100 p-3"
+                    >
                       <div className="flex items-center gap-3">
                         <SkeletonStyled className="h-8 w-8 rounded-full" />
                         <div>
                           <SkeletonStyled className="h-4 w-20" />
-                          <SkeletonStyled className="h-3 w-16 mt-1" />
+                          <SkeletonStyled className="mt-1 h-3 w-16" />
                         </div>
                       </div>
                       <div className="text-right">
                         <SkeletonStyled className="h-4 w-12" />
-                        <SkeletonStyled className="h-3 w-16 mt-1" />
+                        <SkeletonStyled className="mt-1 h-3 w-16" />
                       </div>
                     </div>
                   ))}
@@ -99,7 +103,7 @@ export default function Loading() {
             <Card className="border-camouflage-green-200">
               <CardContent className="pt-6">
                 <div className="space-y-4">
-                  <div className="w-full aspect-square rounded-lg overflow-hidden bg-camouflage-green-50 flex items-center justify-center">
+                  <div className="flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg bg-camouflage-green-50">
                     <Package className="h-14 w-14 text-camouflage-green-300" />
                   </div>
                   <div className="space-y-2">

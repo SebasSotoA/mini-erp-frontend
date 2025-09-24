@@ -1,17 +1,14 @@
 "use client"
 
-import * as React from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import * as React from "react"
+
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { cn } from "@/lib/utils"
 
 interface DatePickerProps {
   value?: Date | null
@@ -54,38 +51,34 @@ export function DatePicker({
           type="button"
           variant="outline"
           className={cn(
-            "w-full justify-start text-left font-normal border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50",
+            "w-full justify-start border-camouflage-green-300 text-left font-normal text-camouflage-green-700 hover:bg-camouflage-green-50",
             !displayValue && "text-camouflage-green-500",
-            className
+            className,
           )}
           disabled={disabled}
         >
           {/* ✅ Ícono condicional */}
           {showIcon && <CalendarIcon className="mr-2 h-4 w-4" />}
-          {displayValue ? (
-            format(displayValue, "dd/MM/yyyy", { locale: es })
-          ) : (
-            <span>{placeholder}</span>
-          )}
+          {displayValue ? format(displayValue, "dd/MM/yyyy", { locale: es }) : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-auto p-0 border-camouflage-green-200 z-50" 
+      <PopoverContent
+        className="z-50 w-auto border-camouflage-green-200 p-0"
         align="start"
         side="bottom"
         sideOffset={4}
       >
-        <div className="bg-white rounded-md">
-        <Calendar
-          mode="single"
-          selected={displayValue}
-          onSelect={handleDateChange}
-          initialFocus
-          locale={es}
-          className="bg-white"
-          showOutsideDays
-        />
-          <div className="flex items-center justify-between gap-2 p-3 border-t border-camouflage-green-200">
+        <div className="rounded-md bg-white">
+          <Calendar
+            mode="single"
+            selected={displayValue}
+            onSelect={handleDateChange}
+            initialFocus
+            locale={es}
+            className="bg-white"
+            showOutsideDays
+          />
+          <div className="flex items-center justify-between gap-2 border-t border-camouflage-green-200 p-3">
             <Button
               type="button"
               variant="ghost"
@@ -109,7 +102,7 @@ export function DatePicker({
               <Button
                 type="button"
                 variant="outline"
-                className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800 border-camouflage-green-700"
+                className="border-camouflage-green-700 bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
                 onClick={() => {
                   const today = new Date()
                   onChange?.(today)

@@ -138,7 +138,7 @@ const initialWarehouses: Warehouse[] = [
     isActive: true,
   },
   {
-    id: "2", 
+    id: "2",
     name: "Bodega Norte",
     location: "Zona Norte",
     capacity: 5000,
@@ -148,7 +148,7 @@ const initialWarehouses: Warehouse[] = [
   {
     id: "3",
     name: "Bodega Sur",
-    location: "Zona Sur", 
+    location: "Zona Sur",
     capacity: 7500,
     manager: "Carlos Rodríguez",
     isActive: true,
@@ -289,7 +289,7 @@ const initialProducts: Product[] = [
     id: "7",
     name: "Herman Miller Aeron Chair",
     sku: "HM-AERON-007",
-    basePrice: 1173.10,
+    basePrice: 1173.1,
     taxPercent: 19,
     price: 1395.99,
     cost: 850.0,
@@ -429,7 +429,7 @@ const initialProducts: Product[] = [
     id: "14",
     name: "Notebook Premium A5",
     sku: "NBK-A5-014",
-    basePrice: 21.00,
+    basePrice: 21.0,
     taxPercent: 19,
     price: 24.99,
     cost: 8.0,
@@ -1205,9 +1205,9 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     })
 
     productStocks.forEach((stock) => {
-      const warehouse = warehouses.find(w => w.id === stock.warehouseId)
-      const product = products.find(p => p.id === stock.productId)
-      
+      const warehouse = warehouses.find((w) => w.id === stock.warehouseId)
+      const product = products.find((p) => p.id === stock.productId)
+
       if (warehouse && product) {
         warehouseStock[warehouse.name].stock += stock.quantity
         warehouseStock[warehouse.name].value += product.price * stock.quantity
@@ -1215,15 +1215,18 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
-    return Object.entries(warehouseStock).map(([warehouse, { stock, value, products }]) => ({ 
-      warehouse, stock, value, products 
+    return Object.entries(warehouseStock).map(([warehouse, { stock, value, products }]) => ({
+      warehouse,
+      stock,
+      value,
+      products,
     }))
   }
 
   const getStockHealthMetrics = () => {
     const totalProducts = products.length
-    const lowStock = products.filter(p => p.stock <= p.minStock).length
-    const overStock = products.filter(p => p.stock >= p.maxStock).length
+    const lowStock = products.filter((p) => p.stock <= p.minStock).length
+    const overStock = products.filter((p) => p.stock >= p.maxStock).length
     const optimalStock = totalProducts - lowStock - overStock
     const stockHealthPercentage = Math.round((optimalStock / totalProducts) * 100)
 
@@ -1232,7 +1235,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       lowStock,
       overStock,
       optimalStock,
-      stockHealthPercentage
+      stockHealthPercentage,
     }
   }
 
@@ -1424,17 +1427,18 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
         getProfitabilityAnalysis,
         getStockHealthMetrics,
         // Funciones para el módulo de Valor de Inventario
-        getInventoryValueProducts: () => products.map(product => ({
-          ...product,
-          warehouse: product.warehouseId || 'Principal',
-          total: product.cost * product.stock
-        })),
+        getInventoryValueProducts: () =>
+          products.map((product) => ({
+            ...product,
+            warehouse: product.warehouseId || "Principal",
+            total: product.cost * product.stock,
+          })),
         getWarehouses: () => {
-          const warehouseSet = new Set(products.map(p => p.warehouseId || 'Principal'))
+          const warehouseSet = new Set(products.map((p) => p.warehouseId || "Principal"))
           return Array.from(warehouseSet).filter(Boolean)
         },
         getCategories: () => {
-          const categorySet = new Set(products.map(p => p.category))
+          const categorySet = new Set(products.map((p) => p.category))
           return Array.from(categorySet).filter(Boolean)
         },
       }}

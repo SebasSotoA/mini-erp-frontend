@@ -1,26 +1,5 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Modal } from "@/components/ui/modal"
-import { useInventory } from "@/contexts/inventory-context"
-import { useCurrentTime } from "@/hooks/use-hydrated"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts"
 import {
   Package,
   TrendingUp,
@@ -38,6 +17,28 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react"
+import { useState, useEffect } from "react"
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts"
+
+import { MainLayout } from "@/components/layout/main-layout"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Modal } from "@/components/ui/modal"
+import { useInventory } from "@/contexts/inventory-context"
+import { useCurrentTime } from "@/hooks/use-hydrated"
 
 const COLORS = ["#5b7554", "#455b40", "#364933", "#2d3b2a", "#253123", "#6f8568"]
 
@@ -64,7 +65,7 @@ export default function Dashboard() {
     stockGauge: true,
     warehouseComparison: true,
   })
-  
+
   // Usar hook personalizado para obtener la fecha de manera segura
   const currentTime = useCurrentTime()
 
@@ -151,11 +152,11 @@ export default function Dashboard() {
   const toggleChart = (chartType: string) => {
     setSelectedChartType(chartType)
     // Toggle gráfica seleccionada (activar/desactivar)
-    setVisibleCharts(prev => ({ ...prev, [chartType]: !prev[chartType as keyof typeof prev] }))
+    setVisibleCharts((prev) => ({ ...prev, [chartType]: !prev[chartType as keyof typeof prev] }))
   }
 
   const removeChart = (chartType: string) => {
-    setVisibleCharts(prev => ({ ...prev, [chartType]: false }))
+    setVisibleCharts((prev) => ({ ...prev, [chartType]: false }))
   }
 
   const showAllCharts = () => {
@@ -183,30 +184,30 @@ export default function Dashboard() {
   // Función para filtrar datos según período seleccionado
   const getFilteredSalesData = () => {
     const now = new Date()
-    let startDate = new Date()
-    
+    const startDate = new Date()
+
     switch (selectedPeriod) {
-      case 'current-month':
+      case "current-month":
         startDate.setMonth(now.getMonth())
         startDate.setDate(1)
         break
-      case 'last-month':
+      case "last-month":
         startDate.setMonth(now.getMonth() - 1)
         startDate.setDate(1)
         break
-      case 'current-quarter':
+      case "current-quarter":
         startDate.setMonth(Math.floor(now.getMonth() / 3) * 3)
         startDate.setDate(1)
         break
-      case 'last-quarter':
+      case "last-quarter":
         startDate.setMonth(Math.floor(now.getMonth() / 3) * 3 - 3)
         startDate.setDate(1)
         break
-      case 'current-year':
+      case "current-year":
         startDate.setMonth(0)
         startDate.setDate(1)
         break
-      case 'last-year':
+      case "last-year":
         startDate.setFullYear(now.getFullYear() - 1)
         startDate.setMonth(0)
         startDate.setDate(1)
@@ -217,8 +218,8 @@ export default function Dashboard() {
         startDate.setDate(1)
         break
     }
-    
-    return salesAnalytics.dailySales.filter(sale => {
+
+    return salesAnalytics.dailySales.filter((sale) => {
       const saleDate = new Date(sale.date)
       return saleDate >= startDate
     })
@@ -228,21 +229,21 @@ export default function Dashboard() {
     <MainLayout>
       <div className="space-y-6">
         {/* Header de Bienvenida */}
-        <div className="bg-gradient-to-r from-camouflage-green-400 to-camouflage-green-800 rounded-xl p-6 text-white shadow-lg">
-          <div className="flex justify-between items-start">
+        <div className="rounded-xl bg-gradient-to-r from-camouflage-green-400 to-camouflage-green-800 p-6 text-white shadow-lg">
+          <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-2 text-white">¡Bienvenido de vuelta!</h1>
-              <p className="text-white text-lg">Aquí tienes un resumen de tu inventario y ventas</p>
-              <p className="text-camouflage-green-200 text-sm mt-1">
+              <h1 className="mb-2 text-3xl font-bold text-white">¡Bienvenido de vuelta!</h1>
+              <p className="text-lg text-white">Aquí tienes un resumen de tu inventario y ventas</p>
+              <p className="mt-1 text-sm text-camouflage-green-200">
                 Última actualización: {currentTime || "Cargando..."}
               </p>
             </div>
-            <div className="flex space-x-3 items-center">
+            <div className="flex items-center space-x-3">
               <div className="relative">
                 <select
                   value={selectedPeriod}
                   onChange={(e) => setSelectedPeriod(e.target.value)}
-                  className="bg-camouflage-green-600/50 border border-camouflage-green-500/50 text-white rounded-lg pl-3 py-2 pr-3 focus:outline-none focus:ring-2 focus:ring-camouflage-green-300 text-base font-bold h-10"
+                  className="h-10 rounded-lg border border-camouflage-green-500/50 bg-camouflage-green-600/50 py-2 pl-3 pr-3 text-base font-bold text-white focus:outline-none focus:ring-2 focus:ring-camouflage-green-300"
                 >
                   {periodOptions.map((option) => (
                     <option key={option.value} value={option.value} className="text-camouflage-green-900">
@@ -250,13 +251,13 @@ export default function Dashboard() {
                     </option>
                   ))}
                 </select>
-                <Calendar className="absolute right-7 top-1/2 transform -translate-y-1/2 h-4 w-4 text-camouflage-green-200 pointer-events-none" />
+                <Calendar className="pointer-events-none absolute right-7 top-1/2 h-4 w-4 -translate-y-1/2 transform text-camouflage-green-200" />
               </div>
               <Button
                 onClick={() => setIsChartModalOpen(true)}
-                className="bg-camouflage-green-600/50 hover:bg-camouflage-green-500/70 border border-camouflage-green-500/50 text-white text-base font-bold h-10"
+                className="h-10 border border-camouflage-green-500/50 bg-camouflage-green-600/50 text-base font-bold text-white hover:bg-camouflage-green-500/70"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 Gestionar Gráficas
               </Button>
             </div>
@@ -264,23 +265,25 @@ export default function Dashboard() {
         </div>
 
         {/* Métricas Principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="hover:shadow-lg transition-shadow border-camouflage-green-200">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-camouflage-green-200 transition-shadow hover:shadow-lg">
             <CardContent className="flex items-center p-6">
-              <div className="p-3 bg-camouflage-green-100 rounded-full">
+              <div className="rounded-full bg-camouflage-green-100 p-3">
                 <Package className="h-6 w-6 text-camouflage-green-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-camouflage-green-600">Total Productos</p>
                 <p className="text-2xl font-bold text-camouflage-green-900">{totalProducts}</p>
-                <p className="text-xs text-camouflage-green-500">Valor: {formatCurrency(financialMetrics.totalInventoryValue)}</p>
+                <p className="text-xs text-camouflage-green-500">
+                  Valor: {formatCurrency(financialMetrics.totalInventoryValue)}
+                </p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow border-camouflage-green-200">
+          <Card className="border-camouflage-green-200 transition-shadow hover:shadow-lg">
             <CardContent className="flex items-center p-6">
-              <div className="p-3 bg-camouflage-green-200 rounded-full">
+              <div className="rounded-full bg-camouflage-green-200 p-3">
                 <TrendingUp className="h-6 w-6 text-camouflage-green-700" />
               </div>
               <div className="ml-4">
@@ -291,9 +294,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow border-camouflage-green-200">
+          <Card className="border-camouflage-green-200 transition-shadow hover:shadow-lg">
             <CardContent className="flex items-center p-6">
-              <div className="p-3 bg-red-100 rounded-full">
+              <div className="rounded-full bg-red-100 p-3">
                 <AlertTriangle className="h-6 w-6 text-red-600" />
               </div>
               <div className="ml-4">
@@ -304,14 +307,16 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow border-camouflage-green-200">
+          <Card className="border-camouflage-green-200 transition-shadow hover:shadow-lg">
             <CardContent className="flex items-center p-6">
-              <div className="p-3 bg-camouflage-green-300 rounded-full">
+              <div className="rounded-full bg-camouflage-green-300 p-3">
                 <DollarSign className="h-6 w-6 text-camouflage-green-800" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-camouflage-green-600">Margen Bruto</p>
-                <p className="text-2xl font-bold text-camouflage-green-900">{(financialMetrics.grossMargin * 100).toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-camouflage-green-900">
+                  {(financialMetrics.grossMargin * 100).toFixed(1)}%
+                </p>
                 <p className="text-xs text-camouflage-green-500">Rentabilidad global</p>
               </div>
             </CardContent>
@@ -319,36 +324,36 @@ export default function Dashboard() {
         </div>
 
         {/* Gráficos Principales */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Productos más vendidos */}
           {visibleCharts.topProducts && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <ShoppingCart className="h-5 w-5 mr-2 text-camouflage-green-700" />
+                    <ShoppingCart className="mr-2 h-5 w-5 text-camouflage-green-700" />
                     Top 10 Productos más vendidos
                   </div>
                   <button
-                    onClick={() => removeChart('topProducts')}
-                    className="p-1 hover:bg-camouflage-green-100 rounded-full transition-colors"
+                    onClick={() => removeChart("topProducts")}
+                    className="rounded-full p-1 transition-colors hover:bg-camouflage-green-100"
                   >
                     <X className="h-4 w-4 text-camouflage-green-500" />
                   </button>
                 </CardTitle>
               </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={salesAnalytics.topProducts.slice(0, 10)}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="product" angle={-45} textAnchor="end" height={80} fontSize={12} />
-                  <YAxis />
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                  <Bar dataKey="revenue" fill="#5b7554" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={salesAnalytics.topProducts.slice(0, 10)}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="product" angle={-45} textAnchor="end" height={80} fontSize={12} />
+                    <YAxis />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <Bar dataKey="revenue" fill="#5b7554" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           )}
 
           {/* Distribución por categoría */}
@@ -357,39 +362,39 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <PieChartIcon className="h-5 w-5 mr-2 text-camouflage-green-700" />
+                    <PieChartIcon className="mr-2 h-5 w-5 text-camouflage-green-700" />
                     Distribución de Inventario
                   </div>
                   <button
-                    onClick={() => removeChart('inventoryDistribution')}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    onClick={() => removeChart("inventoryDistribution")}
+                    className="rounded-full p-1 transition-colors hover:bg-gray-100"
                   >
                     <X className="h-4 w-4 text-gray-500" />
                   </button>
                 </CardTitle>
               </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={stockByCategory}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ category, percent }) => `${category} ${percent ? (percent * 100).toFixed(0) : 0}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {stockByCategory.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={stockByCategory}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ category, percent }) => `${category} ${percent ? (percent * 100).toFixed(0) : 0}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {stockByCategory.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           )}
         </div>
 
@@ -399,12 +404,12 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <TrendingUp className="h-5 w-5 mr-2 text-emerald-600" />
+                  <TrendingUp className="mr-2 h-5 w-5 text-emerald-600" />
                   Tendencia de Ventas en el Tiempo
                 </div>
                 <button
-                  onClick={() => removeChart('salesTrend')}
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  onClick={() => removeChart("salesTrend")}
+                  className="rounded-full p-1 transition-colors hover:bg-gray-100"
                 >
                   <X className="h-4 w-4 text-gray-500" />
                 </button>
@@ -414,16 +419,13 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={getFilteredSalesData()}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tickFormatter={formatDate}
-                  />
+                  <XAxis dataKey="date" tickFormatter={formatDate} />
                   <YAxis />
-                  <Tooltip 
-                    labelFormatter={formatDateLong} 
+                  <Tooltip
+                    labelFormatter={formatDateLong}
                     formatter={(value, name) => [
                       formatCurrency(Number(value)),
-                      name === 'sales' ? 'Ventas' : 'Beneficio'
+                      name === "sales" ? "Ventas" : "Beneficio",
                     ]}
                   />
                   <Line type="monotone" dataKey="sales" stroke="#10B981" strokeWidth={3} name="Ventas" />
@@ -435,43 +437,41 @@ export default function Dashboard() {
         )}
 
         {/* Nuevas gráficas en grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Gauge de salud del stock */}
           {visibleCharts.stockGauge && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <Gauge className="h-5 w-5 mr-2 text-camouflage-green-700" />
+                    <Gauge className="mr-2 h-5 w-5 text-camouflage-green-700" />
                     Salud del Stock
                   </div>
                   <button
-                    onClick={() => removeChart('stockGauge')}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    onClick={() => removeChart("stockGauge")}
+                    className="rounded-full p-1 transition-colors hover:bg-gray-100"
                   >
                     <X className="h-4 w-4 text-gray-500" />
                   </button>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-center h-64">
-                  <div className="relative w-48 h-48">
+                <div className="flex h-64 items-center justify-center">
+                  <div className="relative h-48 w-48">
                     {/* Semicírculo gauge */}
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                    <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
                       {/* Background arc */}
-                      <path
-                        d="M 20 80 A 30 30 0 0 1 80 80"
-                        fill="none"
-                        stroke="#e5e7eb"
-                        strokeWidth="8"
-                      />
+                      <path d="M 20 80 A 30 30 0 0 1 80 80" fill="none" stroke="#e5e7eb" strokeWidth="8" />
                       {/* Progress arc */}
                       <path
                         d="M 20 80 A 30 30 0 0 1 80 80"
                         fill="none"
                         stroke={
-                          stockHealthMetrics.stockHealthPercentage >= 70 ? "#10B981" :
-                          stockHealthMetrics.stockHealthPercentage >= 50 ? "#F59E0B" : "#EF4444"
+                          stockHealthMetrics.stockHealthPercentage >= 70
+                            ? "#10B981"
+                            : stockHealthMetrics.stockHealthPercentage >= 50
+                              ? "#F59E0B"
+                              : "#EF4444"
                         }
                         strokeWidth="8"
                         strokeDasharray={`${stockHealthMetrics.stockHealthPercentage * 1.88} 188`}
@@ -479,14 +479,12 @@ export default function Dashboard() {
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-3xl font-bold">
-                        {stockHealthMetrics.stockHealthPercentage}%
-                      </span>
+                      <span className="text-3xl font-bold">{stockHealthMetrics.stockHealthPercentage}%</span>
                       <span className="text-sm text-gray-600">Stock Óptimo</span>
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-3 gap-4 mt-4">
+                <div className="mt-4 grid grid-cols-3 gap-4">
                   <div className="text-center">
                     <div className="text-lg font-semibold text-green-600">{stockHealthMetrics.optimalStock}</div>
                     <div className="text-xs text-gray-600">Óptimo</div>
@@ -510,12 +508,12 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <Building2 className="h-5 w-5 mr-2 text-camouflage-green-700" />
+                    <Building2 className="mr-2 h-5 w-5 text-camouflage-green-700" />
                     Comparación Stock por Bodegas
                   </div>
                   <button
-                    onClick={() => removeChart('warehouseComparison')}
-                    className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    onClick={() => removeChart("warehouseComparison")}
+                    className="rounded-full p-1 transition-colors hover:bg-gray-100"
                   >
                     <X className="h-4 w-4 text-gray-500" />
                   </button>
@@ -527,10 +525,10 @@ export default function Dashboard() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" />
                     <YAxis type="category" dataKey="warehouse" fontSize={12} />
-                    <Tooltip 
+                    <Tooltip
                       formatter={(value, name) => [
-                        name === 'stock' ? `${value} unidades` : formatCurrency(Number(value)),
-                        name === 'stock' ? 'Stock' : 'Valor'
+                        name === "stock" ? `${value} unidades` : formatCurrency(Number(value)),
+                        name === "stock" ? "Stock" : "Valor",
                       ]}
                     />
                     <Bar dataKey="stock" fill="#8B5CF6" radius={[0, 4, 4, 0]} name="Stock" />
@@ -548,32 +546,29 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center">
-                  <BarChart3 className="h-5 w-5 mr-2 text-camouflage-green-700" />
+                  <BarChart3 className="mr-2 h-5 w-5 text-camouflage-green-700" />
                   Movimientos de Stock (Últimos 30 días)
                 </div>
                 <button
-                  onClick={() => removeChart('stockMovements')}
-                  className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                  onClick={() => removeChart("stockMovements")}
+                  className="rounded-full p-1 transition-colors hover:bg-gray-100"
                 >
                   <X className="h-4 w-4 text-gray-500" />
                 </button>
               </CardTitle>
             </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={recentMovements}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={formatDate}
-                />
-                <YAxis />
-                <Tooltip labelFormatter={formatDateLong} />
-                <Line type="monotone" dataKey="in" stroke="#10B981" strokeWidth={2} name="Entradas" />
-                <Line type="monotone" dataKey="out" stroke="#EF4444" strokeWidth={2} name="Salidas" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={recentMovements}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={formatDate} />
+                  <YAxis />
+                  <Tooltip labelFormatter={formatDateLong} />
+                  <Line type="monotone" dataKey="in" stroke="#10B981" strokeWidth={2} name="Entradas" />
+                  <Line type="monotone" dataKey="out" stroke="#EF4444" strokeWidth={2} name="Salidas" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
           </Card>
         )}
 
@@ -582,23 +577,23 @@ export default function Dashboard() {
           <Card className="border-l-4 border-l-red-500">
             <CardHeader>
               <CardTitle className="flex items-center text-red-700">
-                <AlertTriangle className="h-5 w-5 mr-2" />
+                <AlertTriangle className="mr-2 h-5 w-5" />
                 Alertas de Stock Bajo
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {lowStockProducts.slice(0, 6).map((product) => (
                   <div
                     key={product.id}
-                    className="flex items-center justify-between p-3 bg-red-50 rounded-lg border border-red-200"
+                    className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-3"
                   >
                     <div>
                       <p className="font-medium text-gray-900">{product.name}</p>
                       <p className="text-sm text-gray-600">SKU: {product.sku}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-red-600 font-semibold">Stock: {product.stock}</p>
+                      <p className="text-sm font-semibold text-red-600">Stock: {product.stock}</p>
                       <p className="text-xs text-gray-500">Min: {product.minStock}</p>
                     </div>
                   </div>
@@ -609,23 +604,29 @@ export default function Dashboard() {
         )}
 
         {/* Modal para Agregar Gráfica */}
-        <Modal isOpen={isChartModalOpen} onClose={() => setIsChartModalOpen(false)} title="Gestionar Gráficas del Dashboard">
+        <Modal
+          isOpen={isChartModalOpen}
+          onClose={() => setIsChartModalOpen(false)}
+          title="Gestionar Gráficas del Dashboard"
+        >
           <div className="space-y-6">
             <div>
-              <p className="text-camouflage-green-700 mb-4">Selecciona las gráficas que deseas mostrar en el dashboard:</p>
-              
+              <p className="mb-4 text-camouflage-green-700">
+                Selecciona las gráficas que deseas mostrar en el dashboard:
+              </p>
+
               {/* Botones de control global */}
-              <div className="flex gap-3 mb-4 p-3 bg-camouflage-green-50 rounded-lg justify-center border border-camouflage-green-200">
+              <div className="mb-4 flex justify-center gap-3 rounded-lg border border-camouflage-green-200 bg-camouflage-green-50 p-3">
                 <Button
                   onClick={showAllCharts}
-                  className="flex items-center gap-2 bg-gradient-to-r from-camouflage-green-600 to-camouflage-green-700 hover:from-camouflage-green-700 hover:to-camouflage-green-800 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium"
+                  className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-camouflage-green-600 to-camouflage-green-700 px-6 py-3 font-medium text-white shadow-md transition-all duration-200 hover:from-camouflage-green-700 hover:to-camouflage-green-800 hover:shadow-lg"
                 >
                   <Eye className="h-4 w-4" />
                   Mostrar Todas
                 </Button>
                 <Button
                   onClick={hideAllCharts}
-                  className="flex items-center gap-2 bg-gradient-to-r from-camouflage-green-800 to-camouflage-green-900 hover:from-camouflage-green-900 hover:to-camouflage-green-950 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 font-medium"
+                  className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-camouflage-green-800 to-camouflage-green-900 px-6 py-3 font-medium text-white shadow-md transition-all duration-200 hover:from-camouflage-green-900 hover:to-camouflage-green-950 hover:shadow-lg"
                 >
                   <EyeOff className="h-4 w-4" />
                   Ocultar Todas
@@ -640,47 +641,55 @@ export default function Dashboard() {
                     <button
                       key={chart.id}
                       onClick={() => toggleChart(chart.id)}
-                      className={`flex items-center justify-between p-4 border rounded-lg transition-all text-left ${
-                        isVisible 
-                          ? 'border-camouflage-green-400 bg-camouflage-green-50 hover:bg-camouflage-green-100' 
-                          : 'border-camouflage-green-200 bg-white hover:bg-camouflage-green-50 hover:border-camouflage-green-400'
+                      className={`flex items-center justify-between rounded-lg border p-4 text-left transition-all ${
+                        isVisible
+                          ? "border-camouflage-green-400 bg-camouflage-green-50 hover:bg-camouflage-green-100"
+                          : "border-camouflage-green-200 bg-white hover:border-camouflage-green-400 hover:bg-camouflage-green-50"
                       }`}
                     >
                       <div className="flex items-center">
-                        <div className={`p-2 rounded-lg mr-4 ${
-                          isVisible ? 'bg-camouflage-green-200' : 'bg-camouflage-green-100'
-                        }`}>
-                          <chart.icon className={`h-5 w-5 ${
-                            isVisible ? 'text-camouflage-green-700' : 'text-camouflage-green-600'
-                          }`} />
+                        <div
+                          className={`mr-4 rounded-lg p-2 ${
+                            isVisible ? "bg-camouflage-green-200" : "bg-camouflage-green-100"
+                          }`}
+                        >
+                          <chart.icon
+                            className={`h-5 w-5 ${
+                              isVisible ? "text-camouflage-green-700" : "text-camouflage-green-600"
+                            }`}
+                          />
                         </div>
                         <div>
-                          <h4 className={`font-medium ${
-                            isVisible ? 'text-camouflage-green-900' : 'text-camouflage-green-800'
-                          }`}>
+                          <h4
+                            className={`font-medium ${
+                              isVisible ? "text-camouflage-green-900" : "text-camouflage-green-800"
+                            }`}
+                          >
                             {chart.name}
                           </h4>
-                          <p className={`text-sm ${
-                            isVisible ? 'text-camouflage-green-600' : 'text-camouflage-green-500'
-                          }`}>
+                          <p
+                            className={`text-sm ${
+                              isVisible ? "text-camouflage-green-600" : "text-camouflage-green-500"
+                            }`}
+                          >
                             {chart.description}
                           </p>
                         </div>
                       </div>
-                      
+
                       {/* Indicador de estado */}
-                      <div className={`flex items-center gap-2 ${
-                        isVisible ? 'text-camouflage-green-600' : 'text-camouflage-green-400'
-                      }`}>
+                      <div
+                        className={`flex items-center gap-2 ${
+                          isVisible ? "text-camouflage-green-600" : "text-camouflage-green-400"
+                        }`}
+                      >
                         {isVisible && (
                           <>
                             <Check className="h-5 w-5" />
                             <span className="text-sm font-medium">Activa</span>
                           </>
                         )}
-                        {!isVisible && (
-                          <span className="text-sm text-camouflage-green-500">Inactiva</span>
-                        )}
+                        {!isVisible && <span className="text-sm text-camouflage-green-500">Inactiva</span>}
                       </div>
                     </button>
                   )

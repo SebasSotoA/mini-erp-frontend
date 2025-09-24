@@ -1,13 +1,14 @@
 "use client"
 
+import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag } from "lucide-react"
 import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
+
 import { MainLayout } from "@/components/layout/main-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useInventory } from "@/contexts/inventory-context"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag } from "lucide-react"
+import { useInventory } from "@/contexts/inventory-context"
 
 export default function ItemDetailsPage() {
   const params = useParams<{ id: string }>()
@@ -16,7 +17,7 @@ export default function ItemDetailsPage() {
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
   const product = id ? getProductById(id) : undefined
-  const movementsForProduct = product ? stockMovements.filter(m => m.productId === product.id) : []
+  const movementsForProduct = product ? stockMovements.filter((m) => m.productId === product.id) : []
   const recentMovements = movementsForProduct
     .slice()
     .sort((a, b) => (a.date < b.date ? 1 : -1))
@@ -70,12 +71,14 @@ export default function ItemDetailsPage() {
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-3xl font-bold text-camouflage-green-900">{product.name}</h1>
-            <p className="text-camouflage-green-600 mt-1 font-bold">Detalle del {itemType.toLowerCase()} • Ref: {reference}</p>
+            <p className="mt-1 font-bold text-camouflage-green-600">
+              Detalle del {itemType.toLowerCase()} • Ref: {reference}
+            </p>
           </div>
           <Button
             variant="outline"
             onClick={() => router.push("/inventory/items")}
-            className="text-base border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+            className="border-camouflage-green-300 text-base text-camouflage-green-700 hover:bg-camouflage-green-50"
             title="Volver a Items"
           >
             Volver
@@ -86,84 +89,80 @@ export default function ItemDetailsPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            className="bg-camouflage-green-700 hover:bg-camouflage-green-800 text-white"
+            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
             title="Facturar item"
           >
-            <ShoppingCart className="h-4 w-4 mr-2" />
+            <ShoppingCart className="mr-2 h-4 w-4" />
             Facturar item
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
             title="Comprar item"
           >
-            <ShoppingBag className="h-4 w-4 mr-2" />
+            <ShoppingBag className="mr-2 h-4 w-4" />
             Comprar item
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
             title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
             onClick={() => {
               const current = product.isActive ?? true
               updateProduct(product.id, { isActive: !current })
             }}
           >
-            {(product.isActive ?? true) ? (
-              <Power className="h-4 w-4 mr-2" />
-            ) : (
-              <PowerOff className="h-4 w-4 mr-2" />
-            )}
+            {(product.isActive ?? true) ? <Power className="mr-2 h-4 w-4" /> : <PowerOff className="mr-2 h-4 w-4" />}
             {(product.isActive ?? true) ? "Activado" : "Desactivado"}
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="border-camouflage-green-300 text-camouflage-green-700 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
+            className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
             title="Editar"
             onClick={() => router.push(`/inventory/items/${id}/edit`)}
           >
-            <Edit className="h-4 w-4 mr-2" />
+            <Edit className="mr-2 h-4 w-4" />
             Editar
           </Button>
         </div>
 
         {/* Contenido principal: datos a la izquierda, media/pricing a la derecha */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Datos principales */}
-          <Card className="lg:col-span-2 border-camouflage-green-200">
+          <Card className="border-camouflage-green-200 lg:col-span-2">
             <CardHeader>
               <CardTitle className="text-xl text-camouflage-green-900">Información del ítem</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Código</div>
-                  <div className="text-camouflage-green-900 font-medium">{product.id}</div>
+                  <div className="font-medium text-camouflage-green-900">{product.id}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Referencia</div>
-                  <div className="text-camouflage-green-900 font-medium">{reference}</div>
+                  <div className="font-medium text-camouflage-green-900">{reference}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Categoría</div>
-                  <div className="text-camouflage-green-900 font-medium">{product.category}</div>
+                  <div className="font-medium text-camouflage-green-900">{product.category}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Tipo ítem</div>
-                  <div className="text-camouflage-green-900 font-medium">{itemType}</div>
+                  <div className="font-medium text-camouflage-green-900">{itemType}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Unidad de medida</div>
-                  <div className="text-camouflage-green-900 font-medium">{unitOfMeasure}</div>
+                  <div className="font-medium text-camouflage-green-900">{unitOfMeasure}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Código del producto o servicio</div>
-                  <div className="text-camouflage-green-900 font-medium">{codigoProductoServicio}</div>
+                  <div className="font-medium text-camouflage-green-900">{codigoProductoServicio}</div>
                 </div>
-                <div className="sm:col-span-2 space-y-1">
+                <div className="space-y-1 sm:col-span-2">
                   <div className="text-base text-camouflage-green-600">Descripción</div>
                   <div className="text-camouflage-green-900">{descripcion}</div>
                 </div>
@@ -176,7 +175,7 @@ export default function ItemDetailsPage() {
             <Card className="border-camouflage-green-200">
               <CardContent className="p-0">
                 {imageUrl ? (
-                  <div className="aspect-square relative bg-camouflage-green-50/40">
+                  <div className="relative aspect-square bg-camouflage-green-50/40">
                     <Image
                       src={imageUrl}
                       alt={product.name}
@@ -186,7 +185,7 @@ export default function ItemDetailsPage() {
                     />
                   </div>
                 ) : (
-                  <div className="aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 bg-white">
+                  <div className="flex aspect-square items-center justify-center border-2 border-dashed border-gray-300 bg-white">
                     <Tag className="h-14 w-14 text-gray-300" />
                   </div>
                 )}
@@ -194,24 +193,26 @@ export default function ItemDetailsPage() {
             </Card>
 
             <Card className="border-camouflage-green-200">
-              <CardContent className="pt-4 pb-5">
+              <CardContent className="pb-5 pt-4">
                 <div className="space-y-2">
                   <div className="text-base text-camouflage-green-600">Precio total</div>
-                  <div className="text-3xl font-bold text-camouflage-green-900">${precioTotal.toLocaleString()} COP</div>
+                  <div className="text-3xl font-bold text-camouflage-green-900">
+                    ${precioTotal.toLocaleString()} COP
+                  </div>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm text-camouflage-green-600">Precio sin impuesto</div>
-                    <div className="text-camouflage-green-900 font-semibold">{`${precioSinImpuesto} COP`}</div>
+                    <div className="font-semibold text-camouflage-green-900">{`${precioSinImpuesto} COP`}</div>
                   </div>
                   <div>
                     <div className="text-sm text-camouflage-green-600">Impuesto aplicado</div>
-                    <div className="text-camouflage-green-900 font-semibold">{impuestoAplicado}</div>
+                    <div className="font-semibold text-camouflage-green-900">{impuestoAplicado}</div>
                   </div>
                 </div>
                 <div className="mt-4">
                   <div className="text-sm text-camouflage-green-600">Costo inicial</div>
-                  <div className="text-camouflage-green-900 font-semibold">${costoInicial.toLocaleString()} COP</div>
+                  <div className="font-semibold text-camouflage-green-900">${costoInicial.toLocaleString()} COP</div>
                 </div>
               </CardContent>
             </Card>
@@ -227,37 +228,49 @@ export default function ItemDetailsPage() {
             {recentMovements.length === 0 ? (
               <div className="text-sm text-camouflage-green-600">No hay movimientos registrados para este ítem.</div>
             ) : (
-              <div className="overflow-x-auto -mx-2 sm:mx-0">
+              <div className="-mx-2 overflow-x-auto sm:mx-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="hover:bg-transparent border-camouflage-green-200">
-                      <TableHead className="text-camouflage-green-700 font-semibold">Fecha</TableHead>
-                      <TableHead className="text-camouflage-green-700 font-semibold">Tipo</TableHead>
-                      <TableHead className="text-camouflage-green-700 font-semibold text-right">Cantidad</TableHead>
-                      <TableHead className="text-camouflage-green-700 font-semibold">Motivo</TableHead>
-                      <TableHead className="text-camouflage-green-700 font-semibold">Referencia</TableHead>
-                      <TableHead className="text-camouflage-green-700 font-semibold text-right">Costo</TableHead>
+                    <TableRow className="border-camouflage-green-200 hover:bg-transparent">
+                      <TableHead className="font-semibold text-camouflage-green-700">Fecha</TableHead>
+                      <TableHead className="font-semibold text-camouflage-green-700">Tipo</TableHead>
+                      <TableHead className="text-right font-semibold text-camouflage-green-700">Cantidad</TableHead>
+                      <TableHead className="font-semibold text-camouflage-green-700">Motivo</TableHead>
+                      <TableHead className="font-semibold text-camouflage-green-700">Referencia</TableHead>
+                      <TableHead className="text-right font-semibold text-camouflage-green-700">Costo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentMovements.map(m => (
+                    {recentMovements.map((m) => (
                       <TableRow key={m.id} className="border-camouflage-green-100">
-                        <TableCell className="whitespace-nowrap text-camouflage-green-900">{new Date(m.date).toLocaleString()}</TableCell>
+                        <TableCell className="whitespace-nowrap text-camouflage-green-900">
+                          {new Date(m.date).toLocaleString()}
+                        </TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            m.type === 'in'
-                              ? 'bg-camouflage-green-100 text-camouflage-green-800'
-                              : m.type === 'out'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {m.type === 'in' ? 'Entrada' : m.type === 'out' ? 'Salida' : m.type === 'return' ? 'Devolución' : 'Ajuste'}
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                              m.type === "in"
+                                ? "bg-camouflage-green-100 text-camouflage-green-800"
+                                : m.type === "out"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {m.type === "in"
+                              ? "Entrada"
+                              : m.type === "out"
+                                ? "Salida"
+                                : m.type === "return"
+                                  ? "Devolución"
+                                  : "Ajuste"}
                           </span>
                         </TableCell>
                         <TableCell className="text-right text-camouflage-green-900">{m.quantity}</TableCell>
                         <TableCell className="text-camouflage-green-700">{m.reason}</TableCell>
-                        <TableCell className="text-camouflage-green-700">{m.reference || '-'}</TableCell>
-                        <TableCell className="text-right text-camouflage-green-900">{m.cost != null ? `$${m.cost.toLocaleString()}` : '-'}</TableCell>
+                        <TableCell className="text-camouflage-green-700">{m.reference || "-"}</TableCell>
+                        <TableCell className="text-right text-camouflage-green-900">
+                          {m.cost != null ? `$${m.cost.toLocaleString()}` : "-"}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

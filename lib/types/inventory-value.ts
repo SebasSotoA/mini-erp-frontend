@@ -6,12 +6,12 @@ export interface InventoryValueFilters {
   warehouse: string
   dateUntil: Date | null
   category: string
-  status: 'active' | 'inactive' | 'all' | ''
+  status: "active" | "inactive" | "all" | ""
 }
 
 // Configuración de ordenamiento
-export type SortField = 'name' | 'sku' | 'stock' | 'cost' | 'total'
-export type SortDirection = 'asc' | 'desc'
+export type SortField = "name" | "sku" | "stock" | "cost" | "total"
+export type SortDirection = "asc" | "desc"
 
 export interface SortConfig {
   field: SortField
@@ -19,7 +19,7 @@ export interface SortConfig {
 }
 
 // Producto extendido para el módulo de valor
-export interface InventoryValueProduct extends Omit<Product, 'basePrice' | 'taxPercent' | 'unit' | 'imageUrl'> {
+export interface InventoryValueProduct extends Omit<Product, "basePrice" | "taxPercent" | "unit" | "imageUrl"> {
   basePrice?: number
   taxPercent?: number
   unit?: string
