@@ -32,6 +32,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { EditWarehouseModal } from "@/components/modals/EditWarehouseModal"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/ui/modal"
@@ -95,11 +96,6 @@ export default function Warehouses() {
   // Estado para el modal de edición
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingWarehouse, setEditingWarehouse] = useState<(typeof warehouses)[0] | null>(null)
-  const [editWarehouseData, setEditWarehouseData] = useState({
-    name: "",
-    location: "",
-    observations: "",
-  })
 
   // Estado para búsqueda
   const [searchTerm, setSearchTerm] = useState("")
@@ -274,40 +270,29 @@ export default function Warehouses() {
   // Funciones para el modal de edición
   const handleEditWarehouse = (warehouse: (typeof warehouses)[0]) => {
     setEditingWarehouse(warehouse)
-    setEditWarehouseData({
-      name: warehouse.name,
-      location: warehouse.location,
-      observations: warehouse.observations,
-    })
     setIsEditModalOpen(true)
   }
 
-  const handleEditWarehouseInputChange = (field: keyof typeof editWarehouseData, value: string) => {
-    setEditWarehouseData((prev) => ({ ...prev, [field]: value }))
-  }
 
-  const handleSaveEditWarehouse = () => {
-    if (!editWarehouseData.name.trim()) {
-      toast({ title: "Error", description: "El nombre es obligatorio", variant: "destructive" })
-      return
-    }
+  const handleSaveEditWarehouse = (data: { name: string; location: string; observations: string }) => {
+    // Actualizar la bodega en el estado local
+    setWarehouses((prev) =>
+      prev.map((w) =>
+        w.id === editingWarehouse?.id
+          ? { ...w, name: data.name, location: data.location }
+          : w,
+      ),
+    )
 
     toast({
       title: "Bodega actualizada",
-      description: `"${editWarehouseData.name}" fue actualizada exitosamente.`,
+      description: `"${data.name}" fue actualizada exitosamente.`,
     })
     setIsEditModalOpen(false)
     setEditingWarehouse(null)
   }
 
   const handleCancelEditWarehouse = () => {
-    if (editingWarehouse) {
-      setEditWarehouseData({
-        name: editingWarehouse.name,
-        location: editingWarehouse.location,
-        observations: editingWarehouse.observations,
-      })
-    }
     setIsEditModalOpen(false)
     setEditingWarehouse(null)
   }
@@ -360,8 +345,8 @@ export default function Warehouses() {
               onClick={() => setIsNewWarehouseModalOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Nueva Bodega
-            </Button>
+            Nueva Bodega
+          </Button>
           </div>
         </div>
 
@@ -530,9 +515,9 @@ export default function Warehouses() {
                           <ChevronDown
                             className={`h-3 w-3 ${sortField === "location" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
                           />
-                        </div>
+              </div>
                       </button>
-                    </div>
+              </div>
                   </TableHead>
                   <TableHead className="w-[300px] font-semibold text-camouflage-green-700">Observaciones</TableHead>
                   <TableHead className="w-[160px] font-semibold text-camouflage-green-700">Acciones</TableHead>
@@ -559,7 +544,7 @@ export default function Warehouses() {
                           }}
                           aria-label={`Seleccionar ${warehouse.name}`}
                         />
-                      </div>
+              </div>
                     </TableCell>
                     <TableCell className="w-[200px]">
                       <button
@@ -578,7 +563,7 @@ export default function Warehouses() {
                         title={warehouse.observations}
                       >
                         {warehouse.observations}
-                      </div>
+              </div>
                     </TableCell>
                     <TableCell className="w-[160px]">
                       <div className="flex items-center justify-start gap-1">
@@ -645,20 +630,20 @@ export default function Warehouses() {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
-                      </div>
+              </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
 
       {/* Modal para nueva bodega */}
-      <Modal isOpen={isNewWarehouseModalOpen} onClose={handleCancelNewWarehouse} title="Nueva Bodega">
+      <Modal isOpen={isNewWarehouseModalOpen} onClose={handleCancelNewWarehouse} title="Nueva Bodega" size="lg">
         <div className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-1 pt-2.5">
             <Label htmlFor="warehouse-name" className="font-medium text-camouflage-green-700">
               Nombre <span className="text-red-500">*</span>
             </Label>
@@ -670,7 +655,7 @@ export default function Warehouses() {
               onChange={(e) => handleNewWarehouseInputChange("name", e.target.value)}
               className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
             />
-          </div>
+                </div>
 
           <div className="space-y-2">
             <Label htmlFor="warehouse-location" className="font-medium text-camouflage-green-700">
@@ -684,9 +669,9 @@ export default function Warehouses() {
               onChange={(e) => handleNewWarehouseInputChange("location", e.target.value)}
               className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
             />
-          </div>
+                </div>
 
-          <div className="space-y-2">
+                <div className="space-y-2">
             <Label htmlFor="warehouse-observations" className="font-medium text-camouflage-green-700">
               Observaciones
             </Label>
@@ -704,8 +689,8 @@ export default function Warehouses() {
                 e.target.style.outline = "none"
                 e.target.style.boxShadow = "none"
               }}
-            />
-          </div>
+                    />
+                  </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button
@@ -721,79 +706,19 @@ export default function Warehouses() {
             >
               Guardar
             </Button>
-          </div>
+                  </div>
         </div>
       </Modal>
 
       {/* Modal para editar bodega */}
-      <Modal isOpen={isEditModalOpen} onClose={handleCancelEditWarehouse} title="Editar Bodega">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-warehouse-name" className="font-medium text-camouflage-green-700">
-              Nombre <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="edit-warehouse-name"
-              type="text"
-              placeholder="Ingresa el nombre de la bodega"
-              value={editWarehouseData.name}
-              onChange={(e) => handleEditWarehouseInputChange("name", e.target.value)}
-              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-warehouse-location" className="font-medium text-camouflage-green-700">
-              Dirección
-            </Label>
-            <Input
-              id="edit-warehouse-location"
-              type="text"
-              placeholder="Ingresa la dirección de la bodega"
-              value={editWarehouseData.location}
-              onChange={(e) => handleEditWarehouseInputChange("location", e.target.value)}
-              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-warehouse-observations" className="font-medium text-camouflage-green-700">
-              Observaciones
-            </Label>
-            <Textarea
-              id="edit-warehouse-observations"
-              placeholder="Ingresa observaciones adicionales sobre la bodega"
-              value={editWarehouseData.observations}
-              onChange={(e) => handleEditWarehouseInputChange("observations", e.target.value)}
-              className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-              style={{
-                outline: "none",
-                boxShadow: "none",
-              }}
-              onFocus={(e) => {
-                e.target.style.outline = "none"
-                e.target.style.boxShadow = "none"
-              }}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={handleCancelEditWarehouse}
-              className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSaveEditWarehouse}
-              className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
-            >
-              Guardar cambios
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {editingWarehouse && (
+        <EditWarehouseModal
+          isOpen={isEditModalOpen}
+          onClose={handleCancelEditWarehouse}
+          warehouse={editingWarehouse}
+          onSave={handleSaveEditWarehouse}
+        />
+      )}
     </MainLayout>
   )
 }

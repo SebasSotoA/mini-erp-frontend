@@ -13,9 +13,10 @@ import {
   Tag,
   Filter,
   Trash2,
+  Plus,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 import { MainLayout } from "@/components/layout/main-layout"
@@ -33,11 +34,10 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { EditWarehouseModal } from "@/components/modals/EditWarehouseModal"
+import { NewItemForm } from "@/components/forms/new-item-form"
 import { Modal } from "@/components/ui/modal"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
 import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import { ItemFilters, SortConfig, SortField, SortDirection } from "@/lib/types/items"
@@ -53,11 +53,8 @@ export default function WarehouseDetailsPage() {
   const warehouse = warehouses.find((w) => w.id === id)
   const [isWarehouseActive, setIsWarehouseActive] = useState<boolean>(warehouse?.isActive ?? true)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editWarehouseData, setEditWarehouseData] = useState({
-    name: warehouse?.name || "",
-    location: warehouse?.location || "",
-    observations: "", // Campo adicional no en el tipo original
-  })
+  const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false)
+  const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false)
 
   // Construir el conjunto de productos asociados a la bodega vía productStocks
   const associatedProductIds = useMemo(
@@ -68,6 +65,14 @@ export default function WarehouseDetailsPage() {
     () => products.filter((p) => associatedProductIds.has(p.id)),
     [products, associatedProductIds],
   )
+
+  // Estado local para los productos de la bodega (similar a items/page.tsx)
+  const [localWarehouseProducts, setLocalWarehouseProducts] = useState(warehouseProducts)
+
+  // Sincronizar el estado local con los productos de la bodega cuando cambien
+  useEffect(() => {
+    setLocalWarehouseProducts(warehouseProducts)
+  }, [warehouseProducts])
 
   // Estado para filtros/orden/paginación (igual que items/page.tsx)
   const [currentPage, setCurrentPage] = useState(1)
@@ -102,6 +107,12 @@ export default function WarehouseDetailsPage() {
   }
   const clearSelection = () => setSelectedIds(new Set())
 
+  // Lógica para determinar el estado de los botones de acciones masivas
+  const selectedProducts = localWarehouseProducts.filter((p) => selectedIds.has(p.id))
+  const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p) => p.isActive ?? true)
+  const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p) => !(p.isActive ?? true))
+  const hasMixedStates = selectedProducts.length > 0 && !allSelectedActive && !allSelectedInactive
+
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortDirection(sortDirection === "asc" ? "desc" : "asc")
     else {
@@ -130,7 +141,7 @@ export default function WarehouseDetailsPage() {
   }
 
   const sortConfig: SortConfig = { field: sortField, direction: sortDirection }
-  const filteredSortedProducts = applyFiltersAndSort(warehouseProducts, filters, sortConfig)
+  const filteredSortedProducts = applyFiltersAndSort(localWarehouseProducts, filters, sortConfig)
 
   const totalItems = filteredSortedProducts.length
   const totalPages = Math.ceil(totalItems / itemsPerPage)
@@ -157,42 +168,31 @@ export default function WarehouseDetailsPage() {
 
   const bulkSetActive = (isActive: boolean) => {
     if (selectedIds.size === 0) return
-    selectedIds.forEach((id) => updateProduct(id, { isActive }))
+    setLocalWarehouseProducts((prevProducts) =>
+      prevProducts.map((product) => (selectedIds.has(product.id) ? { ...product, isActive } : product)),
+    )
     toast({
       title: isActive ? "Ítems activados" : "Ítems desactivados",
       description: `${selectedIds.size} ítem(s) actualizados.`,
     })
+    clearSelection()
   }
   const bulkDelete = () => {
     if (selectedIds.size === 0) return
-    selectedIds.forEach((id) => deleteProduct(id))
+    setLocalWarehouseProducts((prevProducts) => prevProducts.filter((product) => !selectedIds.has(product.id)))
     toast({ title: "Ítems eliminados", description: `${selectedIds.size} ítem(s) eliminados.` })
     clearSelection()
   }
 
   // Funciones para el modal de edición
-  const handleEditWarehouseInputChange = (field: keyof typeof editWarehouseData, value: string) => {
-    setEditWarehouseData((prev) => ({ ...prev, [field]: value }))
-  }
 
-  const handleSaveEditWarehouse = () => {
-    if (!editWarehouseData.name.trim()) {
-      toast({ title: "Error", description: "El nombre es obligatorio", variant: "destructive" })
-      return
-    }
-
+  const handleSaveEditWarehouse = (data: { name: string; location: string; observations: string }) => {
     // Aquí iría la lógica para actualizar la bodega en el contexto
-    toast({ title: "Bodega actualizada", description: `"${editWarehouseData.name}" fue actualizada exitosamente.` })
+    toast({ title: "Bodega actualizada", description: `"${data.name}" fue actualizada exitosamente.` })
     setIsEditModalOpen(false)
   }
 
   const handleCancelEditWarehouse = () => {
-    // Restaurar datos originales
-    setEditWarehouseData({
-      name: warehouse?.name || "",
-      location: warehouse?.location || "",
-      observations: "", // Campo adicional no en el tipo original
-    })
     setIsEditModalOpen(false)
   }
 
@@ -359,30 +359,77 @@ export default function WarehouseDetailsPage() {
                       <X className="h-4 w-4" />
                     </Button>
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
-                        onClick={() => bulkSetActive(true)}
-                      >
-                        Activar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
-                        onClick={() => bulkSetActive(false)}
-                      >
-                        Desactivar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
-                        onClick={bulkDelete}
-                      >
-                        Eliminar
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedActive}
+                          >
+                            Activar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Activar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>Se activarán {selectedCount} ítem(s).</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => bulkSetActive(true)}>Confirmar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedInactive}
+                          >
+                            Desactivar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Desactivar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>Se desactivarán {selectedCount} ítem(s).</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => bulkSetActive(false)}>Confirmar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
+                          >
+                            Eliminar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. Se eliminarán {selectedCount} ítem(s).
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={bulkDelete}>
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 )}
@@ -684,6 +731,33 @@ export default function WarehouseDetailsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                            title="Editar"
+                            onClick={() => setIsProductEditModalOpen(true)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                            title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
+                            onClick={() => {
+                              const current = product.isActive ?? true
+                              setLocalWarehouseProducts((prevProducts) =>
+                                prevProducts.map((p) => (p.id === product.id ? { ...p, isActive: !current } : p)),
+                              )
+                            }}
+                          >
+                            {(product.isActive ?? true) ? (
+                              <Power className="h-4 w-4" />
+                            ) : (
+                              <PowerOff className="h-4 w-4" />
+                            )}
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
@@ -707,7 +781,7 @@ export default function WarehouseDetailsPage() {
                                 <AlertDialogAction
                                   className="bg-red-600 hover:bg-red-700"
                                   onClick={() => {
-                                    deleteProduct(product.id)
+                                    setLocalWarehouseProducts((prevProducts) => prevProducts.filter((p) => p.id !== product.id))
                                     toast({ title: "Ítem eliminado", description: `Se eliminó "${product.name}".` })
                                     setSelectedIds((prev) => {
                                       const next = new Set(prev)
@@ -721,37 +795,12 @@ export default function WarehouseDetailsPage() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                            title="Editar"
-                            onClick={() => router.push(`/inventory/items/${product.id}/edit`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                            title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
-                            onClick={() => {
-                              const current = product.isActive ?? true
-                              updateProduct(product.id, { isActive: !current })
-                            }}
-                          >
-                            {(product.isActive ?? true) ? (
-                              <Power className="h-4 w-4" />
-                            ) : (
-                              <PowerOff className="h-4 w-4" />
-                            )}
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow>
+                  <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={7} className="py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Tag className="h-12 w-12 text-camouflage-green-300" />
@@ -761,6 +810,13 @@ export default function WarehouseDetailsPage() {
                             Asigna productos a la bodega para verlos aquí.
                           </p>
                         </div>
+                        <Button
+                          onClick={() => setIsNewItemModalOpen(true)}
+                          className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Crea tu primer item
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -782,73 +838,42 @@ export default function WarehouseDetailsPage() {
       </div>
 
       {/* Modal para editar bodega */}
-      <Modal isOpen={isEditModalOpen} onClose={handleCancelEditWarehouse} title="Editar Bodega">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-warehouse-name" className="font-medium text-camouflage-green-700">
-              Nombre <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="edit-warehouse-name"
-              type="text"
-              placeholder="Ingresa el nombre de la bodega"
-              value={editWarehouseData.name}
-              onChange={(e) => handleEditWarehouseInputChange("name", e.target.value)}
-              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-            />
-          </div>
+      {warehouse && (
+        <EditWarehouseModal
+          isOpen={isEditModalOpen}
+          onClose={handleCancelEditWarehouse}
+          warehouse={warehouse}
+          onSave={handleSaveEditWarehouse}
+        />
+      )}
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-warehouse-location" className="font-medium text-camouflage-green-700">
-              Dirección
-            </Label>
-            <Input
-              id="edit-warehouse-location"
-              type="text"
-              placeholder="Ingresa la dirección de la bodega"
-              value={editWarehouseData.location}
-              onChange={(e) => handleEditWarehouseInputChange("location", e.target.value)}
-              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-            />
-          </div>
+      {/* Modal para nuevo item */}
+      <Modal
+        isOpen={isNewItemModalOpen}
+        onClose={() => setIsNewItemModalOpen(false)}
+        title="Formulario básico de productos"
+        size="xl"
+      >
+        <NewItemForm
+          onClose={() => setIsNewItemModalOpen(false)}
+          onSuccess={() => {
+            // El formulario se encarga de actualizar la lista
+          }}
+        />
+      </Modal>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-warehouse-observations" className="font-medium text-camouflage-green-700">
-              Observaciones
-            </Label>
-            <Textarea
-              id="edit-warehouse-observations"
-              placeholder="Ingresa observaciones adicionales sobre la bodega"
-              value={editWarehouseData.observations}
-              onChange={(e) => handleEditWarehouseInputChange("observations", e.target.value)}
-              className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-              style={{
-                outline: "none",
-                boxShadow: "none",
-              }}
-              onFocus={(e) => {
-                e.target.style.outline = "none"
-                e.target.style.boxShadow = "none"
-              }}
-            />
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={handleCancelEditWarehouse}
-              className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSaveEditWarehouse}
-              className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
-            >
-              Guardar cambios
-            </Button>
-          </div>
-        </div>
+      {/* Modal para editar producto */}
+      <Modal isOpen={isProductEditModalOpen} onClose={() => setIsProductEditModalOpen(false)} title="Editar Producto" size="xl">
+        <NewItemForm 
+          onClose={() => setIsProductEditModalOpen(false)}
+          onSuccess={() => {
+            setIsProductEditModalOpen(false)
+            toast({
+              title: "Producto actualizado",
+              description: "El producto fue actualizado exitosamente.",
+            })
+          }}
+        />
       </Modal>
     </MainLayout>
   )

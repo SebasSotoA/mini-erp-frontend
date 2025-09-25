@@ -184,6 +184,7 @@ const initialProducts: Product[] = [
     totalSold: 89,
     reorderPoint: 20,
     leadTime: 7,
+    isActive: true,
   },
   {
     id: "2",
@@ -204,6 +205,7 @@ const initialProducts: Product[] = [
     totalSold: 67,
     reorderPoint: 18,
     leadTime: 5,
+    isActive: true,
   },
   {
     id: "3",
@@ -224,6 +226,7 @@ const initialProducts: Product[] = [
     totalSold: 34,
     reorderPoint: 12,
     leadTime: 10,
+    isActive: true,
   },
   {
     id: "4",
@@ -244,6 +247,7 @@ const initialProducts: Product[] = [
     totalSold: 156,
     reorderPoint: 35,
     leadTime: 3,
+    isActive: true,
   },
   {
     id: "5",
@@ -264,6 +268,7 @@ const initialProducts: Product[] = [
     totalSold: 41,
     reorderPoint: 15,
     leadTime: 7,
+    isActive: true,
   },
   {
     id: "6",
@@ -284,6 +289,7 @@ const initialProducts: Product[] = [
     totalSold: 78,
     reorderPoint: 20,
     leadTime: 7,
+    isActive: true,
   },
   {
     id: "7",
@@ -304,6 +310,7 @@ const initialProducts: Product[] = [
     totalSold: 28,
     reorderPoint: 8,
     leadTime: 21,
+    isActive: true,
   },
   {
     id: "8",
@@ -324,6 +331,7 @@ const initialProducts: Product[] = [
     totalSold: 22,
     reorderPoint: 10,
     leadTime: 14,
+    isActive: true,
   },
   {
     id: "9",
@@ -344,6 +352,7 @@ const initialProducts: Product[] = [
     totalSold: 234,
     reorderPoint: 45,
     leadTime: 2,
+    isActive: true,
   },
   {
     id: "10",
@@ -364,6 +373,7 @@ const initialProducts: Product[] = [
     totalSold: 56,
     reorderPoint: 18,
     leadTime: 5,
+    isActive: true,
   },
   {
     id: "11",
@@ -384,6 +394,7 @@ const initialProducts: Product[] = [
     totalSold: 87,
     reorderPoint: 25,
     leadTime: 3,
+    isActive: true,
   },
   {
     id: "12",
@@ -404,6 +415,7 @@ const initialProducts: Product[] = [
     totalSold: 67,
     reorderPoint: 20,
     leadTime: 4,
+    isActive: true,
   },
   {
     id: "13",
@@ -424,6 +436,7 @@ const initialProducts: Product[] = [
     totalSold: 123,
     reorderPoint: 30,
     leadTime: 6,
+    isActive: true,
   },
   {
     id: "14",
@@ -444,6 +457,7 @@ const initialProducts: Product[] = [
     totalSold: 289,
     reorderPoint: 75,
     leadTime: 2,
+    isActive: true,
   },
   {
     id: "15",
@@ -464,6 +478,7 @@ const initialProducts: Product[] = [
     totalSold: 45,
     reorderPoint: 15,
     leadTime: 7,
+    isActive: true,
   },
   {
     id: "16",
@@ -484,6 +499,7 @@ const initialProducts: Product[] = [
     totalSold: 134,
     reorderPoint: 35,
     leadTime: 3,
+    isActive: true,
   },
   {
     id: "17",
@@ -504,6 +520,7 @@ const initialProducts: Product[] = [
     totalSold: 156,
     reorderPoint: 40,
     leadTime: 5,
+    isActive: true,
   },
   {
     id: "18",
@@ -524,6 +541,7 @@ const initialProducts: Product[] = [
     totalSold: 178,
     reorderPoint: 50,
     leadTime: 2,
+    isActive: true,
   },
   {
     id: "19",
@@ -544,6 +562,7 @@ const initialProducts: Product[] = [
     totalSold: 34,
     reorderPoint: 12,
     leadTime: 10,
+    isActive: true,
   },
   {
     id: "20",
@@ -564,6 +583,7 @@ const initialProducts: Product[] = [
     totalSold: 123,
     reorderPoint: 35,
     leadTime: 4,
+    isActive: true,
   },
 ]
 

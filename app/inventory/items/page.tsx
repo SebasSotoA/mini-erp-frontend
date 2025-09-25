@@ -775,6 +775,7 @@ export default function SalesItems() {
         isOpen={isNewItemModalOpen}
         onClose={() => setIsNewItemModalOpen(false)}
         title="Formulario básico de productos"
+        size="xl"
       >
         <NewItemForm
           onClose={() => setIsNewItemModalOpen(false)}

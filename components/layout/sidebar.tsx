@@ -34,7 +34,7 @@ const inventoryNavigation = [
   { name: "Gestión de Items", href: "/inventory/management", icon: Package },
   { name: "Bodegas", href: "/inventory/warehouses", icon: Warehouse },
   { name: "Categorías", href: "/inventory/categories", icon: Tags },
-  { name: "Atributos", href: "/inventory/attributes", icon: Layers },
+  { name: "Campos Extra", href: "/inventory/extra-fields", icon: Layers },
 ]
 
 interface SidebarProps {

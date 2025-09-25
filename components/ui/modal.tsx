@@ -11,9 +11,10 @@ interface ModalProps {
   onClose: () => void
   title: string
   children: React.ReactNode
+  size?: "sm" | "md" | "lg" | "xl"
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, size = "lg" }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden"
@@ -32,8 +33,14 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black bg-opacity-25" onClick={onClose} />
-        <div className="relative w-full max-w-4xl rounded-lg bg-white shadow-xl">
-          <div className="flex items-center justify-between border-b border-gray-200 p-6">
+        <div className={`relative w-full rounded-lg bg-white shadow-xl ${
+          size === "sm" ? "max-w-sm" :
+          size === "md" ? "max-w-md" :
+          size === "lg" ? "max-w-lg" :
+          size === "xl" ? "max-w-4xl" :
+          "max-w-lg"
+        }`}>
+          <div className="flex items-center justify-between border-b border-gray-200 p-6 py-3">
             <h3 className="text-lg font-semibold">{title}</h3>
             <Button variant="outline" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />

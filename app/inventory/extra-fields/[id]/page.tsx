@@ -1,7 +1,7 @@
 "use client"
 
 import {
-  Tags,
+  Layers,
   ChevronUp,
   ChevronDown,
   X,
@@ -11,11 +11,9 @@ import {
   PowerOff,
   Trash2,
   Filter,
-  Image as ImageIcon,
-  CloudUpload,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 import { MainLayout } from "@/components/layout/main-layout"
@@ -36,73 +34,87 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/ui/modal"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import { ItemFilters, SortConfig, SortField, SortDirection } from "@/lib/types/items"
 import { applyFiltersAndSort } from "@/lib/utils/item-filters"
+import { NewItemForm } from "@/components/forms/new-item-form"
 
-const mockCategories = [
+const mockExtraFields = [
   {
     id: "1",
-    name: "Electrónicos",
-    description: "Dispositivos electrónicos, computadoras, móviles y accesorios",
+    name: "Color",
+    type: "texto",
+    description: "Color principal del producto",
+    defaultValue: "Blanco",
+    isRequired: true,
     isActive: true,
-    image: null,
   },
   {
     id: "2",
-    name: "Ropa y Accesorios",
-    description: "Vestimenta, calzado y complementos de moda",
+    name: "Peso",
+    type: "número decimal",
+    description: "Peso del producto en kilogramos",
+    defaultValue: "0.00",
+    isRequired: false,
     isActive: true,
-    image: null,
   },
   {
     id: "3",
-    name: "Hogar y Jardín",
-    description: "Artículos para el hogar, decoración y herramientas de jardín",
+    name: "Fecha de Vencimiento",
+    type: "fecha",
+    description: "Fecha de vencimiento del producto",
+    defaultValue: "",
+    isRequired: false,
     isActive: true,
-    image: null,
   },
   {
     id: "4",
-    name: "Deportes",
-    description: "Equipos deportivos, ropa deportiva y accesorios de fitness",
+    name: "Es Importado",
+    type: "si/no",
+    description: "Indica si el producto es importado",
+    defaultValue: "No",
+    isRequired: true,
     isActive: false,
-    image: null,
-  },
-  {
-    id: "5",
-    name: "Libros y Medios",
-    description: "Libros, revistas, música y películas",
-    isActive: true,
-    image: null,
   },
 ]
 
-export default function CategoryDetailsPage() {
+export default function ExtraFieldDetailsPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
   const { products, updateProduct, deleteProduct } = useInventory()
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
-  const category = mockCategories.find((c) => c.id === id)
-  const [isCategoryActive, setIsCategoryActive] = useState<boolean>(category?.isActive ?? true)
+  const extraField = mockExtraFields.find((f) => f.id === id)
+  const [isFieldActive, setIsFieldActive] = useState<boolean>(extraField?.isActive ?? true)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isImageDragOver, setIsImageDragOver] = useState(false)
-  const [currentCategoryImage, setCurrentCategoryImage] = useState<string | null>(category?.image || null)
-  const [editCategoryData, setEditCategoryData] = useState({
-    name: category?.name || "",
-    description: category?.description || "",
-    image: null as File | null,
+  const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false)
+  const [editFieldData, setEditFieldData] = useState({
+    name: extraField?.name || "",
+    type: extraField?.type || "texto",
+    defaultValue: extraField?.defaultValue || "",
+    description: extraField?.description || "",
+    isRequired: extraField?.isRequired || false,
   })
 
-  // Filtrar productos por categoría
-  const categoryProducts = useMemo(() => {
-    return products.filter((p) => p.category === category?.name)
-  }, [products, category?.name])
+  // Estado local para los productos (para manejar acciones masivas correctamente)
+  const [localFieldProducts, setLocalFieldProducts] = useState(products)
+
+  // Sincronizar el estado local con los productos cuando cambien
+  useEffect(() => {
+    setLocalFieldProducts(products)
+  }, [products])
+
+  // Filtrar productos que usan este campo (simulado - en realidad se basaría en los datos del producto)
+  const fieldProducts = useMemo(() => {
+    // Por ahora retornamos todos los productos como ejemplo
+    // En una implementación real, esto se basaría en qué productos tienen este campo
+    return localFieldProducts
+  }, [localFieldProducts])
 
   // Estado para filtros/orden/paginación (igual que items/page.tsx)
   const [currentPage, setCurrentPage] = useState(1)
@@ -171,7 +183,7 @@ export default function CategoryDetailsPage() {
   }
 
   const sortConfig: SortConfig = { field: sortField, direction: sortDirection }
-  const filteredSortedProducts = applyFiltersAndSort(categoryProducts, filters, sortConfig)
+  const filteredSortedProducts = applyFiltersAndSort(fieldProducts, filters, sortConfig)
 
   const totalItems = filteredSortedProducts.length
   const totalPages = Math.ceil(totalItems / itemsPerPage)
@@ -198,115 +210,79 @@ export default function CategoryDetailsPage() {
 
   const bulkSetActive = (isActive: boolean) => {
     if (selectedIds.size === 0) return
-    selectedIds.forEach((id) => updateProduct(id, { isActive }))
+    setLocalFieldProducts(prevProducts =>
+      prevProducts.map(product =>
+        selectedIds.has(product.id) ? { ...product, isActive } : product
+      )
+    )
     toast({
       title: isActive ? "Ítems activados" : "Ítems desactivados",
       description: `${selectedIds.size} ítem(s) actualizados.`,
     })
+    clearSelection()
   }
   const bulkDelete = () => {
     if (selectedIds.size === 0) return
-    selectedIds.forEach((id) => deleteProduct(id))
+    setLocalFieldProducts(prevProducts =>
+      prevProducts.filter(product => !selectedIds.has(product.id))
+    )
     toast({ title: "Ítems eliminados", description: `${selectedIds.size} ítem(s) eliminados.` })
     clearSelection()
   }
 
+  // Lógica para determinar el estado de los botones de acciones masivas
+  const selectedProducts = fieldProducts.filter((p) => selectedIds.has(p.id))
+  const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p) => p.isActive)
+  const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p) => !p.isActive)
+  const hasMixedStates = selectedProducts.length > 0 && !allSelectedActive && !allSelectedInactive
+
   // Funciones para el modal de edición
-  const handleEditCategoryInputChange = (field: keyof typeof editCategoryData, value: string) => {
-    setEditCategoryData((prev) => ({ ...prev, [field]: value }))
+  const handleEditFieldInputChange = (field: keyof typeof editFieldData, value: string | boolean) => {
+    setEditFieldData((prev) => ({ ...prev, [field]: value }))
   }
 
-  // Funciones para manejar imagen en edición
-  const handleEditImageDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsImageDragOver(true)
-  }
-
-  const handleEditImageDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsImageDragOver(false)
-  }
-
-  const handleEditImageDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsImageDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file && file.type.startsWith("image/")) {
-      setEditCategoryData((prev) => ({ ...prev, image: file }))
-    } else {
-      toast({
-        title: "Formato no válido",
-        description: "Por favor, selecciona un archivo de imagen válido.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleEditImageAreaClick = () => {
-    const input = document.createElement("input")
-    input.type = "file"
-    input.accept = "image/*"
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        setEditCategoryData((prev) => ({ ...prev, image: file }))
-      }
-    }
-    input.click()
-  }
-
-  const removeEditImage = () => {
-    setEditCategoryData((prev) => ({ ...prev, image: null }))
-  }
-
-  const handleSaveEditCategory = () => {
-    if (!editCategoryData.name.trim()) {
+  const handleSaveEditField = () => {
+    if (!editFieldData.name.trim()) {
       toast({ title: "Error", description: "El nombre es obligatorio", variant: "destructive" })
       return
     }
 
-    // Si hay una nueva imagen, actualizar la imagen actual
-    if (editCategoryData.image) {
-      const imageUrl = URL.createObjectURL(editCategoryData.image)
-      setCurrentCategoryImage(imageUrl)
-    }
-
     toast({
-      title: "Categoría actualizada",
-      description: `"${editCategoryData.name}" fue actualizada exitosamente.`,
+      title: "Campo actualizado",
+      description: `"${editFieldData.name}" fue actualizado exitosamente.`,
     })
     setIsEditModalOpen(false)
   }
 
-  const handleCancelEditCategory = () => {
+  const handleCancelEditField = () => {
     // Restaurar datos originales
-    setEditCategoryData({
-      name: category?.name || "",
-      description: category?.description || "",
-      image: null,
+    setEditFieldData({
+      name: extraField?.name || "",
+      type: extraField?.type || "texto",
+      defaultValue: extraField?.defaultValue || "",
+      description: extraField?.description || "",
+      isRequired: extraField?.isRequired || false,
     })
-    // Restaurar imagen original
-    setCurrentCategoryImage(category?.image || null)
     setIsEditModalOpen(false)
   }
 
-  if (!category) {
+  if (!extraField) {
     return (
       <MainLayout>
         <div className="space-y-6">
           <Card className="border-camouflage-green-200">
             <CardHeader>
-              <CardTitle className="text-camouflage-green-900">Categoría no encontrada</CardTitle>
+              <CardTitle className="text-camouflage-green-900">Campo no encontrado</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <p className="text-camouflage-green-700">La categoría solicitada no existe o fue eliminada.</p>
+                <p className="text-camouflage-green-700">El campo solicitado no existe o fue eliminado.</p>
                 <Button
                   variant="outline"
-                  onClick={() => router.push("/inventory/categories")}
+                  onClick={() => router.push("/inventory/extra-fields")}
                   className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
                 >
-                  Volver a Categorías
+                  Volver a Campos Extra
                 </Button>
               </div>
             </CardContent>
@@ -319,43 +295,43 @@ export default function CategoryDetailsPage() {
   return (
     <MainLayout>
       <div className="space-y-4">
-        {/* Encabezado: Nombre de la categoría */}
+        {/* Encabezado: Nombre del campo */}
         <div className="flex items-start justify-between">
           <div>
             <h1 className="flex items-center text-3xl font-bold text-camouflage-green-900">
-              <Tags className="mr-3 h-8 w-8 text-camouflage-green-700" />
-              {category.name}
+              <Layers className="mr-3 h-8 w-8 text-camouflage-green-700" />
+              {extraField.name}
             </h1>
           </div>
           <Button
             variant="outline"
-            onClick={() => router.push("/inventory/categories")}
+            onClick={() => router.push("/inventory/extra-fields")}
             className="border-camouflage-green-300 text-base text-camouflage-green-700 hover:bg-camouflage-green-50"
-            title="Volver a Categorías"
+            title="Volver a Campos Extra"
           >
             Volver
           </Button>
         </div>
 
-        {/* Acciones sobre la categoría */}
+        {/* Acciones sobre el campo */}
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Button
-              variant={isCategoryActive ? "primary" : "outline"}
-              className={`${isCategoryActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
+              variant={isFieldActive ? "primary" : "outline"}
+              className={`${isFieldActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
               onClick={() => {
-                setIsCategoryActive(true)
-                toast({ title: "Categoría activada", description: `"${category.name}" está activa.` })
+                setIsFieldActive(true)
+                toast({ title: "Campo activado", description: `"${extraField.name}" está activo.` })
               }}
             >
               Activar
             </Button>
             <Button
-              variant={!isCategoryActive ? "primary" : "outline"}
-              className={`${!isCategoryActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
+              variant={!isFieldActive ? "primary" : "outline"}
+              className={`${!isFieldActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
               onClick={() => {
-                setIsCategoryActive(false)
-                toast({ title: "Categoría desactivada", description: `"${category.name}" está inactiva.` })
+                setIsFieldActive(false)
+                toast({ title: "Campo desactivado", description: `"${extraField.name}" está inactivo.` })
               }}
             >
               Desactivar
@@ -376,14 +352,14 @@ export default function CategoryDetailsPage() {
                 className="border-camouflage-green-300 text-red-700 hover:border-red-300 hover:bg-red-50"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Eliminar categoría
+                Eliminar campo
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Eliminar categoría</AlertDialogTitle>
+                <AlertDialogTitle>Eliminar campo</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Se eliminará "{category.name}".
+                  Esta acción no se puede deshacer. Se eliminará "{extraField.name}".
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -391,8 +367,8 @@ export default function CategoryDetailsPage() {
                 <AlertDialogAction
                   className="bg-red-600 hover:bg-red-700"
                   onClick={() => {
-                    toast({ title: "Categoría eliminada", description: `"${category.name}" fue eliminada.` })
-                    router.push("/inventory/categories")
+                    toast({ title: "Campo eliminado", description: `"${extraField.name}" fue eliminado.` })
+                    router.push("/inventory/extra-fields")
                   }}
                 >
                   Eliminar
@@ -402,47 +378,35 @@ export default function CategoryDetailsPage() {
           </AlertDialog>
         </div>
 
-        {/* Información de la categoría */}
+        {/* Información del campo */}
         <Card className="border-camouflage-green-200">
           <CardContent>
-            <div className="flex flex-col gap-6 lg:flex-row">
-              {/* Imagen de la categoría */}
-              <div className="flex justify-center lg:justify-start">
-                <div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg border-2 border-camouflage-green-200 bg-camouflage-green-50">
-                  {currentCategoryImage ? (
-                    <img
-                      src={currentCategoryImage}
-                      alt={`Imagen de ${category.name}`}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  ) : (
-                    <Tags className="h-20 w-20 text-camouflage-green-400" />
-                  )}
-                </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1">
+                <div className="text-base text-camouflage-green-600">Nombre</div>
+                <div className="font-medium text-camouflage-green-900">{extraField.name}</div>
               </div>
-              
-              {/* Información de la categoría */}
-              <div className="flex-1">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <div className="text-base text-camouflage-green-600">Nombre</div>
-                    <div className="font-medium text-camouflage-green-900">{category.name}</div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-base text-camouflage-green-600">Estado</div>
-                    <div className="font-medium text-camouflage-green-900">{category.isActive ? "Activa" : "Inactiva"}</div>
-                  </div>
-                  <div className="space-y-1 sm:col-span-2">
-                    <div className="text-base text-camouflage-green-600">Descripción</div>
-                    <div className="font-medium text-camouflage-green-900">{category.description}</div>
-                  </div>
-                </div>
+              <div className="space-y-1">
+                <div className="text-base text-camouflage-green-600">Tipo</div>
+                <div className="font-medium text-camouflage-green-900 capitalize">{extraField.type}</div>
               </div>
+              <div className="space-y-1">
+                <div className="text-base text-camouflage-green-600">Valor por Defecto</div>
+                <div className="font-medium text-camouflage-green-900">{extraField.defaultValue || "Sin valor"}</div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-base text-camouflage-green-600">Estado</div>
+                <div className="font-medium text-camouflage-green-900">{extraField.isRequired ? "Requerido" : "Opcional"}</div>
+              </div>
+            </div>
+            <div className="mt-4 space-y-1">
+              <div className="text-base text-camouflage-green-600">Descripción</div>
+              <div className="font-medium text-camouflage-green-900">{extraField.description}</div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Tabla de ítems asociados a la categoría */}
+        {/* Tabla de ítems que usan este campo */}
         <Card className="border-camouflage-green-200">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -471,30 +435,81 @@ export default function CategoryDetailsPage() {
                       <X className="h-4 w-4" />
                     </Button>
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
-                        onClick={() => bulkSetActive(true)}
-                      >
-                        Activar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
-                        onClick={() => bulkSetActive(false)}
-                      >
-                        Desactivar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
-                        onClick={bulkDelete}
-                      >
-                        Eliminar
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedActive}
+                          >
+                            Activar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Activar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Se activarán {selectedCount} ítem(s).
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => bulkSetActive(true)}>Confirmar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedInactive}
+                          >
+                            Desactivar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Desactivar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Se desactivarán {selectedCount} ítem(s).
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => bulkSetActive(false)}>Confirmar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
+                          >
+                            Eliminar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. Se eliminarán {selectedCount} ítem(s).
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={bulkDelete}>
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 )}
@@ -779,7 +794,11 @@ export default function CategoryDetailsPage() {
                       <TableCell className="w-[120px]">
                         <div className="">
                           <span
-                            className={`min-w-[50px] rounded-full px-4 py-2 text-center text-sm font-semibold ${product.stock > product.minStock ? "bg-camouflage-green-100 text-camouflage-green-800" : "bg-red-100 text-red-800"}`}
+                            className={`min-w-[50px] rounded-full px-4 py-2 text-center text-sm font-semibold ${
+                              product.stock > product.minStock
+                                ? "bg-camouflage-green-100 text-camouflage-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
                           >
                             {product.stock}
                           </span>
@@ -795,6 +814,35 @@ export default function CategoryDetailsPage() {
                             onClick={() => router.push(`/inventory/items/${product.id}`)}
                           >
                             <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                            title="Editar"
+                            onClick={() => setIsProductEditModalOpen(true)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                            title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
+                            onClick={() => {
+                              const current = product.isActive ?? true
+                              setLocalFieldProducts(prevProducts =>
+                                prevProducts.map(p =>
+                                  p.id === product.id ? { ...p, isActive: !current } : p
+                                )
+                              )
+                            }}
+                          >
+                            {(product.isActive ?? true) ? (
+                              <Power className="h-4 w-4" />
+                            ) : (
+                              <PowerOff className="h-4 w-4" />
+                            )}
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -819,7 +867,9 @@ export default function CategoryDetailsPage() {
                                 <AlertDialogAction
                                   className="bg-red-600 hover:bg-red-700"
                                   onClick={() => {
-                                    deleteProduct(product.id)
+                                    setLocalFieldProducts(prevProducts =>
+                                      prevProducts.filter(p => p.id !== product.id)
+                                    )
                                     toast({ title: "Ítem eliminado", description: `Se eliminó "${product.name}".` })
                                     setSelectedIds((prev) => {
                                       const next = new Set(prev)
@@ -833,31 +883,6 @@ export default function CategoryDetailsPage() {
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                            title="Editar"
-                            onClick={() => router.push(`/inventory/items/${product.id}/edit`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                            title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
-                            onClick={() => {
-                              const current = product.isActive ?? true
-                              updateProduct(product.id, { isActive: !current })
-                            }}
-                          >
-                            {(product.isActive ?? true) ? (
-                              <Power className="h-4 w-4" />
-                            ) : (
-                              <PowerOff className="h-4 w-4" />
-                            )}
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -866,13 +891,13 @@ export default function CategoryDetailsPage() {
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={7} className="py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
-                        <Tags className="h-12 w-12 text-camouflage-green-300" />
+                        <Layers className="h-12 w-12 text-camouflage-green-300" />
                         <div>
                           <p className="font-medium text-camouflage-green-600">
-                            No hay ítems asociados a esta categoría
+                            No hay ítems que usen este campo
                           </p>
                           <p className="mt-1 text-sm text-camouflage-green-500">
-                            Asigna productos a la categoría para verlos aquí.
+                            Los productos que usen este campo aparecerán aquí.
                           </p>
                         </div>
                       </div>
@@ -895,32 +920,67 @@ export default function CategoryDetailsPage() {
         </Card>
       </div>
 
-      {/* Modal para editar categoría */}
-      <Modal isOpen={isEditModalOpen} onClose={handleCancelEditCategory} title="Editar Categoría">
+      {/* Modal para editar campo */}
+      <Modal isOpen={isEditModalOpen} onClose={handleCancelEditField} title="Editar Campo">
         <div className="space-y-4">
           <div className="space-y-1 pt-2.5">
-            <Label htmlFor="edit-category-name" className="font-medium text-camouflage-green-700">
+            <Label htmlFor="edit-field-name" className="font-medium text-camouflage-green-700">
               Nombre <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="edit-category-name"
+              id="edit-field-name"
               type="text"
-              placeholder="Ingresa el nombre de la categoría"
-              value={editCategoryData.name}
-              onChange={(e) => handleEditCategoryInputChange("name", e.target.value)}
+              placeholder="Ej: Color, Peso, Fecha de Vencimiento..."
+              value={editFieldData.name}
+              onChange={(e) => handleEditFieldInputChange("name", e.target.value)}
               className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="edit-category-description" className="font-medium text-camouflage-green-700">
+            <Label htmlFor="edit-field-type" className="font-medium text-camouflage-green-700">
+              Tipo de Campo <span className="text-red-500">*</span>
+            </Label>
+            <Select
+              value={editFieldData.type}
+              onValueChange={(value) => handleEditFieldInputChange("type", value)}
+            >
+              <SelectTrigger className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="texto">Texto</SelectItem>
+                <SelectItem value="número">Número</SelectItem>
+                <SelectItem value="número decimal">Número Decimal</SelectItem>
+                <SelectItem value="fecha">Fecha</SelectItem>
+                <SelectItem value="si/no">Si/No</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-field-default" className="font-medium text-camouflage-green-700">
+              Valor por Defecto
+            </Label>
+            <Input
+              id="edit-field-default"
+              type="text"
+              placeholder="Valor por defecto del campo"
+              value={editFieldData.defaultValue}
+              onChange={(e) => handleEditFieldInputChange("defaultValue", e.target.value)}
+              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-field-description" className="font-medium text-camouflage-green-700">
               Descripción
             </Label>
             <Textarea
-              id="edit-category-description"
-              placeholder="Ingresa una descripción de la categoría"
-              value={editCategoryData.description}
-              onChange={(e) => handleEditCategoryInputChange("description", e.target.value)}
+              id="edit-field-description"
+              placeholder="Descripción del campo adicional"
+              value={editFieldData.description}
+              onChange={(e) => handleEditFieldInputChange("description", e.target.value)}
               className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
               style={{
                 outline: "none",
@@ -933,75 +993,47 @@ export default function CategoryDetailsPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className="font-medium text-camouflage-green-700">Imagen de la categoría</Label>
-            <div
-              className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                isImageDragOver
-                  ? "border-camouflage-green-500 bg-camouflage-green-50"
-                  : "hover:bg-camouflage-green-25 border-camouflage-green-300 hover:border-camouflage-green-400"
-              }`}
-              onClick={handleEditImageAreaClick}
-              onDragOver={handleEditImageDragOver}
-              onDragLeave={handleEditImageDragLeave}
-              onDrop={handleEditImageDrop}
-            >
-              {editCategoryData.image ? (
-                <div className="space-y-3">
-                  <div className="flex justify-center">
-                    <img
-                      src={URL.createObjectURL(editCategoryData.image)}
-                      alt="Vista previa"
-                      className="h-20 w-20 rounded-lg object-cover"
-                    />
-                  </div>
-                  <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
-                    <ImageIcon className="h-4 w-4" />
-                    <span className="text-sm font-medium">{editCategoryData.image.name}</span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeEditImage()
-                    }}
-                    className="border-red-300 text-red-600 hover:bg-red-50"
-                  >
-                    <Trash2 className="mr-1 h-4 w-4" />
-                    Eliminar imagen
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex justify-center gap-3">
-                    <CloudUpload className="h-8 w-8 text-camouflage-green-500" />
-                  </div>
-                  <p className="text-sm font-medium text-camouflage-green-600">
-                    Arrastra una imagen aquí o haz clic para seleccionar
-                  </p>
-                  <p className="text-xs text-camouflage-green-500">JPG, PNG, GIF (máximo 5MB)</p>
-                </div>
-              )}
-            </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="edit-field-required"
+              checked={editFieldData.isRequired}
+              onCheckedChange={(checked) => handleEditFieldInputChange("isRequired", checked as boolean)}
+            />
+            <Label htmlFor="edit-field-required" className="text-sm font-medium text-camouflage-green-700">
+              Campo requerido
+            </Label>
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="outline"
-              onClick={handleCancelEditCategory}
+              onClick={handleCancelEditField}
               className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
             >
               Cancelar
             </Button>
             <Button
-              onClick={handleSaveEditCategory}
+              onClick={handleSaveEditField}
               className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
             >
               Guardar cambios
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Modal para editar producto */}
+      <Modal isOpen={isProductEditModalOpen} onClose={() => setIsProductEditModalOpen(false)} title="Editar Producto" size="xl">
+        <NewItemForm 
+          onClose={() => setIsProductEditModalOpen(false)}
+          onSuccess={() => {
+            setIsProductEditModalOpen(false)
+            toast({
+              title: "Producto actualizado",
+              description: "El producto fue actualizado exitosamente.",
+            })
+          }}
+        />
       </Modal>
     </MainLayout>
   )

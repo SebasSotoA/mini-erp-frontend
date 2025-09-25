@@ -278,12 +278,12 @@ export default function ItemManagement() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Card: Importar Nuevos Items */}
           <Card className="border-camouflage-green-200 transition-shadow hover:shadow-lg">
-            <CardHeader>
+          <CardHeader>
               <CardTitle className="flex items-center text-camouflage-green-900">
                 <FileSpreadsheet className="mr-2 h-6 w-6 text-camouflage-green-600" />
                 Importar Nuevos Items
               </CardTitle>
-            </CardHeader>
+          </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-camouflage-green-600">
                 Importa nuevos productos al inventario usando un archivo Excel.
@@ -296,9 +296,9 @@ export default function ItemManagement() {
                   <div className="text-sm text-camouflage-green-700">
                     <p className="mb-1 font-medium">Campos obligatorios:</p>
                     <p className="text-xs">Nombre, SKU, Precio, Categoría, Stock inicial</p>
-                  </div>
-                </div>
-              </div>
+                    </div>
+                    </div>
+                    </div>
 
               {/* Recomendaciones simplificadas */}
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-3">
@@ -311,9 +311,9 @@ export default function ItemManagement() {
                     <p className="text-xs">
                       • Para controlar stock puedes incluir las columnas "Cantidad" y "Costo inicial"
                     </p>
-                  </div>
-                </div>
-              </div>
+                    </div>
+                    </div>
+                    </div>
 
               {/* Drag & Drop Area */}
               <div className="space-y-2">
