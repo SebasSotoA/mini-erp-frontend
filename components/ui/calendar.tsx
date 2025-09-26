@@ -71,20 +71,20 @@ function Calendar({
     if (currentView === "month") {
       return (
         <div className="flex w-full flex-col gap-2">
-          <div className="relative flex items-center">
+          <div className="relative flex items-center justify-center py-2 pb-0 px-2">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setCurrentView("calendar")}
-              className="mx-4 text-camouflage-green-700 hover:bg-camouflage-green-50"
+              className="absolute left-2 text-camouflage-green-700 hover:bg-camouflage-green-50"
             >
               <ArrowLeftIcon className="h-4 w-4" />
             </Button>
-            <span className="absolute left-1/2 -translate-x-1/2 transform text-sm font-semibold text-camouflage-green-700">
+            <span className="text-sm font-semibold text-camouflage-green-700 whitespace-nowrap">
               Seleccionar Mes
             </span>
           </div>
-          <div className="grid w-full grid-cols-3 gap-1 p-0">
+          <div className="grid w-full grid-cols-4 gap-1 p-3 pt-0 pb-0">
             {months.map((month) => (
               <Button
                 key={month.index}
@@ -92,7 +92,7 @@ function Calendar({
                 size="sm"
                 onClick={() => handleMonthSelect(month.index)}
                 className={cn(
-                  "flex h-8 w-full items-center justify-center text-sm text-camouflage-green-700 hover:bg-camouflage-green-50",
+                  "flex h-9 w-full items-center justify-center text-xs text-camouflage-green-700 hover:bg-camouflage-green-50",
                   month.index === currentMonth.getMonth() && "bg-camouflage-green-100 font-semibold",
                 )}
               >
@@ -206,7 +206,7 @@ function Calendar({
         <DayPicker
           showOutsideDays={showOutsideDays}
           className={cn(
-            "group/calendar bg-background px-3 py-0 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
+            "group/calendar bg-background px-1 py-0 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
             String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
             String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
             className,
@@ -339,7 +339,7 @@ function CalendarDayButton({ className, day, modifiers, ...props }: React.Compon
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "flex aspect-square w-full min-w-[--cell-size] flex-col gap-1 font-normal leading-none text-camouflage-green-700 transition-colors duration-150 hover:bg-camouflage-green-100 hover:text-camouflage-green-900 focus-visible:outline-none focus-visible:ring-camouflage-green-500 data-[range-end=true]:rounded-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-start=true]:rounded-l-md data-[range-end=true]:bg-camouflage-green-700 data-[range-middle=true]:bg-camouflage-green-100 data-[range-start=true]:bg-camouflage-green-700 data-[selected-single=true]:bg-camouflage-green-700 data-[selected-single=true]:font-semibold data-[range-end=true]:text-white data-[range-middle=true]:text-camouflage-green-900 data-[range-start=true]:text-white data-[selected-single=true]:text-white group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-camouflage-green-500 group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-camouflage-green-500/50 [&>span]:text-xs [&>span]:opacity-70",
+        "flex aspect-square w-full min-w-[--cell-size] flex-col gap-1 font-normal leading-none text-sm text-camouflage-green-700 transition-colors duration-150 hover:bg-camouflage-green-100 hover:text-camouflage-green-900 focus-visible:outline-none focus-visible:ring-camouflage-green-500 data-[range-end=true]:rounded-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-start=true]:rounded-l-md data-[range-end=true]:bg-camouflage-green-700 data-[range-middle=true]:bg-camouflage-green-100 data-[range-start=true]:bg-camouflage-green-700 data-[selected-single=true]:bg-camouflage-green-700 data-[selected-single=true]:font-semibold data-[range-end=true]:text-white data-[range-middle=true]:text-camouflage-green-900 data-[range-start=true]:text-white data-[selected-single=true]:text-white group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-camouflage-green-500 group-data-[focused=true]/day:ring-[3px] group-data-[focused=true]/day:ring-camouflage-green-500/50 [&>span]:text-xs [&>span]:opacity-70",
         defaultClassNames.day,
         className,
       )}

@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Tag } from "lucide-react"
+import { Plus, Tag, ChevronsUpDown, AlertCircle } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { useState, useMemo } from "react"
@@ -11,12 +11,15 @@ import { z } from "zod"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/ui/modal"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useInventory } from "@/contexts/inventory-context"
+import { useExtraFields } from "@/contexts/extra-fields-context"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AddInventoryItemPage() {
@@ -24,6 +27,7 @@ export default function AddInventoryItemPage() {
 
   const router = useRouter()
   const { addProduct } = useInventory()
+  const { extraFields } = useExtraFields()
   const { toast } = useToast()
   const [itemType, setItemType] = useState<ItemType>("product")
   const [name, setName] = useState("")
@@ -41,6 +45,9 @@ export default function AddInventoryItemPage() {
   const [code, setCode] = useState("")
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
+  const [selectedExtraFields, setSelectedExtraFields] = useState<string[]>([])
+  const [extraFieldValues, setExtraFieldValues] = useState<Record<string, string>>({})
+  const [showErrorToast, setShowErrorToast] = useState(false)
 
   // Validación con Zod + RHF (controlamos el estado local y sincronizamos con RHF)
   const addSchema = z
@@ -154,6 +161,113 @@ export default function AddInventoryItemPage() {
 
   const priceToShow = useMemo(() => totalPrice || basePrice || "0.00", [totalPrice, basePrice])
 
+  // Función para campos adicionales
+  const toggleExtraField = (fieldId: string) => {
+    const field = extraFields.find(f => f.id === fieldId)
+    if (!field) return
+
+    setSelectedExtraFields(prev => {
+      if (prev.includes(fieldId)) {
+        // Remover campo
+        setExtraFieldValues(prevValues => {
+          const newValues = { ...prevValues }
+          delete newValues[fieldId]
+          return newValues
+        })
+        return prev.filter(id => id !== fieldId)
+      } else {
+        // Agregar campo con valor por defecto
+        setExtraFieldValues(prevValues => ({
+          ...prevValues,
+          [fieldId]: field.defaultValue || ""
+        }))
+        return [...prev, fieldId]
+      }
+    })
+  }
+
+  const handleExtraFieldValueChange = (fieldId: string, value: string) => {
+    setExtraFieldValues(prev => ({
+      ...prev,
+      [fieldId]: value
+    }))
+  }
+
+  // Función para renderizar inputs de campos adicionales
+  const renderExtraFieldInput = (field: any) => {
+    const value = extraFieldValues[field.id] || ""
+    
+    switch (field.type) {
+      case "texto":
+        return (
+          <Input
+            type="text"
+            value={value}
+            onChange={(e) => handleExtraFieldValueChange(field.id, e.target.value)}
+            placeholder={`Ingresa ${field.name.toLowerCase()}`}
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+          />
+        )
+      
+      case "número":
+        return (
+          <Input
+            type="number"
+            value={value}
+            onChange={(e) => handleExtraFieldValueChange(field.id, e.target.value)}
+            placeholder={`Ingresa ${field.name.toLowerCase()}`}
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+          />
+        )
+      
+      case "número decimal":
+        return (
+          <Input
+            type="number"
+            step="0.01"
+            value={value}
+            onChange={(e) => handleExtraFieldValueChange(field.id, e.target.value)}
+            placeholder={`Ingresa ${field.name.toLowerCase()}`}
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+          />
+        )
+      
+      case "fecha":
+        return (
+          <Input
+            type="date"
+            value={value}
+            onChange={(e) => handleExtraFieldValueChange(field.id, e.target.value)}
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none"
+          />
+        )
+      
+      case "si/no":
+        return (
+          <Select value={value} onValueChange={(val) => handleExtraFieldValueChange(field.id, val)}>
+            <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
+              <SelectValue placeholder="Selecciona una opción" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Sí">Sí</SelectItem>
+              <SelectItem value="No">No</SelectItem>
+            </SelectContent>
+          </Select>
+        )
+      
+      default:
+        return (
+          <Input
+            type="text"
+            value={value}
+            onChange={(e) => handleExtraFieldValueChange(field.id, e.target.value)}
+            placeholder={`Ingresa ${field.name.toLowerCase()}`}
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+          />
+        )
+    }
+  }
+
   const onImageChange = (file: File | null) => {
     setImageFile(file)
     if (file) {
@@ -196,23 +310,29 @@ export default function AddInventoryItemPage() {
     input.click()
   }
 
-  const doSubmit = async (createAnother: boolean) => {
-    // Validaciones requeridas
-    if (!name.trim()) return
-    if (!unit.trim()) return
-    const total = parseFloat(totalPrice || "0")
-    const base = parseFloat(basePrice || "0")
-    if (!total || total <= 0) return
-    if (!base || base <= 0) return
-    if (itemType === "product") {
-      const cost = parseFloat(initialCost || "")
-      if (isNaN(cost) || cost < 0) return
-    }
+  const handleFormSubmit = async (data: any) => {
+    // Aquí se ejecuta cuando la validación es exitosa
+    await doSubmit(false)
+  }
 
+  const handleFormSubmitAndCreateAnother = async (data: any) => {
+    // Aquí se ejecuta cuando la validación es exitosa y quiere crear otro
+    await doSubmit(true)
+  }
+
+  const handleFormError = () => {
+    // Aquí se ejecuta cuando hay errores de validación
+    setShowErrorToast(true)
+    setTimeout(() => setShowErrorToast(false), 4000)
+  }
+
+  const doSubmit = async (createAnother: boolean) => {
     // Construir el objeto Product (mock) y persistir en contexto
     const resolvedCategory = category || (itemType === "service" ? "Servicios" : "Productos")
     const costValue = itemType === "product" ? parseFloat(initialCost || "0") : 0
     const stockValue = itemType === "product" ? parseInt(quantity || "0") || 0 : 0
+    const base = parseFloat(basePrice || "0")
+    const total = parseFloat(totalPrice || "0")
     try {
       addProduct({
         name: name.trim(),
@@ -345,9 +465,10 @@ export default function AddInventoryItemPage() {
                       setValue("name", e.target.value, { shouldValidate: true })
                     }}
                     placeholder="Nombre del producto o servicio"
-                    className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                    className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                      errors?.name ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                    }`}
                   />
-                  {errors?.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
@@ -401,8 +522,9 @@ export default function AddInventoryItemPage() {
                         setValue("unit", v, { shouldValidate: true })
                       }}
                     >
-                      {errors?.unit && <p className="text-xs text-red-600">{errors.unit.message}</p>}
-                      <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
+                      <SelectTrigger className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 focus:outline-none ${
+                        errors?.unit ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                      }`}>
                         <SelectValue placeholder="Selecciona una unidad" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start" avoidCollisions={false}>
@@ -514,9 +636,10 @@ export default function AddInventoryItemPage() {
                       value={basePrice}
                       onChange={(e) => handleBaseOrTaxChange(e.target.value, tax)}
                       placeholder="0.00"
-                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                        errors?.basePrice ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                      }`}
                     />
-                    {errors?.basePrice && <p className="text-xs text-red-600">{errors.basePrice.message}</p>}
                   </div>
                   <div className="pb-3 text-center text-gray-400">+</div>
                   <div className="space-y-2">
@@ -544,9 +667,10 @@ export default function AddInventoryItemPage() {
                       value={totalPrice}
                       onChange={(e) => handleTotalChange(e.target.value)}
                       placeholder="0.00"
-                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                        errors?.totalPrice ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                      }`}
                     />
-                    {errors?.totalPrice && <p className="text-xs text-red-600">{errors.totalPrice.message}</p>}
                   </div>
                 </div>
               </CardContent>
@@ -601,6 +725,95 @@ export default function AddInventoryItemPage() {
                 </CardContent>
               </Card>
             )}
+
+             {/* Campos adicionales */}
+             <Card className="border-camouflage-green-200">
+              <CardHeader>
+                <CardTitle className="text-camouflage-green-900">Campos adicionales</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-camouflage-green-700">
+                  Configura los campos adicionales que quieres incluir en este ítem.
+                </p>
+                
+                {/* Dropdown con campos adicionales */}
+                <div className="space-y-2">
+                  <Label className="text-sm text-gray-700">Seleccionar campos adicionales</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between rounded-lg border-gray-300 h-10"
+                      >
+                        {selectedExtraFields.length > 0
+                          ? `${selectedExtraFields.length} campos seleccionados`
+                          : "Seleccionar campos adicionales..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full max-h-60 overflow-y-auto rounded-lg border bg-white p-3 shadow-lg" side="bottom" align="start">
+                      {extraFields.filter(field => field.isActive).length > 0 ? (
+                        extraFields.filter(field => field.isActive).map((field) => (
+                          <div
+                            key={field.id}
+                            className="flex items-center gap-5 rounded-md px-3 py-1 hover:bg-gray-100"
+                          >
+                            <Checkbox
+                              id={`field-${field.id}`}
+                              checked={selectedExtraFields.includes(field.id)}
+                              onCheckedChange={() => toggleExtraField(field.id)}
+                              className="h-4 w-4"
+                            />
+                            <label
+                              htmlFor={`field-${field.id}`}
+                              className="flex-1 cursor-pointer text-sm text-gray-700"
+                            >
+                              {field.name}
+                            </label>
+                            <span className="text-xs text-gray-400 capitalize">{field.type}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-3 py-4 text-center text-sm text-gray-500">
+                          No hay campos adicionales disponibles
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Campos adicionales editables */}
+                {selectedExtraFields.length > 0 && (
+                  <div className="space-y-4">
+                    {selectedExtraFields.map((fieldId) => {
+                      const field = extraFields.find(f => f.id === fieldId)
+                      if (!field) return null
+                      
+                      return (
+                        <div key={fieldId} className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium text-gray-700">
+                              {field.name} {field.isRequired && <span className="text-red-500">*</span>}
+                            </Label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleExtraField(fieldId)}
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                            >
+                              ×
+                            </Button>
+                          </div>
+                          {renderExtraFieldInput(field)}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Costo */}
             <Card className="border-camouflage-green-200">
@@ -706,7 +919,7 @@ export default function AddInventoryItemPage() {
                   <Button
                     className="w-full bg-camouflage-green-700 text-white hover:bg-camouflage-green-800 disabled:opacity-50"
                     disabled={isSubmitting}
-                    onClick={handleSubmit(() => doSubmit(false))}
+                    onClick={handleSubmit(handleFormSubmit, handleFormError)}
                   >
                     {isSubmitting ? "Guardando..." : "Guardar"}
                   </Button>
@@ -715,7 +928,7 @@ export default function AddInventoryItemPage() {
                   variant="secondary"
                   className="w-full bg-camouflage-green-600/20 text-camouflage-green-800 hover:bg-camouflage-green-600/30 disabled:opacity-50"
                   disabled={isSubmitting}
-                  onClick={handleSubmit(() => doSubmit(true))}
+                  onClick={handleSubmit(handleFormSubmitAndCreateAnother, handleFormError)}
                 >
                   {isSubmitting ? "Guardando..." : "Guardar y crear otro"}
                 </Button>
@@ -794,6 +1007,18 @@ export default function AddInventoryItemPage() {
             </div>
           </div>
         </Modal>
+      )}
+      
+      {/* Mensaje flotante de error */}
+      {showErrorToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm font-medium text-red-800">
+              Error, verifica los campos marcados en rojo para continuar
+            </p>
+          </div>
+        </div>
       )}
     </MainLayout>
   )

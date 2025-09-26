@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, HelpCircle, ExternalLink, Check } from "lucide-react"
+import { Plus, HelpCircle, ExternalLink, Check, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useInventory } from "@/contexts/inventory-context"
+import { useExtraFields } from "@/contexts/extra-fields-context"
+import { RequiredFieldsWarning } from "./required-fields-warning"
 
 
 interface NewItemFormProps {
@@ -24,7 +26,10 @@ type ItemType = "product" | "service"
 
 export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
   const { addProduct } = useInventory()
+  const { getRequiredFields } = useExtraFields()
   const [itemType, setItemType] = useState<ItemType>("product")
+  const [extraFieldValues, setExtraFieldValues] = useState<Record<string, string>>({})
+  const [showErrorToast, setShowErrorToast] = useState(false)
 
   const schema = z
     .object({
@@ -86,9 +91,32 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
     setValue("unitOfMeasure", newUnitOfMeasure, { shouldValidate: false })
   }, [itemType, setValue])
 
+  // Efecto para inicializar valores por defecto de campos extra requeridos
+  useEffect(() => {
+    const requiredFields = getRequiredFields()
+    const defaultValues: Record<string, string> = {}
+    
+    requiredFields.forEach(field => {
+      if (field.defaultValue && !extraFieldValues[field.id]) {
+        defaultValues[field.id] = field.defaultValue
+      }
+    })
+    
+    if (Object.keys(defaultValues).length > 0) {
+      setExtraFieldValues(prev => ({ ...prev, ...defaultValues }))
+    }
+  }, [getRequiredFields])
+
   const handleTypeChange = (newType: ItemType) => {
     setItemType(newType)
     // El useEffect se encargará del resto
+  }
+
+  const handleExtraFieldChange = (fieldId: string, value: string) => {
+    setExtraFieldValues(prev => ({
+      ...prev,
+      [fieldId]: value
+    }))
   }
 
   const handlePriceChange = (field: "basePrice" | "tax" | "totalPrice", value: string) => {
@@ -136,6 +164,20 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
     onClose()
   }
 
+  const handleFormSubmit = async (data: FormSchema) => {
+    try {
+      await onSubmit(data)
+    } catch (error) {
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 4000)
+    }
+  }
+
+  const handleFormError = () => {
+    setShowErrorToast(true)
+    setTimeout(() => setShowErrorToast(false), 4000)
+  }
+
   const ItemTypeButton = ({
     type,
     label,
@@ -162,7 +204,8 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
   )
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <div className="relative">
+      <form onSubmit={handleSubmit(handleFormSubmit, handleFormError)} className="space-y-3">
       <TooltipProvider>
         {/* Campo type registrado (hidden) */}
         <input {...register("type")} type="hidden" />
@@ -177,7 +220,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               <TooltipTrigger>
                 <HelpCircle className="h-4 w-4 text-gray-400 transition-colors hover:text-camouflage-green-600" />
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent className="bg-gray-900 text-white border-gray-700">
                 <p>Selecciona si es un producto físico o un servicio</p>
               </TooltipContent>
             </Tooltip>
@@ -214,10 +257,11 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               id="name"
               type="text"
               {...register("name")}
-              className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+              className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                errors.name ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+              }`}
               placeholder="Ingresa el nombre del producto"
             />
-            {errors.name && <p className="text-xs text-red-600">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-3">
@@ -229,7 +273,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 <TooltipTrigger>
                   <HelpCircle className="h-4 w-4 text-gray-400 transition-colors hover:text-camouflage-green-600" />
                 </TooltipTrigger>
-                <TooltipContent>
+                <TooltipContent className="bg-gray-900 text-white border-gray-700">
                   <p>Forma de medir el producto (unidad, kilogramo, litro, etc.)</p>
                 </TooltipContent>
               </Tooltip>
@@ -242,7 +286,9 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               value={watchedValues.unitOfMeasure || (itemType === "product" ? "Unidad" : "Servicio")}
               onValueChange={(value) => setValue("unitOfMeasure", value, { shouldValidate: true })}
             >
-              <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
+              <SelectTrigger className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 focus:outline-none ${
+                errors.unitOfMeasure ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+              }`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent side="bottom" align="start" avoidCollisions={false}>
@@ -311,7 +357,6 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 )}
               </SelectContent>
             </Select>
-            {errors.unitOfMeasure && <p className="text-xs text-red-600">{errors.unitOfMeasure.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -323,7 +368,9 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               value={watchedValues.warehouse || "Principal"}
               onValueChange={(value) => setValue("warehouse", value, { shouldValidate: true })}
             >
-              <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
+              <SelectTrigger className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 focus:outline-none ${
+                errors.warehouse ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+              }`}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -332,7 +379,6 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 <SelectItem value="Almacén">Almacén</SelectItem>
               </SelectContent>
             </Select>
-            {errors.warehouse && <p className="text-xs text-red-600">{errors.warehouse.message}</p>}
           </div>
         </div>
 
@@ -350,14 +396,11 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 min="0"
                 {...register("basePrice")}
                 onChange={(e) => handlePriceChange("basePrice", e.target.value)}
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                  errors.basePrice ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                }`}
                 placeholder="0.00"
               />
-              {errors.basePrice && (
-                <p className="absolute -bottom-5 left-0 rounded bg-white px-1 text-xs text-red-600 shadow-sm">
-                  {errors.basePrice.message}
-                </p>
-              )}
             </div>
 
             <div className="mt-6 flex items-center justify-center">
@@ -370,7 +413,9 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               </Label>
               <input {...register("tax")} type="hidden" />
               <Select value={watchedValues.tax || "0"} onValueChange={(value) => handlePriceChange("tax", value)}>
-                <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
+                <SelectTrigger className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 focus:outline-none ${
+                  errors.tax ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                }`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -379,11 +424,6 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                   <SelectItem value="19">IVA - (19%)</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.tax && (
-                <p className="absolute -bottom-5 left-0 rounded bg-white px-1 text-xs text-red-600 shadow-sm">
-                  {errors.tax.message}
-                </p>
-              )}
             </div>
 
             <div className="mt-6 flex items-center justify-center">
@@ -401,14 +441,11 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 min="0"
                 {...register("totalPrice")}
                 onChange={(e) => handlePriceChange("totalPrice", e.target.value)}
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                  errors.totalPrice ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                }`}
                 placeholder="0.00"
               />
-              {errors.totalPrice && (
-                <p className="absolute -bottom-5 left-0 rounded bg-white px-1 text-xs text-red-600 shadow-sm">
-                  {errors.totalPrice.message}
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -428,12 +465,11 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 type="number"
                 min="0"
                 {...register("quantity")}
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                  errors.quantity ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                }`}
                 placeholder="Ingresa la cantidad inicial"
               />
-              <div className="h-6">
-                {errors.quantity && <p className="mt-1 text-xs text-red-600">{errors.quantity.message as string}</p>}
-              </div>
             </div>
             <div className="space-y-2">
               <div className="flex h-5 items-center gap-2">
@@ -444,7 +480,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                   <TooltipTrigger>
                     <HelpCircle className="h-4 w-4 text-gray-400 transition-colors hover:text-camouflage-green-600" />
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className="bg-gray-900 text-white border-gray-700">
                     <p>Costo de adquisición o producción del ítem</p>
                   </TooltipContent>
                 </Tooltip>
@@ -455,17 +491,20 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 step="0.01"
                 min="0"
                 {...register("initialCost")}
-                className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                  errors.initialCost ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                }`}
                 placeholder="0.00"
               />
-              <div className="h-6">
-                {errors.initialCost && (
-                  <p className="mt-1 text-xs text-red-600">{errors.initialCost.message as string}</p>
-                )}
-              </div>
             </div>
           </div>
         )}
+
+        {/* Tarjeta de advertencia para campos extra requeridos */}
+        <RequiredFieldsWarning 
+          onFieldChange={handleExtraFieldChange}
+          fieldValues={extraFieldValues}
+        />
 
         {/* Acciones */}
         <div className="flex items-center justify-between border-t pt-4">
@@ -492,6 +531,19 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
           </div>
         </div>
       </TooltipProvider>
-    </form>
+      </form>
+
+      {/* Mensaje flotante de error */}
+      {showErrorToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm font-medium text-red-800">
+              Error, verifica los campos marcados en rojo para continuar
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

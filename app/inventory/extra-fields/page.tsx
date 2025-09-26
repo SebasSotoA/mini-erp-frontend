@@ -42,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { DatePicker } from "@/components/ui/date-picker"
 
 const initialExtraFields = [
   {
@@ -85,6 +86,82 @@ const initialExtraFields = [
 export default function ExtraFields() {
   const router = useRouter()
   const { toast } = useToast()
+
+  // Función helper para renderizar el input de valor por defecto según el tipo
+  const renderDefaultValueInput = (type: string, value: string, onChange: (value: string) => void) => {
+    switch (type) {
+      case "texto":
+        return (
+          <Input
+            type="text"
+            placeholder="Valor por defecto del campo"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          />
+        )
+      
+      case "número":
+        return (
+          <Input
+            type="number"
+            placeholder="Valor por defecto del campo"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          />
+        )
+      
+      case "número decimal":
+        return (
+          <Input
+            type="number"
+            step="0.01"
+            placeholder="Valor por defecto del campo"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          />
+        )
+      
+      case "fecha":
+        const dateValue = value && value !== "" ? new Date(value) : null
+        // Verificar si la fecha es válida
+        const isValidDate = dateValue && !isNaN(dateValue.getTime())
+        return (
+          <DatePicker
+            value={isValidDate ? dateValue : null}
+            onChange={(date) => onChange(date ? date.toISOString().split('T')[0] : "")}
+            placeholder="Seleccionar fecha por defecto"
+            className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          />
+        )
+      
+      case "si/no":
+        return (
+          <Select value={value} onValueChange={onChange}>
+            <SelectTrigger className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500">
+              <SelectValue placeholder="Seleccionar valor por defecto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Sí">Sí</SelectItem>
+              <SelectItem value="No">No</SelectItem>
+            </SelectContent>
+          </Select>
+        )
+      
+      default:
+        return (
+          <Input
+            type="text"
+            placeholder="Valor por defecto del campo"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          />
+        )
+    }
+  }
 
   // Estado para los campos adicionales
   const [extraFields, setExtraFields] = useState(initialExtraFields)
@@ -670,14 +747,11 @@ export default function ExtraFields() {
             <Label htmlFor="field-default" className="font-medium text-camouflage-green-700">
               Valor por Defecto
             </Label>
-            <Input
-              id="field-default"
-              type="text"
-              placeholder="Valor por defecto del campo"
-              value={newFieldData.defaultValue}
-              onChange={(e) => handleNewFieldInputChange("defaultValue", e.target.value)}
-              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-            />
+            {renderDefaultValueInput(
+              newFieldData.type,
+              newFieldData.defaultValue,
+              (value) => handleNewFieldInputChange("defaultValue", value)
+            )}
           </div>
 
           <div className="space-y-2">
@@ -772,14 +846,11 @@ export default function ExtraFields() {
             <Label htmlFor="edit-field-default" className="font-medium text-camouflage-green-700">
               Valor por Defecto
             </Label>
-            <Input
-              id="edit-field-default"
-              type="text"
-              placeholder="Valor por defecto del campo"
-              value={editFieldData.defaultValue}
-              onChange={(e) => handleEditFieldInputChange("defaultValue", e.target.value)}
-              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-            />
+            {renderDefaultValueInput(
+              editFieldData.type,
+              editFieldData.defaultValue,
+              (value) => handleEditFieldInputChange("defaultValue", value)
+            )}
           </div>
 
           <div className="space-y-2">

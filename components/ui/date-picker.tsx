@@ -63,26 +63,27 @@ export function DatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="z-50 w-auto border-camouflage-green-200 p-0"
+        className="z-50 w-auto max-h-[310px] overflow-y-auto border-camouflage-green-200 p-0"
         align="start"
         side="bottom"
         sideOffset={4}
+        avoidCollisions={false}
       >
-        <div className="rounded-md bg-white">
+        <div className="rounded-md bg-white max-h-[295px] overflow-y-auto">
           <Calendar
             mode="single"
             selected={displayValue}
             onSelect={handleDateChange}
-            initialFocus
             locale={es}
             className="bg-white"
-            showOutsideDays
+            fixedWeeks={false}
           />
-          <div className="flex items-center justify-between gap-2 border-t border-camouflage-green-200 p-3">
+          <div className="flex items-center justify-between gap-1 border-t border-camouflage-green-200 p-2">
             <Button
               type="button"
               variant="ghost"
-              className="text-camouflage-green-700 hover:bg-camouflage-green-50"
+              size="sm"
+              className="h-6 px-2 text-xs text-camouflage-green-700 hover:bg-camouflage-green-50"
               onClick={() => {
                 onChange?.(null)
                 setOpen(false)
@@ -90,11 +91,12 @@ export function DatePicker({
             >
               Limpiar
             </Button>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               <Button
                 type="button"
                 variant="outline"
-                className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                size="sm"
+                className="h-6 px-2 text-xs border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
                 onClick={() => setOpen(false)}
               >
                 Cancelar
@@ -102,7 +104,8 @@ export function DatePicker({
               <Button
                 type="button"
                 variant="outline"
-                className="border-camouflage-green-700 bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                size="sm"
+                className="h-6 px-2 text-xs border-camouflage-green-700 bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
                 onClick={() => {
                   const today = new Date()
                   onChange?.(today)
