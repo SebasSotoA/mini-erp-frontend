@@ -3,6 +3,17 @@
 import type React from "react"
 import { createContext, useContext, useState } from "react"
 
+// Importar tipos de facturación
+import type {
+  Salesperson,
+  Supplier,
+  PaymentMethod,
+  SalesInvoice,
+  PurchaseInvoice,
+  InvoiceFilters,
+  InvoiceSummary,
+} from "@/lib/types/invoices"
+
 export interface Warehouse {
   id: string
   name: string
@@ -56,6 +67,8 @@ export interface StockMovement {
   date: string
   cost?: number // Costo unitario del movimiento
   reference?: string // Número de factura, orden, etc.
+  warehouseId?: string // ID de la bodega donde ocurrió el movimiento
+  userId?: string // ID del usuario que realizó el movimiento
 }
 
 export interface Sale {
@@ -123,6 +136,45 @@ interface InventoryContextType {
   getInventoryValueProducts: () => any[]
   getWarehouses: () => string[]
   getCategories: () => string[]
+  
+  // Nuevas propiedades para facturación
+  salespersons: Salesperson[]
+  suppliers: Supplier[]
+  paymentMethods: PaymentMethod[]
+  salesInvoices: SalesInvoice[]
+  purchaseInvoices: PurchaseInvoice[]
+  
+  // Gestión de vendedores
+  addSalesperson: (salesperson: Omit<Salesperson, 'id' | 'createdAt'>) => void
+  updateSalesperson: (id: string, salesperson: Partial<Salesperson>) => void
+  deleteSalesperson: (id: string) => void
+  
+  // Gestión de proveedores
+  addSupplier: (supplier: Omit<Supplier, 'id' | 'createdAt'>) => void
+  updateSupplier: (id: string, supplier: Partial<Supplier>) => void
+  deleteSupplier: (id: string) => void
+  
+  // Gestión de medios de pago
+  addPaymentMethod: (method: Omit<PaymentMethod, 'id'>) => void
+  updatePaymentMethod: (id: string, method: Partial<PaymentMethod>) => void
+  deletePaymentMethod: (id: string) => void
+  
+  // Gestión de facturas de venta
+  addSalesInvoice: (invoice: Omit<SalesInvoice, 'id' | 'createdAt' | 'updatedAt'>) => void
+  updateSalesInvoice: (id: string, invoice: Partial<SalesInvoice>) => void
+  deleteSalesInvoice: (id: string) => void
+  
+  // Gestión de facturas de compra
+  addPurchaseInvoice: (invoice: Omit<PurchaseInvoice, 'id' | 'createdAt' | 'updatedAt'>) => void
+  updatePurchaseInvoice: (id: string, invoice: Partial<PurchaseInvoice>) => void
+  deletePurchaseInvoice: (id: string) => void
+  
+  // Funciones de análisis y filtrado
+  getSalesInvoiceSummary: (filters?: InvoiceFilters) => InvoiceSummary
+  getPurchaseInvoiceSummary: (filters?: InvoiceFilters) => InvoiceSummary
+  getActiveSalespersons: () => Salesperson[]
+  getActiveSuppliers: () => Supplier[]
+  getActivePaymentMethods: () => PaymentMethod[]
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined)
@@ -599,6 +651,8 @@ const initialStockMovements: StockMovement[] = [
     date: "2024-01-01",
     cost: 750.0,
     reference: "PO-2024-001",
+    warehouseId: "1",
+    userId: "system",
   },
   {
     id: "2",
@@ -610,6 +664,8 @@ const initialStockMovements: StockMovement[] = [
     date: "2024-01-02",
     cost: 220.0,
     reference: "PO-2024-002",
+    warehouseId: "2",
+    userId: "system",
   },
   {
     id: "3",
@@ -621,6 +677,8 @@ const initialStockMovements: StockMovement[] = [
     date: "2024-01-03",
     cost: 55.0,
     reference: "PO-2024-003",
+    warehouseId: "1",
+    userId: "system",
   },
   {
     id: "4",
@@ -631,6 +689,8 @@ const initialStockMovements: StockMovement[] = [
     reason: "Customer sales",
     date: "2024-01-04",
     reference: "INV-2024-001",
+    warehouseId: "1",
+    userId: "system",
   },
   {
     id: "5",
@@ -1150,12 +1210,168 @@ const initialProductStocks: ProductStock[] = [
   { productId: "3", warehouseId: "3", quantity: 2, reservedQuantity: 0, lastUpdated: "2024-01-25" },
 ]
 
+// Datos mock para vendedores
+const initialSalespersons: Salesperson[] = [
+  {
+    id: "1",
+    name: "Juan Pérez",
+    identification: "12345678",
+    observation: "Especialista en electrónicos",
+    isActive: true,
+    createdAt: "2024-01-01",
+  },
+  {
+    id: "2",
+    name: "María García",
+    identification: "87654321",
+    observation: "Experta en muebles de oficina",
+    isActive: true,
+    createdAt: "2024-01-01",
+  },
+  {
+    id: "3",
+    name: "Carlos Rodríguez",
+    identification: "11223344",
+    observation: "Ventas corporativas",
+    isActive: true,
+    createdAt: "2024-01-01",
+  },
+]
+
+// Datos mock para proveedores
+const initialSuppliers: Supplier[] = [
+  {
+    id: "1",
+    name: "Apple Inc.",
+    contactPerson: "John Smith",
+    email: "orders@apple.com",
+    phone: "+1-800-APL-CARE",
+    address: "1 Apple Park Way, Cupertino, CA 95014",
+    taxId: "94-2404115",
+    isActive: true,
+    createdAt: "2024-01-01",
+  },
+  {
+    id: "2",
+    name: "Samsung Electronics",
+    contactPerson: "Maria Garcia",
+    email: "sales@samsung.com",
+    phone: "+1-800-SAMSUNG",
+    address: "85 Challenger Rd, Ridgefield Park, NJ 07660",
+    taxId: "13-3430755",
+    isActive: true,
+    createdAt: "2024-01-01",
+  },
+  {
+    id: "3",
+    name: "Proveedor Local",
+    contactPerson: "Ana López",
+    email: "ventas@proveedorlocal.com",
+    phone: "+57-1-234-5678",
+    address: "Calle 123 #45-67, Bogotá, Colombia",
+    taxId: "900.123.456-7",
+    isActive: true,
+    createdAt: "2024-01-01",
+  },
+]
+
+// Datos mock para medios de pago
+const initialPaymentMethods: PaymentMethod[] = [
+  { id: "1", name: "Efectivo", isActive: true },
+  { id: "2", name: "Tarjeta de Crédito", isActive: true },
+  { id: "3", name: "Tarjeta de Débito", isActive: true },
+  { id: "4", name: "Transferencia Bancaria", isActive: true },
+  { id: "5", name: "Cheque", isActive: true },
+  { id: "6", name: "PSE", isActive: true },
+  { id: "7", name: "Nequi", isActive: true },
+  { id: "8", name: "Daviplata", isActive: true },
+]
+
+// Datos mock para facturas de venta
+const initialSalesInvoices: SalesInvoice[] = [
+  {
+    id: "1",
+    invoiceNumber: "SV-2024-001",
+    warehouseId: "1",
+    warehouseName: "Bodega Central",
+    salespersonId: "1",
+    salespersonName: "Juan Pérez",
+    email: "cliente@email.com",
+    date: "2024-01-20",
+    paymentType: "credit",
+    paymentMethod: "Tarjeta de Crédito",
+    items: [
+      {
+        id: "1",
+        productId: "1",
+        productName: "iPhone 15 Pro Max",
+        price: 1199.99,
+        discount: 5,
+        taxRate: 19,
+        quantity: 2,
+        subtotal: 2399.98,
+        discountAmount: 120.00,
+        taxAmount: 433.20,
+        total: 2713.18,
+      },
+    ],
+    subtotal: 2399.98,
+    totalDiscount: 120.00,
+    totalTax: 433.20,
+    totalAmount: 2713.18,
+    status: "completed",
+    createdAt: "2024-01-20",
+    updatedAt: "2024-01-20",
+  },
+]
+
+// Datos mock para facturas de compra
+const initialPurchaseInvoices: PurchaseInvoice[] = [
+  {
+    id: "1",
+    invoiceNumber: "PC-2024-001",
+    warehouseId: "1",
+    warehouseName: "Bodega Central",
+    supplierId: "1",
+    supplierName: "Apple Inc.",
+    date: "2024-01-15",
+    items: [
+      {
+        id: "1",
+        concept: "iPhone 15 Pro Max - Lote 001",
+        price: 750.00,
+        discount: 0,
+        taxRate: 19,
+        quantity: 50,
+        subtotal: 37500.00,
+        discountAmount: 0,
+        taxAmount: 7125.00,
+        total: 44625.00,
+      },
+    ],
+    subtotal: 37500.00,
+    totalDiscount: 0,
+    totalTax: 7125.00,
+    totalAmount: 44625.00,
+    status: "completed",
+    createdAt: "2024-01-15",
+    updatedAt: "2024-01-15",
+  },
+]
+
 export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [stockMovements, setStockMovements] = useState<StockMovement[]>(initialStockMovements)
   const [sales, setSales] = useState<Sale[]>(initialSales)
   const [warehouses, setWarehouses] = useState<Warehouse[]>(initialWarehouses)
   const [productStocks, setProductStocks] = useState<ProductStock[]>(initialProductStocks)
+  
+  // Estados para facturación
+  const [salespersons, setSalespersons] = useState<Salesperson[]>(initialSalespersons)
+  const [suppliers, setSuppliers] = useState<Supplier[]>(initialSuppliers)
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>(initialPaymentMethods)
+  const [salesInvoices, setSalesInvoices] = useState<SalesInvoice[]>(initialSalesInvoices)
+  const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>(initialPurchaseInvoices)
 
   const addProduct = (product: Omit<Product, "id" | "createdAt">) => {
     const newProduct: Product = {
@@ -1423,6 +1639,164 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     return { productProfitability, monthlyTrends }
   }
 
+  // Funciones CRUD para vendedores
+  const addSalesperson = (salesperson: Omit<Salesperson, 'id' | 'createdAt'>) => {
+    const newSalesperson: Salesperson = {
+      id: String(salespersons.length + 1),
+      createdAt: new Date().toISOString(),
+      ...salesperson,
+    }
+    setSalespersons([...salespersons, newSalesperson])
+  }
+
+  const updateSalesperson = (id: string, salesperson: Partial<Salesperson>) => {
+    setSalespersons(salespersons.map((s) => (s.id === id ? { ...s, ...salesperson } : s)))
+  }
+
+  const deleteSalesperson = (id: string) => {
+    setSalespersons(salespersons.filter((s) => s.id !== id))
+  }
+
+  // Funciones CRUD para proveedores
+  const addSupplier = (supplier: Omit<Supplier, 'id' | 'createdAt'>) => {
+    const newSupplier: Supplier = {
+      id: String(suppliers.length + 1),
+      createdAt: new Date().toISOString(),
+      ...supplier,
+    }
+    setSuppliers([...suppliers, newSupplier])
+  }
+
+  const updateSupplier = (id: string, supplier: Partial<Supplier>) => {
+    setSuppliers(suppliers.map((s) => (s.id === id ? { ...s, ...supplier } : s)))
+  }
+
+  const deleteSupplier = (id: string) => {
+    setSuppliers(suppliers.filter((s) => s.id !== id))
+  }
+
+  // Funciones CRUD para medios de pago
+  const addPaymentMethod = (method: Omit<PaymentMethod, 'id'>) => {
+    const newMethod: PaymentMethod = {
+      id: String(paymentMethods.length + 1),
+      ...method,
+    }
+    setPaymentMethods([...paymentMethods, newMethod])
+  }
+
+  const updatePaymentMethod = (id: string, method: Partial<PaymentMethod>) => {
+    setPaymentMethods(paymentMethods.map((m) => (m.id === id ? { ...m, ...method } : m)))
+  }
+
+  const deletePaymentMethod = (id: string) => {
+    setPaymentMethods(paymentMethods.filter((m) => m.id !== id))
+  }
+
+  // Funciones CRUD para facturas de venta
+  const addSalesInvoice = (invoice: Omit<SalesInvoice, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newInvoice: SalesInvoice = {
+      id: String(salesInvoices.length + 1),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...invoice,
+    }
+    setSalesInvoices([...salesInvoices, newInvoice])
+  }
+
+  const updateSalesInvoice = (id: string, invoice: Partial<SalesInvoice>) => {
+    setSalesInvoices(salesInvoices.map((i) => 
+      i.id === id ? { ...i, ...invoice, updatedAt: new Date().toISOString() } : i
+    ))
+  }
+
+  const deleteSalesInvoice = (id: string) => {
+    setSalesInvoices(salesInvoices.filter((i) => i.id !== id))
+  }
+
+  // Funciones CRUD para facturas de compra
+  const addPurchaseInvoice = (invoice: Omit<PurchaseInvoice, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newInvoice: PurchaseInvoice = {
+      id: String(purchaseInvoices.length + 1),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...invoice,
+    }
+    setPurchaseInvoices([...purchaseInvoices, newInvoice])
+  }
+
+  const updatePurchaseInvoice = (id: string, invoice: Partial<PurchaseInvoice>) => {
+    setPurchaseInvoices(purchaseInvoices.map((i) => 
+      i.id === id ? { ...i, ...invoice, updatedAt: new Date().toISOString() } : i
+    ))
+  }
+
+  const deletePurchaseInvoice = (id: string) => {
+    setPurchaseInvoices(purchaseInvoices.filter((i) => i.id !== id))
+  }
+
+  // Funciones de análisis y filtrado
+  const getSalesInvoiceSummary = (filters?: InvoiceFilters): InvoiceSummary => {
+    let filteredInvoices = salesInvoices
+
+    if (filters) {
+      if (filters.dateFrom) {
+        filteredInvoices = filteredInvoices.filter(i => i.date >= filters.dateFrom!)
+      }
+      if (filters.dateTo) {
+        filteredInvoices = filteredInvoices.filter(i => i.date <= filters.dateTo!)
+      }
+      if (filters.status) {
+        filteredInvoices = filteredInvoices.filter(i => i.status === filters.status)
+      }
+    }
+
+    const totalAmount = filteredInvoices.reduce((sum, i) => sum + i.totalAmount, 0)
+    const completedInvoices = filteredInvoices.filter(i => i.status === 'completed').length
+    const draftInvoices = filteredInvoices.filter(i => i.status === 'draft').length
+    const cancelledInvoices = filteredInvoices.filter(i => i.status === 'cancelled').length
+
+    return {
+      totalInvoices: filteredInvoices.length,
+      totalAmount,
+      completedInvoices,
+      draftInvoices,
+      cancelledInvoices,
+    }
+  }
+
+  const getPurchaseInvoiceSummary = (filters?: InvoiceFilters): InvoiceSummary => {
+    let filteredInvoices = purchaseInvoices
+
+    if (filters) {
+      if (filters.dateFrom) {
+        filteredInvoices = filteredInvoices.filter(i => i.date >= filters.dateFrom!)
+      }
+      if (filters.dateTo) {
+        filteredInvoices = filteredInvoices.filter(i => i.date <= filters.dateTo!)
+      }
+      if (filters.status) {
+        filteredInvoices = filteredInvoices.filter(i => i.status === filters.status)
+      }
+    }
+
+    const totalAmount = filteredInvoices.reduce((sum, i) => sum + i.totalAmount, 0)
+    const completedInvoices = filteredInvoices.filter(i => i.status === 'completed').length
+    const draftInvoices = filteredInvoices.filter(i => i.status === 'draft').length
+    const cancelledInvoices = filteredInvoices.filter(i => i.status === 'cancelled').length
+
+    return {
+      totalInvoices: filteredInvoices.length,
+      totalAmount,
+      completedInvoices,
+      draftInvoices,
+      cancelledInvoices,
+    }
+  }
+
+  const getActiveSalespersons = () => salespersons.filter(s => s.isActive)
+  const getActiveSuppliers = () => suppliers.filter(s => s.isActive)
+  const getActivePaymentMethods = () => paymentMethods.filter(m => m.isActive)
+
   return (
     <InventoryContext.Provider
       value={{
@@ -1461,6 +1835,45 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
           const categorySet = new Set(products.map((p) => p.category))
           return Array.from(categorySet).filter(Boolean)
         },
+        
+        // Nuevas propiedades para facturación
+        salespersons,
+        suppliers,
+        paymentMethods,
+        salesInvoices,
+        purchaseInvoices,
+        
+        // Gestión de vendedores
+        addSalesperson,
+        updateSalesperson,
+        deleteSalesperson,
+        
+        // Gestión de proveedores
+        addSupplier,
+        updateSupplier,
+        deleteSupplier,
+        
+        // Gestión de medios de pago
+        addPaymentMethod,
+        updatePaymentMethod,
+        deletePaymentMethod,
+        
+        // Gestión de facturas de venta
+        addSalesInvoice,
+        updateSalesInvoice,
+        deleteSalesInvoice,
+        
+        // Gestión de facturas de compra
+        addPurchaseInvoice,
+        updatePurchaseInvoice,
+        deletePurchaseInvoice,
+        
+        // Funciones de análisis y filtrado
+        getSalesInvoiceSummary,
+        getPurchaseInvoiceSummary,
+        getActiveSalespersons,
+        getActiveSuppliers,
+        getActivePaymentMethods,
       }}
     >
       {children}

@@ -2,7 +2,7 @@ import { SkeletonStyled } from "@/components/ui/skeleton-styled"
 
 export default function Loading() {
   return (
-    <div className="flex h-screen bg-camouflage-green-50">
+    <div className="flex h-screen bg-white">
       {/* Sidebar skeleton */}
       <div className="hidden w-64 border-r border-camouflage-green-200 bg-white lg:flex">
         <div className="w-full space-y-6 p-6">

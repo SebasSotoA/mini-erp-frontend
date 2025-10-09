@@ -3,8 +3,10 @@
 import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag } from "lucide-react"
 import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
+import { useState } from "react"
 
 import { MainLayout } from "@/components/layout/main-layout"
+import { StockMovementModal } from "@/components/modals/StockMovementModal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -13,7 +15,11 @@ import { useInventory } from "@/contexts/inventory-context"
 export default function ItemDetailsPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const { getProductById, updateProduct, stockMovements } = useInventory()
+  const { getProductById, updateProduct, stockMovements, warehouses, productStocks } = useInventory()
+
+  // Estado para los modales
+  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false)
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
   const product = id ? getProductById(id) : undefined
@@ -89,17 +95,18 @@ export default function ItemDetailsPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+            className="bg-red-600 text-white hover:bg-red-700"
             title="Facturar item"
+            onClick={() => setIsSaleModalOpen(true)}
           >
             <ShoppingCart className="mr-2 h-4 w-4" />
             Facturar item
           </Button>
           <Button
             size="sm"
-            variant="outline"
-            className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
             title="Comprar item"
+            onClick={() => setIsPurchaseModalOpen(true)}
           >
             <ShoppingBag className="mr-2 h-4 w-4" />
             Comprar item
@@ -219,6 +226,62 @@ export default function ItemDetailsPage() {
           </div>
         </div>
 
+        {/* Stock por bodega */}
+        <Card className="border-camouflage-green-200">
+          <CardHeader>
+            <CardTitle className="text-xl text-camouflage-green-900">Stock por Bodega</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="-mx-2 overflow-x-auto sm:mx-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-camouflage-green-200 hover:bg-transparent">
+                    <TableHead className="font-semibold text-camouflage-green-700">Bodega</TableHead>
+                    <TableHead className="text-center font-semibold text-camouflage-green-700">Stock Actual</TableHead>
+                    <TableHead className="text-center font-semibold text-camouflage-green-700">Cantidad Mínima</TableHead>
+                    <TableHead className="text-center font-semibold text-camouflage-green-700">Cantidad Máxima</TableHead>
+                    <TableHead className="text-center font-semibold text-camouflage-green-700">Estado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {warehouses.filter(w => w.isActive).map((warehouse) => {
+                    const stock = productStocks.find(ps => ps.productId === product.id && ps.warehouseId === warehouse.id)
+                    const currentStock = stock?.quantity || 0
+                    const isLowStock = currentStock <= product.minStock
+                    const isOverStock = currentStock >= product.maxStock
+                    
+                    return (
+                      <TableRow key={warehouse.id} className="border-camouflage-green-100">
+                        <TableCell className="font-medium text-camouflage-green-900">{warehouse.name}</TableCell>
+                        <TableCell className="text-center">
+                          <span className={`font-semibold ${isLowStock ? 'text-red-600' : isOverStock ? 'text-orange-600' : 'text-camouflage-green-700'}`}>
+                            {currentStock}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center text-camouflage-green-600">{product.minStock}</TableCell>
+                        <TableCell className="text-center text-camouflage-green-600">{product.maxStock}</TableCell>
+                        <TableCell className="text-center">
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                              isLowStock
+                                ? "bg-red-100 text-red-800"
+                                : isOverStock
+                                  ? "bg-orange-100 text-orange-800"
+                                  : "bg-camouflage-green-100 text-camouflage-green-800"
+                            }`}
+                          >
+                            {isLowStock ? "Bajo Stock" : isOverStock ? "Sobre Stock" : "Normal"}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Historial de movimientos */}
         <Card className="border-camouflage-green-200">
           <CardHeader>
@@ -280,6 +343,26 @@ export default function ItemDetailsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modales de movimiento de stock */}
+      {product && (
+        <>
+          <StockMovementModal
+            isOpen={isPurchaseModalOpen}
+            onClose={() => setIsPurchaseModalOpen(false)}
+            productId={product.id}
+            productName={product.name}
+            movementType="purchase"
+          />
+          <StockMovementModal
+            isOpen={isSaleModalOpen}
+            onClose={() => setIsSaleModalOpen(false)}
+            productId={product.id}
+            productName={product.name}
+            movementType="sale"
+          />
+        </>
+      )}
     </MainLayout>
   )
 }

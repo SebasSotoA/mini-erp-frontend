@@ -12,6 +12,9 @@ import {
   ChevronRight,
   BarChart3,
   X,
+  History,
+  FileText,
+  Receipt,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -32,9 +35,15 @@ const inventoryNavigation = [
   { name: "Items de venta", href: "/inventory/items", icon: ShoppingCart },
   { name: "Valor de Inventario", href: "/inventory/value", icon: DollarSign },
   { name: "Gestión de Items", href: "/inventory/management", icon: Package },
+  { name: "Historial de Movimientos", href: "/inventory/movements", icon: History },
   { name: "Bodegas", href: "/inventory/warehouses", icon: Warehouse },
   { name: "Categorías", href: "/inventory/categories", icon: Tags },
   { name: "Campos Extra", href: "/inventory/extra-fields", icon: Layers },
+]
+
+const invoiceNavigation = [
+  { name: "Facturas de Venta", href: "/invoices/sales", icon: Receipt },
+  { name: "Facturas de Compra", href: "/invoices/purchase", icon: FileText },
 ]
 
 interface SidebarProps {
@@ -45,6 +54,9 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
   const pathname = usePathname()
   const [isInventoryOpen, setIsInventoryOpen] = useState(
     pathname.startsWith("/inventory") || pathname.startsWith("/products") || pathname.startsWith("/stock"),
+  )
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(
+    pathname.startsWith("/invoices")
   )
 
   return (
@@ -156,6 +168,77 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
           {isInventoryOpen && (
             <div className="ml-6 space-y-1 border-l border-camouflage-green-600 pl-4">
               {inventoryNavigation.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "group flex items-center rounded-md px-3 py-2 text-sm transition-colors",
+                      isActive
+                        ? "bg-camouflage-green-500 font-medium text-white shadow-sm"
+                        : "text-camouflage-green-200 hover:bg-camouflage-green-600 hover:text-white",
+                    )}
+                  >
+                    <item.icon
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        isActive ? "text-white" : "text-camouflage-green-300 group-hover:text-white",
+                      )}
+                    />
+                    {item.name}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Facturación con submenú */}
+        <div className="space-y-1">
+          <button
+            onClick={() => setIsInvoiceOpen(!isInvoiceOpen)}
+            className={cn(
+              "group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200",
+              pathname.startsWith("/invoices")
+                ? "border border-camouflage-green-500 bg-camouflage-green-600 text-white shadow-md"
+                : "text-camouflage-green-100 hover:bg-camouflage-green-700 hover:text-white",
+            )}
+          >
+            <div className="flex items-center">
+              <FileText
+                className={cn(
+                  "mr-3 h-5 w-5 transition-colors",
+                  pathname.startsWith("/invoices")
+                    ? "text-white"
+                    : "text-camouflage-green-200 group-hover:text-white",
+                )}
+              />
+              <div>
+                <div className="pr-8">Facturación</div>
+                <div
+                  className={cn(
+                    "text-xs transition-colors",
+                    pathname.startsWith("/invoices")
+                      ? "text-camouflage-green-100"
+                      : "text-camouflage-green-300 group-hover:text-camouflage-green-200",
+                  )}
+                >
+                  Ventas y compras
+                </div>
+              </div>
+            </div>
+            {isInvoiceOpen ? (
+              <ChevronDown className="h-4 w-4 text-camouflage-green-200" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-camouflage-green-200" />
+            )}
+          </button>
+
+          {/* Submenú de Facturación */}
+          {isInvoiceOpen && (
+            <div className="ml-6 space-y-1 border-l border-camouflage-green-600 pl-4">
+              {invoiceNavigation.map((item) => {
                 const isActive = pathname === item.href
                 return (
                   <Link

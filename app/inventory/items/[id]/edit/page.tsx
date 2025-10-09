@@ -521,9 +521,6 @@ export default function EditInventoryItemPage() {
                       />
                     </div>
                   </div>
-                  <div className="rounded-lg bg-gray-50 px-4 py-2 text-center text-sm text-gray-500">
-                    Fórmula: Precio base + (Precio base × Impuesto) = Precio total
-                  </div>
                 </div>
               </CardContent>
             </Card>
