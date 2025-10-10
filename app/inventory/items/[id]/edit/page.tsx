@@ -660,7 +660,8 @@ export default function EditInventoryItemPage() {
                     Cancelar
                   </Button>
                   <Button
-                    className="w-full bg-camouflage-green-700 text-white hover:bg-camouflage-green-800 disabled:opacity-50"
+                    variant="primary"
+                    className="w-full"
                     disabled={isSubmitting}
                     onClick={() => doSubmit(false)}
                   >
@@ -669,7 +670,7 @@ export default function EditInventoryItemPage() {
                 </div>
                 <Button
                   variant="secondary"
-                  className="w-full bg-camouflage-green-600/20 text-camouflage-green-800 hover:bg-camouflage-green-600/30 disabled:opacity-50"
+                  className="w-full"
                   disabled={isSubmitting}
                   onClick={() => doSubmit(true)}
                 >
@@ -743,7 +744,7 @@ export default function EditInventoryItemPage() {
             </div>
             <div className="flex justify-end">
               <Button
-                className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                variant="primary"
                 onClick={saveWarehouseEntry}
               >
                 Guardar

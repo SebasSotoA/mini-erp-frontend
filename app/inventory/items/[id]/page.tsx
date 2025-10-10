@@ -94,7 +94,8 @@ export default function ItemDetailsPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800 shadow-md"
+            variant="primary"
+            className="shadow-md"
             title="Facturar item"
             onClick={() => router.push(`/invoices/sales/new?productId=${product.id}`)}
           >
@@ -103,7 +104,8 @@ export default function ItemDetailsPage() {
           </Button>
           <Button
             size="sm"
-            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800 shadow-md"
+            variant="primary"
+            className="shadow-md"
             title="Comprar item"
             onClick={() => router.push(`/invoices/purchase/new?productId=${product.id}`)}
           >
@@ -295,20 +297,19 @@ export default function ItemDetailsPage() {
                   <TableHeader>
                     <TableRow className="border-camouflage-green-200 hover:bg-transparent">
                       <TableHead className="font-semibold text-camouflage-green-700">Fecha</TableHead>
-                      <TableHead className="font-semibold text-camouflage-green-700">Tipo</TableHead>
-                      <TableHead className="text-right font-semibold text-camouflage-green-700">Cantidad</TableHead>
-                      <TableHead className="font-semibold text-camouflage-green-700">Motivo</TableHead>
-                      <TableHead className="font-semibold text-camouflage-green-700">Referencia</TableHead>
-                      <TableHead className="text-right font-semibold text-camouflage-green-700">Costo</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Tipo</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Cantidad</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Referencia</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Costo</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {recentMovements.map((m) => (
                       <TableRow key={m.id} className="border-camouflage-green-100">
-                        <TableCell className="whitespace-nowrap text-camouflage-green-900">
+                        <TableCell className="text-camouflage-green-900">
                           {new Date(m.date).toLocaleString()}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-center">
                           <span
                             className={`rounded-full px-2 py-1 text-xs font-semibold ${
                               m.type === "in"
@@ -319,18 +320,17 @@ export default function ItemDetailsPage() {
                             }`}
                           >
                             {m.type === "in"
-                              ? "Entrada"
+                              ? "Compra"
                               : m.type === "out"
-                                ? "Salida"
+                                ? "Venta"
                                 : m.type === "return"
                                   ? "Devolución"
                                   : "Ajuste"}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right text-camouflage-green-900">{m.quantity}</TableCell>
-                        <TableCell className="text-camouflage-green-700">{m.reason}</TableCell>
-                        <TableCell className="text-camouflage-green-700">{m.reference || "-"}</TableCell>
-                        <TableCell className="text-right text-camouflage-green-900">
+                        <TableCell className="text-center text-camouflage-green-900">{m.quantity}</TableCell>
+                        <TableCell className="text-center text-camouflage-green-700">{m.reference || "-"}</TableCell>
+                        <TableCell className="text-center text-camouflage-green-900">
                           {m.cost != null ? `$${m.cost.toLocaleString()}` : "-"}
                         </TableCell>
                       </TableRow>

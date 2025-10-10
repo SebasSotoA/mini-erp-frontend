@@ -255,6 +255,7 @@ export default function Dashboard() {
               </div>
               <Button
                 onClick={() => setIsChartModalOpen(true)}
+                variant="primary"
                 className="h-10 border border-camouflage-green-500/50 bg-camouflage-green-600/50 text-base font-bold text-white hover:bg-camouflage-green-500/70"
               >
                 <Plus className="mr-2 h-4 w-4" />

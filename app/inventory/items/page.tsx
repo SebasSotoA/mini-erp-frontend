@@ -236,7 +236,8 @@ export default function SalesItems() {
           </div>
           <Button
             size="md2"
-            className="bg-camouflage-green-700 pl-4 pr-4 text-white hover:bg-camouflage-green-800"
+            variant="primary"
+            className="pl-4 pr-4"
             onClick={() => setIsNewItemModalOpen(true)}
           >
             <Plus className="mr-2 h-4 w-4" />
@@ -754,7 +755,7 @@ export default function SalesItems() {
                         {sortedProducts.length === 0 && (
                           <Button
                             onClick={() => setIsNewItemModalOpen(true)}
-                            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                            variant="primary"
                           >
                             <Plus className="mr-2 h-4 w-4" />
                             Crea tu primer item

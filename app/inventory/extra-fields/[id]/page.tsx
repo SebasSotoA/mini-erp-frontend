@@ -398,7 +398,7 @@ export default function ExtraFieldDetailsPage() {
           <div className="flex items-center gap-2">
             <Button
               variant={isFieldActive ? "primary" : "outline"}
-              className={`${isFieldActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
+              className={isFieldActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
               onClick={() => {
                 setIsFieldActive(true)
                 toast({ title: "Campo activado", description: `"${extraField.name}" está activo.` })
@@ -408,7 +408,7 @@ export default function ExtraFieldDetailsPage() {
             </Button>
             <Button
               variant={!isFieldActive ? "primary" : "outline"}
-              className={`${!isFieldActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
+              className={!isFieldActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
               onClick={() => {
                 setIsFieldActive(false)
                 toast({ title: "Campo desactivado", description: `"${extraField.name}" está inactivo.` })
@@ -1097,7 +1097,7 @@ export default function ExtraFieldDetailsPage() {
             </Button>
             <Button
               onClick={handleSaveEditField}
-              className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+              variant="primary"
             >
               Guardar cambios
             </Button>

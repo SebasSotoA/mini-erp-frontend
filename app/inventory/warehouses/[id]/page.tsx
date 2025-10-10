@@ -252,7 +252,7 @@ export default function WarehouseDetailsPage() {
           <div className="flex items-center gap-2">
             <Button
               variant={isWarehouseActive ? "primary" : "outline"}
-              className={`${isWarehouseActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
+              className={isWarehouseActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
               onClick={() => {
                 setIsWarehouseActive(true)
                 toast({ title: "Bodega activada", description: `"${warehouse.name}" está activa.` })
@@ -262,7 +262,7 @@ export default function WarehouseDetailsPage() {
             </Button>
             <Button
               variant={!isWarehouseActive ? "primary" : "outline"}
-              className={`${!isWarehouseActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
+              className={!isWarehouseActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
               onClick={() => {
                 setIsWarehouseActive(false)
                 toast({ title: "Bodega desactivada", description: `"${warehouse.name}" está inactiva.` })
@@ -822,7 +822,7 @@ export default function WarehouseDetailsPage() {
                         </div>
                         <Button
                           onClick={() => setIsNewItemModalOpen(true)}
-                          className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                          variant="primary"
                         >
                           <Plus className="mr-2 h-4 w-4" />
                           Crea tu primer item

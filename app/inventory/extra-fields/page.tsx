@@ -420,7 +420,8 @@ export default function ExtraFields() {
             </div>
             <Button
               size="md2"
-              className="bg-camouflage-green-700 pl-4 pr-4 text-white hover:bg-camouflage-green-800"
+              variant="primary"
+              className="pl-4 pr-4"
               onClick={() => setIsNewFieldModalOpen(true)}
             >
             <Plus className="mr-2 h-4 w-4" />
@@ -796,7 +797,7 @@ export default function ExtraFields() {
             </Button>
             <Button
               onClick={handleSaveNewField}
-              className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+              variant="primary"
             >
               Guardar
                 </Button>
@@ -895,7 +896,7 @@ export default function ExtraFields() {
               </Button>
             <Button
               onClick={handleSaveEditField}
-              className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+              variant="primary"
             >
               Guardar cambios
             </Button>

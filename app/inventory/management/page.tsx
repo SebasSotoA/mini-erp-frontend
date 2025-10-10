@@ -528,7 +528,7 @@ export default function ItemManagement() {
                   {wizardStep < 3 ? (
                     <Button
                       onClick={handleNextStep}
-                      className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                      variant="primary"
                     >
                       Continuar
                       <ArrowRight className="ml-2 h-4 w-4" />
@@ -536,7 +536,7 @@ export default function ItemManagement() {
                   ) : (
                     <Button
                       onClick={handleFinalize}
-                      className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                      variant="primary"
                     >
                       {wizardType === "import" ? "Finalizar Importación" : "Aplicar Actualización"}
                     </Button>

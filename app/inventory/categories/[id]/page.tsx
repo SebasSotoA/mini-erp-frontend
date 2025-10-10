@@ -346,7 +346,7 @@ export default function CategoryDetailsPage() {
           <div className="flex items-center gap-2">
             <Button
               variant={isCategoryActive ? "primary" : "outline"}
-              className={`${isCategoryActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
+              className={isCategoryActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
               onClick={() => {
                 setIsCategoryActive(true)
                 toast({ title: "Categoría activada", description: `"${category.name}" está activa.` })
@@ -356,7 +356,7 @@ export default function CategoryDetailsPage() {
             </Button>
             <Button
               variant={!isCategoryActive ? "primary" : "outline"}
-              className={`${!isCategoryActive ? "bg-camouflage-green-700 text-white hover:bg-camouflage-green-800" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}`}
+              className={!isCategoryActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
               onClick={() => {
                 setIsCategoryActive(false)
                 toast({ title: "Categoría desactivada", description: `"${category.name}" está inactiva.` })
@@ -1006,7 +1006,7 @@ export default function CategoryDetailsPage() {
             </Button>
             <Button
               onClick={handleSaveEditCategory}
-              className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+              variant="primary"
             >
               Guardar cambios
             </Button>

@@ -1603,7 +1603,7 @@ const initialSalesInvoices: SalesInvoice[] = [
 const initialPurchaseInvoices: PurchaseInvoice[] = [
   {
     id: "1",
-    invoiceNumber: "PC-2024-001",
+    invoiceNumber: "2",
     warehouseId: "1",
     warehouseName: "Bodega Central",
     supplierId: "1",
@@ -1612,7 +1612,8 @@ const initialPurchaseInvoices: PurchaseInvoice[] = [
     items: [
       {
         id: "1",
-        concept: "iPhone 15 Pro Max - Lote 001",
+        productId: "1",
+        productName: "iPhone 15 Pro Max",
         price: 750.00,
         discount: 0,
         taxRate: 19,

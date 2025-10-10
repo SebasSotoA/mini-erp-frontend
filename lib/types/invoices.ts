@@ -19,6 +19,7 @@ export interface Supplier {
   phone?: string
   address?: string
   taxId?: string
+  observation?: string
   isActive: boolean
   createdAt: string
 }
@@ -38,10 +39,11 @@ export interface SalesInvoiceItem {
   total: number // subtotal - discountAmount + taxAmount
 }
 
-// Item de factura de compra (con concepto personalizado)
+// Item de factura de compra
 export interface PurchaseInvoiceItem {
   id: string
-  concept: string // Concepto personalizado
+  productId: string
+  productName: string
   price: number
   discount: number // Porcentaje (0-100)
   taxRate: number // Porcentaje (0-100)
@@ -84,6 +86,7 @@ export interface PurchaseInvoice {
   supplierId: string
   supplierName: string
   date: string
+  observations?: string
   items: PurchaseInvoiceItem[]
   subtotal: number
   totalDiscount: number

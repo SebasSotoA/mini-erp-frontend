@@ -98,7 +98,7 @@ interface NewSalespersonForm {
 }
 
 export default function NewSalesInvoice() {
-  const { warehouses, salespersons, paymentMethods, products, addSalesInvoice, addSalesperson, updateSalesperson, deleteSalesperson } = useInventory()
+  const { warehouses, salespersons, paymentMethods, products, salesInvoices, purchaseInvoices, addSalesInvoice, addSalesperson, updateSalesperson, deleteSalesperson } = useInventory()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -383,7 +383,7 @@ export default function NewSalesInvoice() {
 
     const { subtotal, totalDiscount, totalTax, totalAmount } = totals
 
-    const invoiceNumber = `SV-${new Date().getFullYear()}-${String(salespersons.length + 1).padStart(3, '0')}`
+    const invoiceNumber = `SV-${new Date().getFullYear()}-${String(salesInvoices.length + purchaseInvoices.length + 1).padStart(3, '0')}`
 
     addSalesInvoice({
       invoiceNumber,
@@ -481,7 +481,8 @@ export default function NewSalesInvoice() {
             </Button>
             <Button
               size="md2"
-              className="bg-camouflage-green-700 pl-4 pr-4 text-white hover:bg-camouflage-green-800 disabled:opacity-50"
+              variant="primary"
+              className="pl-4 pr-4"
               disabled={isSubmitting}
               onClick={handleSubmit(handleFormSubmit, handleFormError)}
             >
@@ -728,7 +729,7 @@ export default function NewSalesInvoice() {
               <CardTitle className="text-camouflage-green-900">Items de la Factura</CardTitle>
               <Button
                 onClick={addItem}
-                className="bg-camouflage-green-700 hover:bg-camouflage-green-800"
+                variant="primary"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar Item
@@ -933,7 +934,8 @@ export default function NewSalesInvoice() {
                 <div className="flex gap-2 pt-4">
                   <Button
                     onClick={handleNewSalespersonSubmit}
-                    className="flex-1 bg-camouflage-green-700 hover:bg-camouflage-green-800"
+                    variant="primary"
+                    className="flex-1"
                   >
                     Crear Vendedor
                   </Button>
@@ -1011,7 +1013,8 @@ export default function NewSalesInvoice() {
                 <div className="flex gap-2 pt-4">
                   <Button
                     onClick={handleEditSalespersonSubmit}
-                    className="flex-1 bg-camouflage-green-700 hover:bg-camouflage-green-800"
+                    variant="primary"
+                    className="flex-1"
                   >
                     Actualizar Vendedor
                   </Button>

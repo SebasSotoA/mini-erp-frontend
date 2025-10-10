@@ -341,7 +341,8 @@ export default function Warehouses() {
             </div>
             <Button
               size="md2"
-              className="bg-camouflage-green-700 pl-4 pr-4 text-white hover:bg-camouflage-green-800"
+              variant="primary"
+              className="pl-4 pr-4"
               onClick={() => setIsNewWarehouseModalOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -702,7 +703,7 @@ export default function Warehouses() {
             </Button>
             <Button
               onClick={handleSaveNewWarehouse}
-              className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+              variant="primary"
             >
               Guardar
             </Button>

@@ -39,7 +39,7 @@ const invoiceSchema = z
     items: z.array(
       z.object({
         id: z.string(),
-        concept: z.string().min(1, "El concepto es requerido"),
+        productId: z.string().min(1, "El producto es requerido"),
         price: z.number().min(0, "El precio debe ser mayor o igual a 0"),
         discount: z.number().min(0, "El descuento debe ser mayor o igual a 0"),
         taxRate: z.number().min(0, "El impuesto debe ser mayor o igual a 0"),
@@ -57,7 +57,7 @@ type InvoiceFormSchema = z.infer<typeof invoiceSchema>
 // Esquema para proveedores
 const supplierSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
-  identification: z.string().min(1, "La identificación es requerida"),
+  taxId: z.string().min(1, "La identificación es requerida"),
   observation: z.string().optional(),
 })
 
@@ -73,12 +73,12 @@ interface InvoiceFormData {
 
 interface NewSupplierForm {
   name: string
-  identification: string
+  taxId: string
   observation: string
 }
 
 export default function NewPurchaseInvoice() {
-  const { warehouses, suppliers, purchaseInvoices, addPurchaseInvoice, addSupplier, updateSupplier, deleteSupplier } = useInventory()
+  const { warehouses, suppliers, products, purchaseInvoices, salesInvoices, addPurchaseInvoice, addSupplier, updateSupplier, deleteSupplier } = useInventory()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -95,7 +95,7 @@ export default function NewPurchaseInvoice() {
   const [showNewSupplier, setShowNewSupplier] = useState(false)
   const [newSupplier, setNewSupplier] = useState<NewSupplierForm>({
     name: "",
-    identification: "",
+    taxId: "",
     observation: "",
   })
 
@@ -148,7 +148,7 @@ export default function NewPurchaseInvoice() {
     // Crear el proveedor
     addSupplier({
       name: newSupplier.name,
-      identification: newSupplier.identification,
+      taxId: newSupplier.taxId,
       observation: newSupplier.observation,
       isActive: true,
     })
@@ -159,7 +159,7 @@ export default function NewPurchaseInvoice() {
     })
 
     // Limpiar el formulario y cerrar modal
-    setNewSupplier({ name: "", identification: "", observation: "" })
+    setNewSupplier({ name: "", taxId: "", observation: "" })
     setShowNewSupplier(false)
     
     // Resetear el Select para que no quede en "new-supplier"
@@ -173,7 +173,7 @@ export default function NewPurchaseInvoice() {
         id: supplierId,
         data: {
           name: supplier.name,
-          identification: supplier.identification,
+          taxId: supplier.taxId || "",
           observation: supplier.observation || "",
         }
       })
@@ -197,7 +197,7 @@ export default function NewPurchaseInvoice() {
 
     updateSupplier(editingSupplier.id, {
       name: editingSupplier.data.name,
-      identification: editingSupplier.data.identification,
+      taxId: editingSupplier.data.taxId,
       observation: editingSupplier.data.observation,
       isActive: true,
     })
@@ -244,7 +244,8 @@ export default function NewPurchaseInvoice() {
   const addItem = () => {
     const item: PurchaseInvoiceItem = {
       id: `item-${Date.now()}`,
-      concept: "",
+      productId: "",
+      productName: "",
       price: 0,
       discount: 0,
       taxRate: 19,
@@ -275,6 +276,12 @@ export default function NewPurchaseInvoice() {
       const updatedItems = prev.items.map(item => {
         if (item.id === itemId) {
           let updatedItem = { ...item, [field]: value }
+          
+          // Si se actualiza el producto, también actualizar el nombre
+          if (field === 'productId') {
+            const product = products.find(p => p.id === value)
+            updatedItem.productName = product ? product.name : ""
+          }
           
           // Recalcular totales si se actualizan campos numéricos
           if (['price', 'discount', 'taxRate', 'quantity'].includes(field)) {
@@ -322,7 +329,7 @@ export default function NewPurchaseInvoice() {
 
     const { subtotal, totalDiscount, totalTax, totalAmount } = totals
 
-    const invoiceNumber = `PC-${new Date().getFullYear()}-${String(purchaseInvoices.length + 1).padStart(3, '0')}`
+    const invoiceNumber = String(purchaseInvoices.length + salesInvoices.length + 1)
 
     addPurchaseInvoice({
       invoiceNumber,
@@ -362,7 +369,7 @@ export default function NewPurchaseInvoice() {
   // Funciones para cerrar modales
   const closeNewSupplierModal = () => {
     setShowNewSupplier(false)
-    setNewSupplier({ name: "", identification: "", observation: "" })
+    setNewSupplier({ name: "", taxId: "", observation: "" })
   }
 
   const closeEditSupplierModal = () => {
@@ -417,7 +424,8 @@ export default function NewPurchaseInvoice() {
             </Button>
             <Button
               size="md2"
-              className="bg-camouflage-green-700 pl-4 pr-4 text-white hover:bg-camouflage-green-800 disabled:opacity-50"
+              variant="primary"
+              className="pl-4 pr-4"
               disabled={isSubmitting}
               onClick={handleSubmit(handleFormSubmit, handleFormError)}
             >
@@ -476,7 +484,7 @@ export default function NewPurchaseInvoice() {
                     <SelectContent className="rounded-3xl">
                       {suppliers.map((supplier) => (
                         <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name} - {supplier.identification}
+                          {supplier.name} - {supplier.taxId || 'Sin identificación'}
                         </SelectItem>
                       ))}
                       <SelectItem value="new-supplier" className="text-camouflage-green-600 font-medium">
@@ -558,7 +566,7 @@ export default function NewPurchaseInvoice() {
               <CardTitle className="text-camouflage-green-900">Items de la Factura</CardTitle>
               <Button
                 onClick={addItem}
-                className="bg-camouflage-green-700 hover:bg-camouflage-green-800"
+                variant="primary"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Agregar Item
@@ -572,7 +580,7 @@ export default function NewPurchaseInvoice() {
                 <Table className="w-full">
                   <TableHeader>
                     <TableRow className="border-camouflage-green-200 hover:bg-transparent">
-                      <TableHead className="font-semibold text-camouflage-green-700 w-[300px]">Concepto</TableHead>
+                      <TableHead className="font-semibold text-camouflage-green-700 w-[300px]">Producto</TableHead>
                       <TableHead className="font-semibold text-camouflage-green-700 w-[120px]">Precio</TableHead>
                       <TableHead className="font-semibold text-camouflage-green-700 w-[120px]">Descuento %</TableHead>
                       <TableHead className="font-semibold text-camouflage-green-700 w-[150px]">Impuesto</TableHead>
@@ -585,12 +593,21 @@ export default function NewPurchaseInvoice() {
                     {formData.items.map((item) => (
                       <TableRow key={item.id} className="border-camouflage-green-100 hover:bg-transparent">
                         <TableCell className="w-[300px]">
-                          <Input
-                            value={item.concept}
-                            onChange={(e) => updateItem(item.id, 'concept', e.target.value)}
-                            placeholder="Concepto del item"
-                            className="border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full"
-                          />
+                          <Select 
+                            value={item.productId} 
+                            onValueChange={(value) => updateItem(item.id, 'productId', value)}
+                          >
+                            <SelectTrigger className="border-camouflage-green-300 h-8 rounded-lg bg-white text-left w-full">
+                              <SelectValue placeholder="Seleccionar producto" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-3xl">
+                              {products.map((product) => (
+                                <SelectItem key={product.id} value={product.id}>
+                                  {product.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell className="w-[120px]">
                           <Input
@@ -598,7 +615,10 @@ export default function NewPurchaseInvoice() {
                             value={item.price || ""}
                             onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
                             placeholder="0"
-                            className="border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full"
+                            disabled={!item.productId}
+                            className={`border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full ${
+                              !item.productId ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                           />
                         </TableCell>
                         <TableCell className="w-[120px]">
@@ -607,15 +627,21 @@ export default function NewPurchaseInvoice() {
                             value={item.discount || ""}
                             onChange={(e) => updateItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
                             placeholder="0"
-                            className="border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full"
+                            disabled={!item.productId}
+                            className={`border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full ${
+                              !item.productId ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                           />
                         </TableCell>
                         <TableCell className="w-[150px]">
                           <Select 
                             value={item.taxRate.toString()} 
                             onValueChange={(value) => updateItem(item.id, 'taxRate', parseFloat(value))}
+                            disabled={!item.productId}
                           >
-                            <SelectTrigger className="border-camouflage-green-300 h-8 rounded-lg bg-white text-left w-full">
+                            <SelectTrigger className={`border-camouflage-green-300 h-8 rounded-lg bg-white text-left w-full ${
+                              !item.productId ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}>
                               <SelectValue placeholder="Seleccionar impuesto" />
                             </SelectTrigger>
                             <SelectContent className="rounded-3xl">
@@ -631,7 +657,10 @@ export default function NewPurchaseInvoice() {
                             value={item.quantity || ""}
                             onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
                             placeholder="1"
-                            className="border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full"
+                            disabled={!item.productId}
+                            className={`border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full ${
+                              !item.productId ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
                           />
                         </TableCell>
                         <TableCell className="font-medium text-camouflage-green-900 w-[120px]">
@@ -675,9 +704,9 @@ export default function NewPurchaseInvoice() {
                 <div className="text-sm text-camouflage-green-600">Subtotal</div>
                 <div className="text-2xl font-bold text-camouflage-green-900">${totals.subtotal.toLocaleString()}</div>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-                <div className="text-sm text-red-600">Descuento</div>
-                <div className="text-2xl font-bold text-red-900">-${totals.totalDiscount.toLocaleString()}</div>
+              <div className="bg-camouflage-green-100 p-4 rounded-lg border border-camouflage-green-300">
+                <div className="text-sm text-camouflage-green-600">Descuento</div>
+                <div className="text-2xl font-bold text-camouflage-green-900">-${totals.totalDiscount.toLocaleString()}</div>
               </div>
               <div className="bg-camouflage-green-200 p-4 rounded-lg border border-camouflage-green-400">
                 <div className="text-sm text-camouflage-green-700">Impuesto</div>
@@ -721,8 +750,8 @@ export default function NewPurchaseInvoice() {
                   </Label>
                   <Input
                     id="supplierId"
-                    value={newSupplier.identification}
-                    onChange={(e) => setNewSupplier(prev => ({ ...prev, identification: e.target.value }))}
+                    value={newSupplier.taxId}
+                    onChange={(e) => setNewSupplier(prev => ({ ...prev, taxId: e.target.value }))}
                     placeholder="NIT, RUC, etc."
                     className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
                   />
@@ -742,7 +771,8 @@ export default function NewPurchaseInvoice() {
                 <div className="flex gap-2 pt-4">
                   <Button
                     onClick={handleNewSupplierSubmit}
-                    className="flex-1 bg-camouflage-green-700 hover:bg-camouflage-green-800"
+                    variant="primary"
+                    className="flex-1"
                   >
                     Crear Proveedor
                   </Button>
@@ -793,10 +823,10 @@ export default function NewPurchaseInvoice() {
                   </Label>
                   <Input
                     id="editSupplierId"
-                    value={editingSupplier.data.identification}
+                    value={editingSupplier.data.taxId}
                     onChange={(e) => setEditingSupplier(prev => prev ? {
                       ...prev,
-                      data: { ...prev.data, identification: e.target.value }
+                      data: { ...prev.data, taxId: e.target.value }
                     } : null)}
                     placeholder="NIT, RUC, etc."
                     className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
@@ -820,7 +850,8 @@ export default function NewPurchaseInvoice() {
                 <div className="flex gap-2 pt-4">
                   <Button
                     onClick={handleEditSupplierSubmit}
-                    className="flex-1 bg-camouflage-green-700 hover:bg-camouflage-green-800"
+                    variant="primary"
+                    className="flex-1"
                   >
                     Actualizar Proveedor
                   </Button>
