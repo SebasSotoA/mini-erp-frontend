@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DatePicker } from "@/components/ui/date-picker"
 import { useInventory } from "@/contexts/inventory-context"
 import { PaginationConfig } from "@/lib/types/inventory-value"
 
@@ -243,12 +244,11 @@ export default function StockMovementsHistory() {
                   <TableRow className="border-camouflage-green-200 bg-camouflage-green-50/30 hover:bg-camouflage-green-50/30">
                     <TableHead className="w-[200px]">
                       <div className="flex items-center gap-1 py-3 hover:bg-transparent">
-                        <input
-                          type="date"
+                        <DatePicker
+                          value={filters.dateFrom ? new Date(filters.dateFrom) : null}
+                          onChange={(date) => handleFilterChange("dateFrom", date ? date.toISOString().split('T')[0] : "")}
                           placeholder="Fecha"
-                          value={filters.dateFrom}
-                          onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
-                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full"
                         />
                       </div>
                     </TableHead>

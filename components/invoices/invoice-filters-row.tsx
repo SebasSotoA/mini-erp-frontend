@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TableHead, TableRow } from "@/components/ui/table"
+import { DatePicker } from "@/components/ui/date-picker"
 import { InvoiceFilters, FilterConfig } from "./types"
 
 interface InvoiceFiltersRowProps {
@@ -68,12 +69,11 @@ export function InvoiceFiltersRow({
       {/* Filtro de fecha */}
       <TableHead className="w-[150px]">
         <div className="flex items-center gap-1 py-3 hover:bg-transparent">
-          <input
-            type="date"
+          <DatePicker
+            value={filters.dateFrom ? new Date(filters.dateFrom) : null}
+            onChange={(date) => onFilterChange("dateFrom", date ? date.toISOString().split('T')[0] : "")}
             placeholder="Fecha de creación"
-            value={filters.dateFrom}
-            onChange={(e) => onFilterChange("dateFrom", e.target.value)}
-            className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+            className="w-full"
           />
         </div>
       </TableHead>

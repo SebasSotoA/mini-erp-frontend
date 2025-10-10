@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
+import { DatePicker } from "@/components/ui/date-picker"
 import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import { PurchaseInvoiceItem } from "@/lib/types/invoices"
@@ -529,14 +530,11 @@ export default function NewPurchaseInvoice() {
                 <Label htmlFor="date" className="text-camouflage-green-700">
                   Fecha *
                 </Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => handleInputChange("date", e.target.value)}
-                  className={`border-camouflage-green-300 bg-white ${
-                    errors?.date ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                  }`}
+                <DatePicker
+                  value={formData.date ? new Date(formData.date) : null}
+                  onChange={(date) => handleInputChange("date", date ? date.toISOString().split('T')[0] : "")}
+                  placeholder="Seleccionar fecha"
+                  className={errors?.date ? "border-red-500" : ""}
                 />
               </div>
 

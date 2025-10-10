@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { DatePicker } from "@/components/ui/date-picker"
 import { Modal } from "@/components/ui/modal"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -234,11 +235,11 @@ export default function AddInventoryItemPage() {
       
       case "fecha":
         return (
-          <Input
-            type="date"
-            value={value}
-            onChange={(e) => handleExtraFieldValueChange(field.id, e.target.value)}
-            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none"
+          <DatePicker
+            value={value ? new Date(value) : null}
+            onChange={(date) => handleExtraFieldValueChange(field.id, date ? date.toISOString().split('T')[0] : "")}
+            placeholder="Seleccionar fecha"
+            className="h-10"
           />
         )
       
