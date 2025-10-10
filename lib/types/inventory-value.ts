@@ -10,7 +10,7 @@ export interface InventoryValueFilters {
 }
 
 // Configuración de ordenamiento
-export type SortField = "name" | "sku" | "stock" | "cost" | "total"
+export type SortField = "name" | "sku" | "stock" | "total"
 export type SortDirection = "asc" | "desc"
 
 export interface SortConfig {

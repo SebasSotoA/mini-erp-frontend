@@ -18,7 +18,7 @@ export const evaluateStockFilter: StockFilterFunction = (
   minValue: string = "",
   maxValue: string = "",
 ): boolean => {
-  if (!operator) return true
+  if (!operator || operator === "none") return true
 
   switch (operator) {
     case "between": {
@@ -85,7 +85,7 @@ export const filterProducts: FilterFunction = (products: Product[], filters: Ite
     )
 
     const matchesStatus =
-      !filters.status ||
+      !filters.status || filters.status === "all" ||
       (filters.status === "active" && (product.isActive ?? true)) ||
       (filters.status === "inactive" && !(product.isActive ?? true))
 

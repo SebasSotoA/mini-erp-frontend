@@ -34,7 +34,7 @@ export interface SortConfig {
 }
 
 // Tipos para operadores de stock
-export type StockOperator = "equal" | "greater" | "greaterEqual" | "less" | "lessEqual" | "between"
+export type StockOperator = "none" | "equal" | "greater" | "greaterEqual" | "less" | "lessEqual" | "between"
 
 // Tipos para funciones puras
 export type FilterFunction = (products: Product[], filters: ItemFilters) => Product[]

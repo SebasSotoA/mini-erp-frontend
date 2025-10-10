@@ -98,7 +98,7 @@ export function FiltersHeader({
               <SelectTrigger className="h-10 w-full border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500 sm:w-[230px]">
                 <SelectValue placeholder="Todas las bodegas" />
               </SelectTrigger>
-              <SelectContent className="border-camouflage-green-200 bg-white">
+              <SelectContent className="border-camouflage-green-200 bg-white rounded-3xl">
                 <SelectItem value="all" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Todas las bodegas
                 </SelectItem>
@@ -185,7 +185,7 @@ export function FiltersHeader({
               <SelectTrigger className="border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500">
                 <SelectValue placeholder="Todas las categorías" />
               </SelectTrigger>
-              <SelectContent className="border-camouflage-green-200 bg-white">
+              <SelectContent className="border-camouflage-green-200 bg-white rounded-3xl">
                 <SelectItem value="all" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Todas las categorías
                 </SelectItem>
@@ -213,7 +213,7 @@ export function FiltersHeader({
               <SelectTrigger className="border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500">
                 <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
-              <SelectContent className="border-camouflage-green-200 bg-white">
+              <SelectContent className="border-camouflage-green-200 bg-white rounded-3xl">
                 <SelectItem value="all" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Todos los estados
                 </SelectItem>

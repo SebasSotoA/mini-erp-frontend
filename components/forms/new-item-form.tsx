@@ -291,7 +291,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               }`}>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent side="bottom" align="start" avoidCollisions={false}>
+              <SelectContent side="bottom" align="start" avoidCollisions={false} className="rounded-3xl">
                 {itemType === "product" ? (
                   <>
                     <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -373,7 +373,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               }`}>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-3xl">
                 <SelectItem value="Principal">Principal</SelectItem>
                 <SelectItem value="Secundaria">Secundaria</SelectItem>
                 <SelectItem value="Almacén">Almacén</SelectItem>
@@ -418,7 +418,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 }`}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-3xl">
                   <SelectItem value="0">Ninguno (0%)</SelectItem>
                   <SelectItem value="5">IVA - (5%)</SelectItem>
                   <SelectItem value="19">IVA - (19%)</SelectItem>

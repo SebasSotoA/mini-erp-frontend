@@ -64,6 +64,7 @@ export interface SalesInvoice {
   date: string
   paymentType: 'cash' | 'credit' // Contado o crédito
   paymentMethod: string // Medio de pago (dropdown definido)
+  observations?: string // Observaciones adicionales
   items: SalesInvoiceItem[]
   subtotal: number
   totalDiscount: number
@@ -155,3 +156,4 @@ export interface SupplierFormData {
   taxId?: string
   isActive: boolean
 }
+

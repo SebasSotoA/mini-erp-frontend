@@ -33,7 +33,8 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
 
   return (
     <div className="overflow-hidden rounded-lg border border-camouflage-green-200">
-      <Table>
+      <div className="pl-14">
+        <Table>
         <TableHeader>
           <TableRow className="border-camouflage-green-200 hover:bg-transparent">
             <TableHead className="w-[220px] font-semibold text-camouflage-green-700">
@@ -76,24 +77,6 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
             </TableHead>
             <TableHead className="w-[120px] font-semibold text-camouflage-green-700">Unidad</TableHead>
             <TableHead className="w-[120px] font-semibold text-camouflage-green-700">Estado</TableHead>
-            <TableHead className="w-[140px] font-semibold text-camouflage-green-700">
-              <div>
-                <button
-                  onClick={() => handleSort("cost")}
-                  className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
-                >
-                  <span className="whitespace-nowrap">Costo promedio</span>
-                  <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
-                    <ChevronUp
-                      className={`h-3 w-3 ${sortConfig.field === "cost" && sortConfig.direction === "asc" ? "text-camouflage-green-900" : ""}`}
-                    />
-                    <ChevronDown
-                      className={`h-3 w-3 ${sortConfig.field === "cost" && sortConfig.direction === "desc" ? "text-camouflage-green-900" : ""}`}
-                    />
-                  </div>
-                </button>
-              </div>
-            </TableHead>
             <TableHead className="w-[140px] font-semibold text-camouflage-green-700">
               <div>
                 <button
@@ -165,9 +148,6 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
                   {product.isActive ? "Activo" : "Inactivo"}
                 </Badge>
               </TableCell>
-              <TableCell className="w-[140px] font-semibold text-camouflage-green-900">
-                {formatCurrency(product.cost)}
-              </TableCell>
               <TableCell className="w-[140px] font-bold text-camouflage-green-900">
                 {formatCurrency(product.total)}
               </TableCell>
@@ -181,6 +161,7 @@ export function InventoryTable({ products, sortConfig, onSort }: InventoryTableP
           <p>No se encontraron productos que coincidan con los filtros aplicados.</p>
         </div>
       )}
+      </div>
     </div>
   )
 }

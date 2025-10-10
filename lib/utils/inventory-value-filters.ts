@@ -78,10 +78,6 @@ export const sortProducts = (products: InventoryValueProduct[], config: SortConf
         aValue = a.stock
         bValue = b.stock
         break
-      case "cost":
-        aValue = a.cost
-        bValue = b.cost
-        break
       case "total":
         aValue = a.total
         bValue = b.total

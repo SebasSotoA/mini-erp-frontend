@@ -154,7 +154,7 @@ export function StockMovementModal({
               <SelectTrigger className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500">
                 <SelectValue placeholder="Seleccionar bodega" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-3xl">
                 {activeWarehouses.map((warehouse) => (
                   <SelectItem key={warehouse.id} value={warehouse.id}>
                     {warehouse.name}
