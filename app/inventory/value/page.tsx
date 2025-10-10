@@ -133,7 +133,7 @@ export default function InventoryValue() {
               Valor de Inventario
             </h1>
             <p className="mt-1 text-camouflage-green-600">
-              Consulta el valor actual, cantidad y costo promedio de tu inventario.
+              Consulta el valor actual y cantidad de tu inventario.
             </p>
           </div>
         </div>

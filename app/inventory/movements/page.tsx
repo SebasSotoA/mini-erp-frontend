@@ -10,7 +10,6 @@ import {
   X,
   TrendingUp,
   TrendingDown,
-  User,
 } from "lucide-react"
 import { useMemo, useState } from "react"
 import { format } from "date-fns"
@@ -31,7 +30,6 @@ interface MovementFilters {
   warehouseId: string
   movementType: string
   dateFrom: string
-  dateTo: string
 }
 
 export default function StockMovementsHistory() {
@@ -43,8 +41,10 @@ export default function StockMovementsHistory() {
     warehouseId: "all",
     movementType: "all",
     dateFrom: "",
-    dateTo: "",
   })
+
+  // Estado para mostrar/ocultar filtros
+  const [showFilters, setShowFilters] = useState(false)
   
   // Estado para paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -65,7 +65,6 @@ export default function StockMovementsHistory() {
       warehouseId: "all",
       movementType: "all",
       dateFrom: "",
-      dateTo: "",
     })
     setCurrentPage(1)
   }
@@ -95,12 +94,14 @@ export default function StockMovementsHistory() {
       filtered = filtered.filter(movement => movement.type === filters.movementType)
     }
 
-    // Filtro por rango de fechas
+    // Filtro por bodega
+    if (filters.warehouseId && filters.warehouseId !== "all") {
+      filtered = filtered.filter(movement => movement.warehouseId === filters.warehouseId)
+    }
+
+    // Filtro por fecha desde
     if (filters.dateFrom) {
       filtered = filtered.filter(movement => movement.date >= filters.dateFrom)
-    }
-    if (filters.dateTo) {
-      filtered = filtered.filter(movement => movement.date <= filters.dateTo)
     }
 
     // Ordenamiento
@@ -221,13 +222,15 @@ export default function StockMovementsHistory() {
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={clearFilters}
+                  onClick={() => setShowFilters(!showFilters)}
                   variant="outline"
                   size="sm"
-                  className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                  className={`border-camouflage-green-300 text-camouflage-green-700 transition-all duration-200 hover:bg-camouflage-green-50 ${
+                    showFilters ? "border-camouflage-green-400 bg-camouflage-green-100" : ""
+                  }`}
                 >
-                  <X className="mr-2 h-4 w-4" />
-                  Limpiar filtros
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filtros
                 </Button>
               </div>
             </div>
@@ -236,85 +239,90 @@ export default function StockMovementsHistory() {
             <Table>
               <TableHeader>
                 {/* Fila de filtros */}
-                <TableRow className="border-camouflage-green-200 bg-camouflage-green-50/30 hover:bg-transparent">
-                  <TableHead className="w-[200px]">
-                    <div className="py-3">
-                      <Input
-                        type="text"
-                        placeholder="Buscar producto..."
-                        value={filters.productSearch}
-                        onChange={(e) => handleFilterChange("productSearch", e.target.value)}
-                        className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                      />
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-[150px]">
-                    <div className="py-3">
-                      <Select
-                        value={filters.movementType}
-                        onValueChange={(value) => handleFilterChange("movementType", value)}
-                      >
-                        <SelectTrigger className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
-                          <SelectValue placeholder="Tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          <SelectItem value="in">Compra</SelectItem>
-                          <SelectItem value="out">Venta</SelectItem>
-                          <SelectItem value="adjustment">Ajuste</SelectItem>
-                          <SelectItem value="return">Devolución</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-[120px]">
-                    <div className="py-3">
-                      <Input
-                        type="date"
-                        placeholder="Desde"
-                        value={filters.dateFrom}
-                        onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
-                        className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                      />
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-[120px]">
-                    <div className="py-3">
-                      <Input
-                        type="date"
-                        placeholder="Hasta"
-                        value={filters.dateTo}
-                        onChange={(e) => handleFilterChange("dateTo", e.target.value)}
-                        className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                      />
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-[150px]">
-                    <div className="py-3">
-                      <Select
-                        value={filters.warehouseId}
-                        onValueChange={(value) => handleFilterChange("warehouseId", value)}
-                      >
-                        <SelectTrigger className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
-                          <SelectValue placeholder="Bodega" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todas</SelectItem>
-                          {activeWarehouses.map((warehouse) => (
-                            <SelectItem key={warehouse.id} value={warehouse.id}>
-                              {warehouse.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-[200px]">
-                    <div className="py-3">
-                      <div className="text-sm text-camouflage-green-600">Usuario</div>
-                    </div>
-                  </TableHead>
-                </TableRow>
+                {showFilters && (
+                  <TableRow className="border-camouflage-green-200 bg-camouflage-green-50/30 hover:bg-camouflage-green-50/30">
+                    <TableHead className="w-[200px]">
+                      <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                        <input
+                          type="date"
+                          placeholder="Fecha"
+                          value={filters.dateFrom}
+                          onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[150px]">
+                      <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                        <Select
+                          value={filters.movementType}
+                          onValueChange={(value) => handleFilterChange("movementType", value)}
+                        >
+                          <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
+                            <SelectValue placeholder="Tipo" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-3xl">
+                            <SelectItem value="all">Tipo</SelectItem>
+                            <SelectItem value="in">Compra</SelectItem>
+                            <SelectItem value="out">Venta</SelectItem>
+                            <SelectItem value="adjustment">Ajuste</SelectItem>
+                            <SelectItem value="return">Devolución</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[150px]">
+                      <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                        <Select
+                          value={filters.warehouseId}
+                          onValueChange={(value) => handleFilterChange("warehouseId", value)}
+                        >
+                          <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
+                            <SelectValue placeholder="Bodega" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-3xl">
+                            <SelectItem value="all">Bodega</SelectItem>
+                            {activeWarehouses.map((warehouse) => (
+                              <SelectItem key={warehouse.id} value={warehouse.id}>
+                                {warehouse.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[200px]">
+                      <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-camouflage-green-400" />
+                          <input
+                            type="text"
+                            placeholder="Buscar producto..."
+                            value={filters.productSearch}
+                            onChange={(e) => handleFilterChange("productSearch", e.target.value)}
+                            className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white pl-10 pr-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          />
+                        </div>
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[120px]">
+                      <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                        <Button
+                          onClick={clearFilters}
+                          size="sm"
+                          variant="outline"
+                          className="h-9 w-14 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                          title="Limpiar filtros"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[250px]">
+                      <div className="py-3"></div>
+                    </TableHead>
+                  </TableRow>
+                )}
                 
                 {/* Headers de columnas */}
                 <TableRow className="border-camouflage-green-200 hover:bg-transparent">
@@ -322,7 +330,7 @@ export default function StockMovementsHistory() {
                     <div>
                       <button
                         onClick={() => handleSort("date")}
-                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
+                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900 px-2"
                       >
                         Fecha
                         <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
@@ -340,7 +348,7 @@ export default function StockMovementsHistory() {
                     <div>
                       <button
                         onClick={() => handleSort("type")}
-                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
+                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900 px-3"
                       >
                         Tipo
                         <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
@@ -354,11 +362,30 @@ export default function StockMovementsHistory() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] text-center font-semibold text-camouflage-green-700">
+                  <TableHead className="w-[150px] font-semibold text-camouflage-green-700 px-4">Bodega</TableHead>
+                  <TableHead className="w-[200px] font-semibold text-camouflage-green-700">
+                    <div>
+                      <button
+                        onClick={() => handleSort("productName")}
+                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900 px-4"
+                      >
+                        Producto
+                        <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
+                          <ChevronUp
+                            className={`h-3 w-3 ${sortField === "productName" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}
+                          />
+                          <ChevronDown
+                            className={`h-3 w-3 ${sortField === "productName" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
+                          />
+                        </div>
+                      </button>
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[120px] font-semibold text-camouflage-green-700">
                     <div>
                       <button
                         onClick={() => handleSort("quantity")}
-                        className="group flex items-center justify-center gap-1 transition-colors hover:text-camouflage-green-900"
+                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900 px-1"
                       >
                         Cantidad
                         <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
@@ -372,9 +399,6 @@ export default function StockMovementsHistory() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] text-center font-semibold text-camouflage-green-700">Producto</TableHead>
-                  <TableHead className="w-[150px] font-semibold text-camouflage-green-700">Bodega</TableHead>
-                  <TableHead className="w-[200px] font-semibold text-camouflage-green-700">Usuario</TableHead>
                   <TableHead className="w-[250px] font-semibold text-camouflage-green-700">Observación</TableHead>
                 </TableRow>
               </TableHeader>
@@ -388,7 +412,7 @@ export default function StockMovementsHistory() {
                       key={movement.id}
                       className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
                     >
-                      <TableCell className="w-[200px]">
+                      <TableCell className="w-[200px] pl-3">
                         <div className="text-sm text-camouflage-green-900">
                           {format(new Date(movement.date), "dd/MM/yyyy", { locale: es })}
                         </div>
@@ -396,66 +420,47 @@ export default function StockMovementsHistory() {
                           {format(new Date(movement.date), "HH:mm", { locale: es })}
                         </div>
                       </TableCell>
-                      <TableCell className="w-[150px]">
+                      <TableCell className="w-[150px] pl-3">
                         <span
                           className={`rounded-full px-2 py-1 text-xs font-semibold ${getMovementTypeColor(movement.type)}`}
                         >
                           {getMovementTypeLabel(movement.type)}
                         </span>
                       </TableCell>
-                      <TableCell className="w-[120px] text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {movement.quantity > 0 ? (
-                            <TrendingUp className="h-4 w-4 text-camouflage-green-600" />
-                          ) : (
-                            <TrendingDown className="h-4 w-4 text-red-600" />
-                          )}
-                          <span
-                            className={`font-semibold ${
-                              movement.quantity > 0 ? "text-camouflage-green-700" : "text-red-700"
-                            }`}
-                          >
-                            {Math.abs(movement.quantity)}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-[120px]">
-                        <div className="text-sm font-medium text-camouflage-green-900">
-                          {movement.productName}
-                        </div>
-                        {product && (
-                          <div className="text-xs text-camouflage-green-500">
-                            {product.sku}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell className="w-[150px]">
+                      <TableCell className="w-[150px] pl-4">
                         <div className="text-sm text-camouflage-green-700">
                           {warehouse?.name || "N/A"}
                         </div>
                       </TableCell>
-                      <TableCell className="w-[200px]">
-                        <div className="flex items-center gap-2 text-sm text-camouflage-green-600">
-                          <User className="h-4 w-4" />
-                          <span>Sistema</span>
+                      <TableCell className="w-[200px] pl-5">
+                        <div className="text-sm font-medium text-camouflage-green-900">
+                          {movement.productName}
+                        </div>
+                      </TableCell>
+                      <TableCell className="w-[120px] pl-2">
+                        <div className="">
+                          <span
+                            className={`min-w-[50px] rounded-full px-4 py-2 text-center text-sm font-semibold ${
+                              movement.quantity > 0
+                                ? "bg-camouflage-green-100 text-camouflage-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {Math.abs(movement.quantity).toLocaleString()}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell className="w-[250px]">
                         <div className="text-sm text-camouflage-green-700">
                           {movement.reason || "-"}
-                        </div>
-                        {movement.reference && (
-                          <div className="text-xs text-camouflage-green-500">
-                            Ref: {movement.reference}
-                          </div>
-                        )}
+                        </div>                        
                       </TableCell>
                     </TableRow>
                   )
                 })}
                 {currentMovements.length === 0 && (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={7} className="py-12 text-center">
+                    <TableCell colSpan={6} className="py-12 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <Package className="h-12 w-12 text-camouflage-green-300" />
                         <div>

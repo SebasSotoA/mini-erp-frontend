@@ -11,6 +11,7 @@ import {
   PowerOff,
   Trash2,
   Filter,
+  ArrowLeft,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { useMemo, useState, useEffect } from "react"
@@ -381,11 +382,13 @@ export default function ExtraFieldDetailsPage() {
             </h1>
           </div>
           <Button
-            variant="outline"
+            variant="ghost"
+            size="md2"
             onClick={() => router.push("/inventory/extra-fields")}
-            className="border-camouflage-green-300 text-base text-camouflage-green-700 hover:bg-camouflage-green-50"
+            className="text-black bg-white hover:text-black border border-gray-700 hover:bg-gray-100"
             title="Volver a Campos Extra"
           >
+            <ArrowLeft className="mr-2 h-4 w-4 text-black" />
             Volver
           </Button>
         </div>
@@ -607,7 +610,7 @@ export default function ExtraFieldDetailsPage() {
                           placeholder="Nombre"
                           value={filters.name}
                           onChange={(e) => handleFilterChange("name", e.target.value)}
-                          className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
@@ -618,7 +621,7 @@ export default function ExtraFieldDetailsPage() {
                           placeholder="Referencia"
                           value={filters.sku}
                           onChange={(e) => handleFilterChange("sku", e.target.value)}
-                          className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
@@ -629,7 +632,7 @@ export default function ExtraFieldDetailsPage() {
                           placeholder="Precio"
                           value={filters.price}
                           onChange={(e) => handleFilterChange("price", e.target.value)}
-                          className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
@@ -640,34 +643,37 @@ export default function ExtraFieldDetailsPage() {
                           placeholder="Descripción"
                           value={filters.description}
                           onChange={(e) => handleFilterChange("description", e.target.value)}
-                          className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
                     <TableHead className="w-[120px]">
                       <div className="flex items-center gap-1 py-3">
-                        <select
+                        <Select
                           value={filters.stockOperator}
-                          onChange={(e) => {
-                            handleFilterChange("stockOperator", e.target.value)
-                            if (e.target.value !== "between") {
+                          onValueChange={(value) => {
+                            handleFilterChange("stockOperator", value)
+                            if (value !== "between") {
                               handleFilterChange("stockMinValue", "")
                               handleFilterChange("stockMaxValue", "")
                             } else {
                               handleFilterChange("stockValue", "")
                             }
                           }}
-                          className="w-18 rounded border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                          title="Operador de comparación"
                         >
-                          <option value="">-</option>
-                          <option value="equal">=</option>
-                          <option value="greater">&gt;</option>
-                          <option value="greaterEqual">&gt;=</option>
-                          <option value="less">&lt;</option>
-                          <option value="lessEqual">&lt;=</option>
-                          <option value="between">Rango</option>
-                        </select>
+                          <SelectTrigger className="w-24 rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-xs text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Operador de comparación">
+                            <SelectValue placeholder="-" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-3xl">
+                            <SelectItem value="none">-</SelectItem>
+                            <SelectItem value="equal">=</SelectItem>
+                            <SelectItem value="greater">&gt;</SelectItem>
+                            <SelectItem value="greaterEqual">&gt;=</SelectItem>
+                            <SelectItem value="less">&lt;</SelectItem>
+                            <SelectItem value="lessEqual">&lt;=</SelectItem>
+                            <SelectItem value="between">Rango</SelectItem>
+                          </SelectContent>
+                        </Select>
                         {filters.stockOperator === "between" ? (
                           <div className="flex flex-1 items-center gap-1">
                             <input
@@ -675,7 +681,7 @@ export default function ExtraFieldDetailsPage() {
                               placeholder="Min"
                               value={filters.stockMinValue}
                               onChange={(e) => handleFilterChange("stockMinValue", e.target.value)}
-                              className="w-14 rounded border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                              className="w-14 rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                               min="0"
                             />
                             <span className="text-xs text-camouflage-green-600">y</span>
@@ -684,7 +690,7 @@ export default function ExtraFieldDetailsPage() {
                               placeholder="Max"
                               value={filters.stockMaxValue}
                               onChange={(e) => handleFilterChange("stockMaxValue", e.target.value)}
-                              className="w-14 rounded border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                              className="w-14 rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                               min="0"
                             />
                           </div>
@@ -694,7 +700,7 @@ export default function ExtraFieldDetailsPage() {
                             placeholder="0"
                             value={filters.stockValue}
                             onChange={(e) => handleFilterChange("stockValue", e.target.value)}
-                            className="w-16 rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                            className="w-16 rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                             min="0"
                           />
                         )}
@@ -702,21 +708,24 @@ export default function ExtraFieldDetailsPage() {
                     </TableHead>
                     <TableHead className="w-[160px]">
                       <div className="flex items-center gap-1 py-3">
-                        <select
+                        <Select
                           value={filters.status}
-                          onChange={(e) => handleFilterChange("status", e.target.value)}
-                          className="w-22 rounded border border-camouflage-green-300 bg-white px-1 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                          title="Filtrar por estado"
+                          onValueChange={(value) => handleFilterChange("status", value)}
                         >
-                          <option value="">Todos</option>
-                          <option value="active">Activos</option>
-                          <option value="inactive">Inactivos</option>
-                        </select>
+                          <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-4 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Filtrar por estado">
+                            <SelectValue placeholder="Todos" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-3xl">
+                            <SelectItem value="all">Todos</SelectItem>
+                            <SelectItem value="active">Activos</SelectItem>
+                            <SelectItem value="inactive">Inactivos</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <Button
                           onClick={clearFilters}
                           size="sm"
                           variant="outline"
-                          className="ml-2 h-9 w-9 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                          className="ml-2 h-9 w-14 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
                           title="Limpiar filtros"
                         >
                           <X className="h-3 w-3" />
@@ -737,7 +746,7 @@ export default function ExtraFieldDetailsPage() {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[200px] font-semibold text-camouflage-green-700">
+                  <TableHead className="w-[200px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("name")}
@@ -755,7 +764,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] font-semibold text-camouflage-green-700">
+                  <TableHead className="w-[120px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("sku")}
@@ -773,7 +782,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[100px] font-semibold text-camouflage-green-700">
+                  <TableHead className="w-[100px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("price")}
@@ -791,7 +800,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[250px] font-semibold text-camouflage-green-700">
+                  <TableHead className="w-[250px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("description")}
@@ -809,7 +818,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] text-center font-semibold text-camouflage-green-700">
+                  <TableHead className="w-[120px] text-center font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("stock")}
@@ -827,7 +836,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[160px] font-semibold text-camouflage-green-700">Acciones</TableHead>
+                  <TableHead className="w-[160px] font-semibold text-camouflage-green-700 pl-4">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -846,7 +855,7 @@ export default function ExtraFieldDetailsPage() {
                           />
                         </div>
                       </TableCell>
-                      <TableCell className="w-[200px]">
+                      <TableCell className="w-[200px] pl-4">
                         <button
                           onClick={() => router.push(`/inventory/items/${product.id}`)}
                           className="text-left font-medium text-camouflage-green-900 transition-colors hover:text-camouflage-green-700 hover:underline"
@@ -854,13 +863,13 @@ export default function ExtraFieldDetailsPage() {
                           {product.name}
                         </button>
                       </TableCell>
-                      <TableCell className="w-[120px]">
+                      <TableCell className="w-[120px] pl-4">
                         <div className="font-mono text-sm text-camouflage-green-600">{product.sku}</div>
                       </TableCell>
-                      <TableCell className="w-[100px]">
+                      <TableCell className="w-[100px] pl-4">
                         <div className="font-semibold text-camouflage-green-700">${product.price}</div>
                       </TableCell>
-                      <TableCell className="w-[250px]">
+                      <TableCell className="w-[250px] pl-4">
                         <div
                           className="max-w-[230px] truncate text-sm text-camouflage-green-600"
                           title={product.description}
@@ -868,7 +877,7 @@ export default function ExtraFieldDetailsPage() {
                           {product.description}
                         </div>
                       </TableCell>
-                      <TableCell className="w-[120px]">
+                      <TableCell className="w-[120px] pl-4">
                         <div className="">
                           <span
                             className={`min-w-[50px] rounded-full px-4 py-2 text-center text-sm font-semibold ${
@@ -881,7 +890,7 @@ export default function ExtraFieldDetailsPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="w-[160px]">
+                      <TableCell className="w-[160px] pl-4">
                         <div className="flex items-center justify-start gap-1">
                           <Button
                             size="sm"

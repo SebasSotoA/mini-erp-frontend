@@ -1,12 +1,11 @@
 "use client"
 
-import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag } from "lucide-react"
+import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag, ArrowLeft } from "lucide-react"
 import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
 import { useState } from "react"
 
 import { MainLayout } from "@/components/layout/main-layout"
-import { StockMovementModal } from "@/components/modals/StockMovementModal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -18,8 +17,6 @@ export default function ItemDetailsPage() {
   const { getProductById, updateProduct, stockMovements, warehouses, productStocks } = useInventory()
 
   // Estado para los modales
-  const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false)
-  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false)
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
   const product = id ? getProductById(id) : undefined
@@ -82,11 +79,13 @@ export default function ItemDetailsPage() {
             </p>
           </div>
           <Button
-            variant="outline"
+            variant="ghost"
+            size="md2"
             onClick={() => router.push("/inventory/items")}
-            className="border-camouflage-green-300 text-base text-camouflage-green-700 hover:bg-camouflage-green-50"
+            className="text-black bg-white hover:text-black border border-gray-700 hover:bg-gray-100"
             title="Volver a Items"
           >
+            <ArrowLeft className="mr-2 h-4 w-4 text-black" />
             Volver
           </Button>
         </div>
@@ -95,18 +94,18 @@ export default function ItemDetailsPage() {
         <div className="flex flex-wrap gap-2">
           <Button
             size="sm"
-            className="bg-red-600 text-white hover:bg-red-700"
+            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800 shadow-md"
             title="Facturar item"
-            onClick={() => setIsSaleModalOpen(true)}
+            onClick={() => router.push(`/invoices/sales/new?productId=${product.id}`)}
           >
             <ShoppingCart className="mr-2 h-4 w-4" />
             Facturar item
           </Button>
           <Button
             size="sm"
-            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+            className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800 shadow-md"
             title="Comprar item"
-            onClick={() => setIsPurchaseModalOpen(true)}
+            onClick={() => router.push(`/invoices/purchase/new?productId=${product.id}`)}
           >
             <ShoppingBag className="mr-2 h-4 w-4" />
             Comprar item
@@ -344,25 +343,6 @@ export default function ItemDetailsPage() {
         </Card>
       </div>
 
-      {/* Modales de movimiento de stock */}
-      {product && (
-        <>
-          <StockMovementModal
-            isOpen={isPurchaseModalOpen}
-            onClose={() => setIsPurchaseModalOpen(false)}
-            productId={product.id}
-            productName={product.name}
-            movementType="purchase"
-          />
-          <StockMovementModal
-            isOpen={isSaleModalOpen}
-            onClose={() => setIsSaleModalOpen(false)}
-            productId={product.id}
-            productName={product.name}
-            movementType="sale"
-          />
-        </>
-      )}
     </MainLayout>
   )
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Tag } from "lucide-react"
+import { Plus, Tag, ArrowLeft } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { useEffect, useMemo, useState, useCallback } from "react"
 import { useForm } from "react-hook-form"
@@ -255,13 +255,15 @@ export default function EditInventoryItemPage() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <p className="text-camouflage-green-700">El ítem solicitado no existe o fue eliminado.</p>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/inventory/items")}
-                  className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-                >
-                  Volver a la lista
-                </Button>
+                  <Button
+                    variant="ghost"
+                    size="md2"
+                    onClick={() => router.push("/inventory/items")}
+                    className="text-black bg-white hover:text-black border border-gray-700 hover:bg-gray-100"
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4 text-black" />
+                    Volver a la lista
+                  </Button>
               </div>
             </CardContent>
           </Card>

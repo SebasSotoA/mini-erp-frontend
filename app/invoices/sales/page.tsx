@@ -7,7 +7,7 @@ import {
   Filter,
   Eye,
   Edit,
-  Trash2,
+  XCircle,
   ChevronUp,
   ChevronDown,
   X,
@@ -31,32 +31,31 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import { PaginationConfig } from "@/lib/types/inventory-value"
 
 interface InvoiceFilters {
-  search: string
+  clientSearch: string
   salesperson: string
   status: string
   dateFrom: string
-  dateTo: string
 }
 
 export default function SalesInvoices() {
-  const { salesInvoices, deleteSalesInvoice } = useInventory()
+  const { salesInvoices, updateSalesInvoice } = useInventory()
   const router = useRouter()
   const { toast } = useToast()
 
   // Estado local
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<InvoiceFilters>({
-    search: "",
+    clientSearch: "",
     salesperson: "",
     status: "",
     dateFrom: "",
-    dateTo: "",
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
@@ -66,18 +65,15 @@ export default function SalesInvoices() {
   // Aplicar filtros
   const filteredInvoices = useMemo(() => {
     return salesInvoices.filter((invoice) => {
-      const matchesSearch = !filters.search || 
-        invoice.invoiceNumber.toLowerCase().includes(filters.search.toLowerCase()) ||
-        invoice.salespersonName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        invoice.warehouseName.toLowerCase().includes(filters.search.toLowerCase())
+      const matchesClientSearch = !filters.clientSearch || 
+        (invoice.email && invoice.email.toLowerCase().includes(filters.clientSearch.toLowerCase()))
       
-      const matchesSalesperson = !filters.salesperson || invoice.salespersonId === filters.salesperson
-      const matchesStatus = !filters.status || invoice.status === filters.status
+      const matchesSalesperson = !filters.salesperson || filters.salesperson === "all" || invoice.salespersonId === filters.salesperson
+      const matchesStatus = !filters.status || filters.status === "all" || invoice.status === filters.status
       
       const matchesDateFrom = !filters.dateFrom || new Date(invoice.date) >= new Date(filters.dateFrom)
-      const matchesDateTo = !filters.dateTo || new Date(invoice.date) <= new Date(filters.dateTo)
 
-      return matchesSearch && matchesSalesperson && matchesStatus && matchesDateFrom && matchesDateTo
+      return matchesClientSearch && matchesSalesperson && matchesStatus && matchesDateFrom
     })
   }, [salesInvoices, filters])
 
@@ -132,20 +128,21 @@ export default function SalesInvoices() {
 
   const clearFilters = () => {
     setFilters({
-      search: "",
+      clientSearch: "",
       salesperson: "",
       status: "",
       dateFrom: "",
-      dateTo: "",
     })
     setCurrentPage(1)
   }
 
-  const handleDeleteInvoice = (id: string) => {
-    deleteSalesInvoice(id)
+  const handleCancelInvoice = (id: string) => {
+    console.log("Anulando factura:", id)
+    updateSalesInvoice(id, { status: "cancelled" })
+    console.log("Factura anulada, nuevo estado:", salesInvoices.find(i => i.id === id))
     toast({
-      title: "Factura eliminada",
-      description: "La factura se ha eliminado correctamente.",
+      title: "Factura anulada",
+      description: "La factura se ha anulado correctamente.",
     })
   }
 
@@ -206,73 +203,70 @@ export default function SalesInvoices() {
               <Table>
                 <TableHeader>
                   {showFilters && (
-                    <TableRow className="border-camouflage-green-200 bg-camouflage-green-50/30">
+                    <TableRow className="border-camouflage-green-200 bg-camouflage-green-50/30 hover:bg-camouflage-green-50/30">
                       <TableHead className="w-[200px]">
-                        <div className="flex items-center gap-1 py-3">
+                        <div className="flex items-center gap-1 py-3 hover:bg-transparent">
                           <div className="relative flex-1">
                             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-camouflage-green-400" />
                             <input
                               type="text"
-                              placeholder="Buscar..."
-                              value={filters.search}
-                              onChange={(e) => handleFilterChange("search", e.target.value)}
-                              className="w-full rounded border border-camouflage-green-300 bg-white pl-10 pr-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                              placeholder="Buscar cliente..."
+                              value={filters.clientSearch}
+                              onChange={(e) => handleFilterChange("clientSearch", e.target.value)}
+                              className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white pl-10 pr-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                             />
                           </div>
                         </div>
                       </TableHead>
                       <TableHead className="w-[200px]">
-                        <div className="flex items-center gap-1 py-3">
-                          <select
+                        <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                          <Select
                             value={filters.salesperson}
-                            onChange={(e) => handleFilterChange("salesperson", e.target.value)}
-                            className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                            onValueChange={(value) => handleFilterChange("salesperson", value)}
                           >
-                            <option value="">Todos los vendedores</option>
-                            <option value="1">Juan Pérez</option>
-                            <option value="2">María García</option>
-                            <option value="3">Carlos Rodríguez</option>
-                          </select>
+                            <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
+                              <SelectValue placeholder="Buscar por vendedor" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-3xl">
+                              <SelectItem value="all">Buscar por vendedor</SelectItem>
+                              <SelectItem value="1">Juan Pérez</SelectItem>
+                              <SelectItem value="2">María García</SelectItem>
+                              <SelectItem value="3">Carlos Rodríguez</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </TableHead>
                       <TableHead className="w-[150px]">
-                        <div className="flex items-center gap-1 py-3">
+                        <div className="flex items-center gap-1 py-3 hover:bg-transparent">
                           <input
                             type="date"
-                            placeholder="Desde"
+                            placeholder="Fecha de creación"
                             value={filters.dateFrom}
                             onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
-                            className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                          />
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-[150px]">
-                        <div className="flex items-center gap-1 py-3">
-                          <input
-                            type="date"
-                            placeholder="Hasta"
-                            value={filters.dateTo}
-                            onChange={(e) => handleFilterChange("dateTo", e.target.value)}
-                            className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                            className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                           />
                         </div>
                       </TableHead>
                       <TableHead className="w-[120px]">
-                        <div className="flex items-center gap-1 py-3">
-                          <select
+                        <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                          <Select
                             value={filters.status}
-                            onChange={(e) => handleFilterChange("status", e.target.value)}
-                            className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                            onValueChange={(value) => handleFilterChange("status", value)}
                           >
-                            <option value="">Todos</option>
-                            <option value="draft">Borrador</option>
-                            <option value="completed">Completada</option>
-                            <option value="cancelled">Cancelada</option>
-                          </select>
+                            <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
+                              <SelectValue placeholder="Estado" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-3xl">
+                              <SelectItem value="all">Estado</SelectItem>
+                              <SelectItem value="draft">Borrador</SelectItem>
+                              <SelectItem value="completed">Completada</SelectItem>
+                              <SelectItem value="cancelled">Anulada</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </TableHead>
                       <TableHead className="w-[120px]">
-                        <div className="flex items-center gap-1 py-3">
+                        <div className="flex items-center gap-1 py-3 hover:bg-transparent">
                           <Button
                             onClick={clearFilters}
                             size="sm"
@@ -379,22 +373,27 @@ export default function SalesInvoices() {
                     currentInvoices.map((invoice) => (
                       <TableRow
                         key={invoice.id}
-                        className="border-camouflage-green-100 hover:bg-camouflage-green-50/30 cursor-pointer"
-                        onClick={() => handleViewInvoice(invoice.id)}
+                        className="border-camouflage-green-100 hover:bg-camouflage-green-50/30"
+                        style={{ backgroundColor: 'transparent' }}
                       >
-                        <TableCell className="font-medium text-camouflage-green-900">
-                          {invoice.invoiceNumber}
+                        <TableCell className="font-medium hover:bg-transparent" style={{ backgroundColor: 'transparent' }}>
+                          <button
+                            onClick={() => handleViewInvoice(invoice.id)}
+                            className="text-camouflage-green-900 hover:text-camouflage-green-700 hover:underline cursor-pointer bg-transparent border-none p-0"
+                          >
+                            {invoice.invoiceNumber}
+                          </button>
                         </TableCell>
-                        <TableCell className="text-camouflage-green-700">
+                        <TableCell className="text-camouflage-green-700 hover:bg-transparent" style={{ backgroundColor: 'transparent' }}>
                           {invoice.salespersonName}
                         </TableCell>
-                        <TableCell className="text-camouflage-green-700">
+                        <TableCell className="text-camouflage-green-700 hover:bg-transparent" style={{ backgroundColor: 'transparent' }}>
                           {new Date(invoice.date).toLocaleDateString('es-CO')}
                         </TableCell>
-                        <TableCell className="font-medium text-camouflage-green-900">
+                        <TableCell className="font-medium text-camouflage-green-900 hover:bg-transparent" style={{ backgroundColor: 'transparent' }}>
                           ${invoice.totalAmount.toLocaleString('es-CO')}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hover:bg-transparent" style={{ backgroundColor: 'transparent' }}>
                           <span
                             className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                               invoice.status === "completed"
@@ -404,15 +403,15 @@ export default function SalesInvoices() {
                                 : "bg-red-100 text-red-800"
                             }`}
                           >
-                            {invoice.status === "completed" ? "Completada" : invoice.status === "draft" ? "Borrador" : "Cancelada"}
+                            {invoice.status === "completed" ? "Completada" : invoice.status === "draft" ? "Borrador" : "Anulada"}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hover:bg-transparent" style={{ backgroundColor: 'transparent' }}>
                           <div className="flex items-center space-x-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="h-8 w-8 p-0 text-camouflage-green-600 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                              className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleViewInvoice(invoice.id)
@@ -421,9 +420,9 @@ export default function SalesInvoices() {
                               <Eye className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="h-8 w-8 p-0 text-camouflage-green-600 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                              className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 handleEditInvoice(invoice.id)
@@ -431,35 +430,37 @@ export default function SalesInvoices() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-red-600 hover:bg-red-50 hover:text-red-700"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Eliminar factura</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta acción no se puede deshacer. Se eliminará la factura {invoice.invoiceNumber}.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    className="bg-red-600 hover:bg-red-700"
-                                    onClick={() => handleDeleteInvoice(invoice.id)}
+                            {invoice.status !== "cancelled" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    Eliminar
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                                    <XCircle className="h-4 w-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Anular factura</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      ¿Estás seguro de que quieres anular la factura {invoice.invoiceNumber}? Esta acción cambiará el estado a "Anulada".
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-red-600 hover:bg-red-700"
+                                      onClick={() => handleCancelInvoice(invoice.id)}
+                                    >
+                                      Anular
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

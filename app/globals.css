@@ -58,3 +58,52 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Evita el fondo amarillo del autocompletado del navegador */
+input:-webkit-autofill,
+select:-webkit-autofill,
+textarea:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px white inset !important;
+  box-shadow: 0 0 0px 1000px white inset !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+/* Para modo oscuro */
+.dark input:-webkit-autofill,
+.dark select:-webkit-autofill,
+.dark textarea:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px hsl(var(--background)) inset !important;
+  box-shadow: 0 0 0px 1000px hsl(var(--background)) inset !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+/* Estilos específicos para evitar cualquier fondo amarillo en filtros */
+input[type="text"]:hover,
+input[type="date"]:hover,
+select:hover {
+  background-color: white !important;
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus,
+select:focus {
+  background-color: white !important;
+}
+
+input[type="text"]:active,
+input[type="date"]:active,
+select:active {
+  background-color: white !important;
+}
+
+/* Estilos específicos para evitar fondo amarillo en filas de tabla */
+tr:hover,
+td:hover,
+th:hover {
+  background-color: transparent !important;
+}
+
+/* Mantener el hover personalizado de la tabla */
+tr.hover\:bg-camouflage-green-50\/30:hover {
+  background-color: rgba(244, 246, 243, 0.3) !important;
+}

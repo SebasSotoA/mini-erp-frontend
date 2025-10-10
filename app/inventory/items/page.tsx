@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Modal } from "@/components/ui/modal"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
@@ -366,7 +367,7 @@ export default function SalesItems() {
                           placeholder="Nombre"
                           value={filters.name}
                           onChange={(e) => handleFilterChange("name", e.target.value)}
-                          className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
@@ -377,7 +378,7 @@ export default function SalesItems() {
                           placeholder="Referencia"
                           value={filters.sku}
                           onChange={(e) => handleFilterChange("sku", e.target.value)}
-                          className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-24 rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
@@ -388,7 +389,7 @@ export default function SalesItems() {
                           placeholder="Precio"
                           value={filters.price}
                           onChange={(e) => handleFilterChange("price", e.target.value)}
-                          className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
@@ -399,35 +400,38 @@ export default function SalesItems() {
                           placeholder="Descripción"
                           value={filters.description}
                           onChange={(e) => handleFilterChange("description", e.target.value)}
-                          className="w-full rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
                     <TableHead className="w-[120px]">
                       <div className="flex items-center gap-1 py-3">
-                        <select
+                        <Select
                           value={filters.stockOperator}
-                          onChange={(e) => {
-                            handleFilterChange("stockOperator", e.target.value)
+                          onValueChange={(value) => {
+                            handleFilterChange("stockOperator", value)
                             // Limpiar valores cuando se cambia el operador
-                            if (e.target.value !== "between") {
+                            if (value !== "between") {
                               handleFilterChange("stockMinValue", "")
                               handleFilterChange("stockMaxValue", "")
                             } else {
                               handleFilterChange("stockValue", "")
                             }
                           }}
-                          className="w-18 rounded border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                          title="Operador de comparación"
                         >
-                          <option value="">-</option>
-                          <option value="equal">=</option>
-                          <option value="greater">&gt;</option>
-                          <option value="greaterEqual">&gt;=</option>
-                          <option value="less">&lt;</option>
-                          <option value="lessEqual">&lt;=</option>
-                          <option value="between">Rango</option>
-                        </select>
+                          <SelectTrigger className="w-24 rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-xs text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Operador de comparación">
+                            <SelectValue placeholder="-" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-3xl">
+                            <SelectItem value="none">-</SelectItem>
+                            <SelectItem value="equal">=</SelectItem>
+                            <SelectItem value="greater">&gt;</SelectItem>
+                            <SelectItem value="greaterEqual">&gt;=</SelectItem>
+                            <SelectItem value="less">&lt;</SelectItem>
+                            <SelectItem value="lessEqual">&lt;=</SelectItem>
+                            <SelectItem value="between">Rango</SelectItem>
+                          </SelectContent>
+                        </Select>
                         {filters.stockOperator === "between" ? (
                           <div className="flex flex-1 items-center gap-1">
                             <input
@@ -435,7 +439,7 @@ export default function SalesItems() {
                               placeholder="Min"
                               value={filters.stockMinValue}
                               onChange={(e) => handleFilterChange("stockMinValue", e.target.value)}
-                              className="w-14 rounded border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                              className="w-14 rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                               min="0"
                             />
                             <span className="text-xs text-camouflage-green-600">y</span>
@@ -444,7 +448,7 @@ export default function SalesItems() {
                               placeholder="Max"
                               value={filters.stockMaxValue}
                               onChange={(e) => handleFilterChange("stockMaxValue", e.target.value)}
-                              className="w-14 rounded border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                              className="w-14 rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-xs text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                               min="0"
                             />
                           </div>
@@ -454,7 +458,7 @@ export default function SalesItems() {
                             placeholder="0"
                             value={filters.stockValue}
                             onChange={(e) => handleFilterChange("stockValue", e.target.value)}
-                            className="w-16 rounded border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                            className="w-16 rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                             min="0"
                           />
                         )}
@@ -462,16 +466,19 @@ export default function SalesItems() {
                     </TableHead>
                     <TableHead className="w-[160px]">
                       <div className="flex items-center gap-1 py-3">
-                        <select
+                        <Select
                           value={filters.status}
-                          onChange={(e) => handleFilterChange("status", e.target.value)}
-                          className="w-22 rounded border border-camouflage-green-300 bg-white px-1 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
-                          title="Filtrar por estado"
+                          onValueChange={(value) => handleFilterChange("status", value)}
                         >
-                          <option value="">Todos</option>
-                          <option value="active">Activos</option>
-                          <option value="inactive">Inactivos</option>
-                        </select>
+                          <SelectTrigger className="w-28 rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Filtrar por estado">
+                            <SelectValue placeholder="Todos" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-3xl">
+                            <SelectItem value="all">Todos</SelectItem>
+                            <SelectItem value="active">Activos</SelectItem>
+                            <SelectItem value="inactive">Inactivos</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <Button
                           onClick={clearFilters}
                           size="sm"

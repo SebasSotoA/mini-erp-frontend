@@ -6,7 +6,7 @@ import {
   Save,
   Plus,
   Trash2,
-  UserPlus,
+  Building2,
   ArrowLeft,
   Calculator,
   Edit,
@@ -27,25 +27,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
-import { SalesInvoiceItem } from "@/lib/types/invoices"
+import { PurchaseInvoiceItem } from "@/lib/types/invoices"
 
 // Esquema de validación con Zod
 const invoiceSchema = z
   .object({
     warehouseId: z.string().min(1, "La bodega es requerida"),
-    salespersonId: z.string().min(1, "El vendedor es requerido"),
-    email: z.string().email("Email inválido").optional().or(z.literal("")),
+    supplierId: z.string().min(1, "El proveedor es requerido"),
     date: z.string().min(1, "La fecha es requerida"),
-    paymentType: z.enum(["cash", "credit"], {
-      required_error: "La forma de pago es requerida",
-    }),
-    paymentMethod: z.string().min(1, "El medio de pago es requerido"),
-    paymentTerm: z.string().optional(),
     observations: z.string().optional(),
     items: z.array(
       z.object({
         id: z.string(),
-        productId: z.string().min(1, "El producto es requerido"),
+        concept: z.string().min(1, "El concepto es requerido"),
         price: z.number().min(0, "El precio debe ser mayor o igual a 0"),
         discount: z.number().min(0, "El descuento debe ser mayor o igual a 0"),
         taxRate: z.number().min(0, "El impuesto debe ser mayor o igual a 0"),
@@ -57,79 +51,61 @@ const invoiceSchema = z
       })
     ).min(1, "Debe agregar al menos un item a la factura"),
   })
-  .refine((data) => {
-    // Si el tipo de pago es crédito, el plazo de pago es requerido
-    if (data.paymentType === "credit") {
-      return data.paymentTerm && data.paymentTerm.length > 0
-    }
-    return true
-  }, {
-    message: "El plazo de pago es requerido cuando se selecciona Crédito",
-    path: ["paymentTerm"], // Esto hace que el error aparezca en el campo paymentTerm
-  })
 
 type InvoiceFormSchema = z.infer<typeof invoiceSchema>
 
-// Esquema para vendedores
-const salespersonSchema = z.object({
+// Esquema para proveedores
+const supplierSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   identification: z.string().min(1, "La identificación es requerida"),
   observation: z.string().optional(),
 })
 
-type SalespersonFormSchema = z.infer<typeof salespersonSchema>
+type SupplierFormSchema = z.infer<typeof supplierSchema>
 
 interface InvoiceFormData {
   warehouseId: string
-  salespersonId: string
-  email: string
+  supplierId: string
   date: string
-  paymentType: "cash" | "credit"
-  paymentMethod: string
-  paymentTerm: string
   observations: string
-  items: SalesInvoiceItem[]
+  items: PurchaseInvoiceItem[]
 }
 
-interface NewSalespersonForm {
+interface NewSupplierForm {
   name: string
   identification: string
   observation: string
 }
 
-export default function NewSalesInvoice() {
-  const { warehouses, salespersons, paymentMethods, products, addSalesInvoice, addSalesperson, updateSalesperson, deleteSalesperson } = useInventory()
+export default function NewPurchaseInvoice() {
+  const { warehouses, suppliers, purchaseInvoices, addPurchaseInvoice, addSupplier, updateSupplier, deleteSupplier } = useInventory()
   const router = useRouter()
   const { toast } = useToast()
 
   // Estado del formulario principal
   const [formData, setFormData] = useState<InvoiceFormData>({
     warehouseId: "",
-    salespersonId: "",
-    email: "",
+    supplierId: "",
     date: new Date().toISOString().split('T')[0],
-    paymentType: "cash",
-    paymentMethod: "",
-    paymentTerm: "",
     observations: "",
     items: [],
   })
 
-  // Estado para nuevo vendedor
-  const [showNewSalesperson, setShowNewSalesperson] = useState(false)
-  const [newSalesperson, setNewSalesperson] = useState<NewSalespersonForm>({
+  // Estado para nuevo proveedor
+  const [showNewSupplier, setShowNewSupplier] = useState(false)
+  const [newSupplier, setNewSupplier] = useState<NewSupplierForm>({
     name: "",
     identification: "",
     observation: "",
   })
 
-  // Estado para editar vendedor
-  const [showEditSalesperson, setShowEditSalesperson] = useState(false)
-  const [editingSalesperson, setEditingSalesperson] = useState<{ id: string; data: NewSalespersonForm } | null>(null)
+  // Estado para editar proveedor
+  const [showEditSupplier, setShowEditSupplier] = useState(false)
+  const [editingSupplier, setEditingSupplier] = useState<{ id: string; data: NewSupplierForm } | null>(null)
 
-  // Estado para eliminar vendedor
-  const [showDeleteSalesperson, setShowDeleteSalesperson] = useState(false)
-  const [deletingSalesperson, setDeletingSalesperson] = useState<{ id: string; name: string } | null>(null)
+  // Estado para eliminar proveedor
+  const [showDeleteSupplier, setShowDeleteSupplier] = useState(false)
+  const [deletingSupplier, setDeletingSupplier] = useState<{ id: string; name: string } | null>(null)
 
   // Estado para mostrar errores de validación
   const [showErrorToast, setShowErrorToast] = useState(false)
@@ -145,43 +121,20 @@ export default function NewSalesInvoice() {
     resolver: zodResolver(invoiceSchema),
     defaultValues: {
       warehouseId: formData.warehouseId,
-      salespersonId: formData.salespersonId,
-      email: formData.email,
+      supplierId: formData.supplierId,
       date: formData.date,
-      paymentType: formData.paymentType,
-      paymentMethod: formData.paymentMethod,
-      paymentTerm: formData.paymentTerm,
       observations: formData.observations,
       items: formData.items,
     },
   })
 
-  // Estado para nuevo item (solo para agregar filas)
-  const [newItem, setNewItem] = useState({
-    productId: "",
-    quantity: 1,
-    price: 0,
-    discount: 0,
-    taxRate: 19,
-  })
-
   const handleInputChange = (field: keyof InvoiceFormData, value: string) => {
-    setFormData(prev => {
-      const newData = { ...prev, [field]: value }
-      
-      // Si se cambia el tipo de pago a "cash", limpiar el plazo de pago
-      if (field === "paymentType" && value === "cash") {
-        newData.paymentTerm = ""
-        setValue("paymentTerm", "", { shouldValidate: true })
-      }
-      
-      return newData
-    })
+    setFormData(prev => ({ ...prev, [field]: value }))
     setValue(field as any, value, { shouldValidate: true })
   }
 
-  const handleNewSalespersonSubmit = () => {
-    const result = salespersonSchema.safeParse(newSalesperson)
+  const handleNewSupplierSubmit = () => {
+    const result = supplierSchema.safeParse(newSupplier)
     
     if (!result.success) {
       toast({
@@ -192,46 +145,46 @@ export default function NewSalesInvoice() {
       return
     }
 
-    // Crear el vendedor
-    addSalesperson({
-      name: newSalesperson.name,
-      identification: newSalesperson.identification,
-      observation: newSalesperson.observation,
+    // Crear el proveedor
+    addSupplier({
+      name: newSupplier.name,
+      identification: newSupplier.identification,
+      observation: newSupplier.observation,
       isActive: true,
     })
 
     toast({
-      title: "Vendedor creado",
-      description: "El vendedor se ha creado correctamente.",
+      title: "Proveedor creado",
+      description: "El proveedor se ha creado correctamente.",
     })
 
     // Limpiar el formulario y cerrar modal
-    setNewSalesperson({ name: "", identification: "", observation: "" })
-    setShowNewSalesperson(false)
+    setNewSupplier({ name: "", identification: "", observation: "" })
+    setShowNewSupplier(false)
     
-    // Resetear el Select para que no quede en "new-salesperson"
-    handleInputChange("salespersonId", "")
+    // Resetear el Select para que no quede en "new-supplier"
+    handleInputChange("supplierId", "")
   }
 
-  const handleEditSalesperson = (salespersonId: string) => {
-    const salesperson = salespersons.find(s => s.id === salespersonId)
-    if (salesperson) {
-      setEditingSalesperson({
-        id: salespersonId,
+  const handleEditSupplier = (supplierId: string) => {
+    const supplier = suppliers.find(s => s.id === supplierId)
+    if (supplier) {
+      setEditingSupplier({
+        id: supplierId,
         data: {
-          name: salesperson.name,
-          identification: salesperson.identification,
-          observation: salesperson.observation || "",
+          name: supplier.name,
+          identification: supplier.identification,
+          observation: supplier.observation || "",
         }
       })
-      setShowEditSalesperson(true)
+      setShowEditSupplier(true)
     }
   }
 
-  const handleEditSalespersonSubmit = () => {
-    if (!editingSalesperson) return
+  const handleEditSupplierSubmit = () => {
+    if (!editingSupplier) return
     
-    const result = salespersonSchema.safeParse(editingSalesperson.data)
+    const result = supplierSchema.safeParse(editingSupplier.data)
     
     if (!result.success) {
       toast({
@@ -242,64 +195,56 @@ export default function NewSalesInvoice() {
       return
     }
 
-    updateSalesperson(editingSalesperson.id, {
-      name: editingSalesperson.data.name,
-      identification: editingSalesperson.data.identification,
-      observation: editingSalesperson.data.observation,
+    updateSupplier(editingSupplier.id, {
+      name: editingSupplier.data.name,
+      identification: editingSupplier.data.identification,
+      observation: editingSupplier.data.observation,
       isActive: true,
     })
 
     toast({
-      title: "Vendedor actualizado",
-      description: "El vendedor se ha actualizado correctamente.",
+      title: "Proveedor actualizado",
+      description: "El proveedor se ha actualizado correctamente.",
     })
 
-    setEditingSalesperson(null)
-    setShowEditSalesperson(false)
+    setEditingSupplier(null)
+    setShowEditSupplier(false)
   }
 
-  const handleDeleteSalesperson = (salespersonId: string) => {
-    const salesperson = salespersons.find(s => s.id === salespersonId)
-    if (salesperson) {
-      setDeletingSalesperson({
-        id: salespersonId,
-        name: salesperson.name
+  const handleDeleteSupplier = (supplierId: string) => {
+    const supplier = suppliers.find(s => s.id === supplierId)
+    if (supplier) {
+      setDeletingSupplier({
+        id: supplierId,
+        name: supplier.name
       })
-      setShowDeleteSalesperson(true)
+      setShowDeleteSupplier(true)
     }
   }
 
-  const handleDeleteSalespersonConfirm = () => {
-    if (deletingSalesperson) {
-      deleteSalesperson(deletingSalesperson.id)
+  const handleDeleteSupplierConfirm = () => {
+    if (deletingSupplier) {
+      deleteSupplier(deletingSupplier.id)
       
-      // Limpiar el vendedor seleccionado si es el que se está eliminando
-      if (formData.salespersonId === deletingSalesperson.id) {
-        handleInputChange("salespersonId", "")
+      // Limpiar el proveedor seleccionado si es el que se está eliminando
+      if (formData.supplierId === deletingSupplier.id) {
+        handleInputChange("supplierId", "")
       }
       
       toast({
-        title: "Vendedor eliminado",
-        description: `El vendedor ${deletingSalesperson.name} ha sido eliminado.`,
+        title: "Proveedor eliminado",
+        description: `El proveedor ${deletingSupplier.name} ha sido eliminado.`,
       })
       
-      setDeletingSalesperson(null)
-      setShowDeleteSalesperson(false)
+      setDeletingSupplier(null)
+      setShowDeleteSupplier(false)
     }
   }
 
-  const calculateItemTotal = (item: typeof newItem) => {
-    const subtotal = item.price * item.quantity
-    const discountAmount = (subtotal * item.discount) / 100
-    const taxAmount = ((subtotal - discountAmount) * item.taxRate) / 100
-    return subtotal - discountAmount + taxAmount
-  }
-
   const addItem = () => {
-    const item: SalesInvoiceItem = {
+    const item: PurchaseInvoiceItem = {
       id: `item-${Date.now()}`,
-      productId: "",
-      productName: "",
+      concept: "",
       price: 0,
       discount: 0,
       taxRate: 19,
@@ -325,17 +270,11 @@ export default function NewSalesInvoice() {
     })
   }
 
-  const updateItem = (itemId: string, field: keyof SalesInvoiceItem, value: any) => {
+  const updateItem = (itemId: string, field: keyof PurchaseInvoiceItem, value: any) => {
     setFormData(prev => {
       const updatedItems = prev.items.map(item => {
         if (item.id === itemId) {
           let updatedItem = { ...item, [field]: value }
-          
-          // Si se actualiza el producto, también actualizar el nombre
-          if (field === 'productId') {
-            const product = products.find(p => p.id === value)
-            updatedItem.productName = product ? product.name : ""
-          }
           
           // Recalcular totales si se actualizan campos numéricos
           if (['price', 'discount', 'taxRate', 'quantity'].includes(field)) {
@@ -377,26 +316,23 @@ export default function NewSalesInvoice() {
   const handleFormSubmit = async (data: InvoiceFormSchema) => {
     // Aquí se ejecuta cuando la validación es exitosa
     const warehouse = warehouses.find(w => w.id === data.warehouseId)
-    const salesperson = salespersons.find(s => s.id === data.salespersonId)
+    const supplier = suppliers.find(s => s.id === data.supplierId)
     
-    if (!warehouse || !salesperson) return
+    if (!warehouse || !supplier) return
 
     const { subtotal, totalDiscount, totalTax, totalAmount } = totals
 
-    const invoiceNumber = `SV-${new Date().getFullYear()}-${String(salespersons.length + 1).padStart(3, '0')}`
+    const invoiceNumber = `PC-${new Date().getFullYear()}-${String(purchaseInvoices.length + 1).padStart(3, '0')}`
 
-    addSalesInvoice({
+    addPurchaseInvoice({
       invoiceNumber,
       warehouseId: data.warehouseId,
       warehouseName: warehouse.name,
-      salespersonId: data.salespersonId,
-      salespersonName: salesperson.name,
-      email: data.email,
+      supplierId: data.supplierId,
+      supplierName: supplier.name,
       date: data.date,
-      paymentType: data.paymentType,
-      paymentMethod: data.paymentMethod,
       observations: data.observations,
-      items: formData.items, // Usar formData.items que tiene productName
+      items: formData.items,
       subtotal,
       totalDiscount,
       totalTax,
@@ -409,7 +345,7 @@ export default function NewSalesInvoice() {
       description: "La factura se ha creado correctamente.",
     })
 
-    router.push("/invoices/sales")
+    router.push("/invoices/purchase")
   }
 
   const handleFormError = (errors: any) => {
@@ -424,38 +360,38 @@ export default function NewSalesInvoice() {
   }
 
   // Funciones para cerrar modales
-  const closeNewSalespersonModal = () => {
-    setShowNewSalesperson(false)
-    setNewSalesperson({ name: "", identification: "", observation: "" })
+  const closeNewSupplierModal = () => {
+    setShowNewSupplier(false)
+    setNewSupplier({ name: "", identification: "", observation: "" })
   }
 
-  const closeEditSalespersonModal = () => {
-    setShowEditSalesperson(false)
-    setEditingSalesperson(null)
+  const closeEditSupplierModal = () => {
+    setShowEditSupplier(false)
+    setEditingSupplier(null)
   }
 
-  const closeDeleteSalespersonModal = () => {
-    setShowDeleteSalesperson(false)
-    setDeletingSalesperson(null)
+  const closeDeleteSupplierModal = () => {
+    setShowDeleteSupplier(false)
+    setDeletingSupplier(null)
   }
 
   // Manejar tecla Escape para cerrar modales
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (showNewSalesperson) {
-          closeNewSalespersonModal()
-        } else if (showEditSalesperson) {
-          closeEditSalespersonModal()
-        } else if (showDeleteSalesperson) {
-          closeDeleteSalespersonModal()
+        if (showNewSupplier) {
+          closeNewSupplierModal()
+        } else if (showEditSupplier) {
+          closeEditSupplierModal()
+        } else if (showDeleteSupplier) {
+          closeDeleteSupplierModal()
         }
       }
     }
 
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [showNewSalesperson, showEditSalesperson, showDeleteSalesperson])
+  }, [showNewSupplier, showEditSupplier, showDeleteSupplier])
 
   return (
     <MainLayout>
@@ -465,9 +401,9 @@ export default function NewSalesInvoice() {
           <div>
             <h1 className="flex items-center text-3xl font-bold text-camouflage-green-900">
               <Receipt className="mr-3 h-8 w-8 text-camouflage-green-700" />
-              Nueva Factura de Venta
+              Nueva Factura de Compra
             </h1>
-            <p className="mt-1 text-camouflage-green-600">Crea una nueva factura de venta.</p>
+            <p className="mt-1 text-camouflage-green-600">Crea una nueva factura de compra.</p>
           </div>
           <div className="flex items-center gap-3">
             <Button
@@ -504,11 +440,11 @@ export default function NewSalesInvoice() {
                   Bodega *
                 </Label>
                 <Select value={formData.warehouseId} onValueChange={(value) => handleInputChange("warehouseId", value)}>
-                      <SelectTrigger className={`border-camouflage-green-300 bg-white ${
-                        errors?.warehouseId ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                      }`}>
-                        <SelectValue placeholder="Seleccionar bodega" />
-                      </SelectTrigger>
+                    <SelectTrigger className={`border-camouflage-green-300 bg-white ${
+                      errors?.warehouseId ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
+                    }`}>
+                      <SelectValue placeholder="Seleccionar bodega" />
+                    </SelectTrigger>
                   <SelectContent className="rounded-3xl">
                     {warehouses.map((warehouse) => (
                       <SelectItem key={warehouse.id} value={warehouse.id}>
@@ -519,49 +455,49 @@ export default function NewSalesInvoice() {
                 </Select>
               </div>
 
-              {/* Vendedor */}
+              {/* Proveedor */}
               <div className="space-y-2">
-                <Label htmlFor="salesperson" className="text-camouflage-green-700">
-                  Vendedor *
+                <Label htmlFor="supplier" className="text-camouflage-green-700">
+                  Proveedor *
                 </Label>
                 <div className="flex items-center gap-2">
-                  <Select value={formData.salespersonId} onValueChange={(value) => {
-                    if (value === "new-salesperson") {
-                      setShowNewSalesperson(true)
+                  <Select value={formData.supplierId} onValueChange={(value) => {
+                    if (value === "new-supplier") {
+                      setShowNewSupplier(true)
                     } else {
-                      handleInputChange("salespersonId", value)
+                      handleInputChange("supplierId", value)
                     }
                   }}>
                       <SelectTrigger className={`border-camouflage-green-300 bg-white flex-1 ${
-                        errors?.salespersonId ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
+                        errors?.supplierId ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
                       }`}>
-                        <SelectValue placeholder="Seleccionar vendedor" />
+                        <SelectValue placeholder="Seleccionar proveedor" />
                       </SelectTrigger>
                     <SelectContent className="rounded-3xl">
-                      {salespersons.map((salesperson) => (
-                        <SelectItem key={salesperson.id} value={salesperson.id}>
-                          {salesperson.name} - {salesperson.identification}
+                      {suppliers.map((supplier) => (
+                        <SelectItem key={supplier.id} value={supplier.id}>
+                          {supplier.name} - {supplier.identification}
                         </SelectItem>
                       ))}
-                      <SelectItem value="new-salesperson" className="text-camouflage-green-600 font-medium">
+                      <SelectItem value="new-supplier" className="text-camouflage-green-600 font-medium">
                         <div className="flex items-center gap-2">
-                          <UserPlus className="h-4 w-4" />
-                          Nuevo Vendedor
+                          <Building2 className="h-4 w-4" />
+                          Nuevo Proveedor
                         </div>
                       </SelectItem>
                     </SelectContent>
                   </Select>
                   
-                  {/* Botones de gestión de vendedores */}
-                  {formData.salespersonId && formData.salespersonId !== "" && (
+                  {/* Botones de gestión de proveedores */}
+                  {formData.supplierId && formData.supplierId !== "" && (
                     <>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleEditSalesperson(formData.salespersonId)}
+                        onClick={() => handleEditSupplier(formData.supplierId)}
                         className="h-10 w-10 p-0 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
-                        title="Editar vendedor"
+                        title="Editar proveedor"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -569,32 +505,15 @@ export default function NewSalesInvoice() {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDeleteSalesperson(formData.salespersonId)}
+                        onClick={() => handleDeleteSupplier(formData.supplierId)}
                         className="h-10 w-10 p-0 text-camouflage-green-600 hover:text-camouflage-green-800 hover:bg-camouflage-green-100"
-                        title="Eliminar vendedor"
+                        title="Eliminar proveedor"
                       >
                         <Trash2 className="h-4 w-4 text-gray-600" />
                       </Button>
                     </>
                   )}
                 </div>
-              </div>
-
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-camouflage-green-700">
-                  Correo Electrónico
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="cliente@email.com"
-                  className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 ${
-                    errors?.email ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                  }`}
-                />
               </div>
 
               {/* Fecha */}
@@ -613,110 +532,21 @@ export default function NewSalesInvoice() {
                 />
               </div>
 
-              {/* Forma de Pago y Medio de Pago */}
-              <div className="space-y-2 md:col-span-2">
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                  {/* Forma de Pago */}
-                  <div className="space-y-2">
-                    <Label htmlFor="paymentType" className="text-camouflage-green-700">
-                      Forma de Pago *
-                    </Label>
-                    <Select value={formData.paymentType} onValueChange={(value: "cash" | "credit") => handleInputChange("paymentType", value)}>
-                        <SelectTrigger className={`border-camouflage-green-300 bg-white ${
-                          errors?.paymentType ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                        }`}>
-                          <SelectValue placeholder="Seleccionar forma de pago" />
-                        </SelectTrigger>
-                      <SelectContent className="rounded-3xl">
-                        <SelectItem value="cash">Contado</SelectItem>
-                        <SelectItem value="credit">Crédito</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Medio de Pago */}
-                  <div className="space-y-2">
-                    <Label htmlFor="paymentMethod" className="text-camouflage-green-700">
-                      Medio de Pago *
-                    </Label>
-                    <Select value={formData.paymentMethod} onValueChange={(value) => handleInputChange("paymentMethod", value)}>
-                        <SelectTrigger className={`border-camouflage-green-300 bg-white ${
-                          errors?.paymentMethod ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                        }`}>
-                          <SelectValue placeholder="Seleccionar medio de pago" />
-                        </SelectTrigger>
-                      <SelectContent className="rounded-3xl">
-                        {paymentMethods.map((method) => (
-                          <SelectItem key={method.id} value={method.name}>
-                            {method.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              {/* Observaciones */}
+              <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                <Label htmlFor="observations" className="text-camouflage-green-700">
+                  Observaciones
+                </Label>
+                <Textarea
+                  id="observations"
+                  value={formData.observations}
+                  onChange={(e) => handleInputChange("observations", e.target.value)}
+                  placeholder="Observaciones adicionales sobre la factura..."
+                  className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 ${
+                    errors?.observations ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
+                  }`}
+                />
               </div>
-
-              {/* Plazo de Pago y Observaciones - Solo visible cuando se selecciona Crédito */}
-              {formData.paymentType === "credit" && (
-                <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    {/* Plazo de Pago - Ocupa 1 columna (alineado con Fecha) */}
-                    <div className="space-y-2">
-                      <Label htmlFor="paymentTerm" className="text-camouflage-green-700">
-                        Plazo de Pago *
-                      </Label>
-                      <Select value={formData.paymentTerm} onValueChange={(value) => handleInputChange("paymentTerm", value)}>
-                        <SelectTrigger className={`border-camouflage-green-300 bg-white ${
-                          errors?.paymentTerm ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                        }`}>
-                          <SelectValue placeholder="Seleccionar plazo de pago" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-3xl">
-                          <SelectItem value="8">8 días</SelectItem>
-                          <SelectItem value="15">15 días</SelectItem>
-                          <SelectItem value="30">30 días</SelectItem>
-                          <SelectItem value="60">60 días</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Observaciones - Ocupa 2 columnas (alineado con Forma de Pago + Medio de Pago) */}
-                    <div className="space-y-2 md:col-span-1 lg:col-span-2">
-                      <Label htmlFor="observations" className="text-camouflage-green-700">
-                        Observaciones
-                      </Label>
-                      <Textarea
-                        id="observations"
-                        value={formData.observations}
-                        onChange={(e) => handleInputChange("observations", e.target.value)}
-                        placeholder="Observaciones adicionales sobre la factura..."
-                        className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 ${
-                          errors?.observations ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                        }`}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Observaciones - Solo visible cuando NO es crédito */}
-              {formData.paymentType !== "credit" && (
-                <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                  <Label htmlFor="observations" className="text-camouflage-green-700">
-                    Observaciones
-                  </Label>
-                  <Textarea
-                    id="observations"
-                    value={formData.observations}
-                    onChange={(e) => handleInputChange("observations", e.target.value)}
-                    placeholder="Observaciones adicionales sobre la factura..."
-                    className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 ${
-                      errors?.observations ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                    }`}
-                  />
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -742,7 +572,7 @@ export default function NewSalesInvoice() {
                 <Table className="w-full">
                   <TableHeader>
                     <TableRow className="border-camouflage-green-200 hover:bg-transparent">
-                      <TableHead className="font-semibold text-camouflage-green-700 w-[300px]">Producto</TableHead>
+                      <TableHead className="font-semibold text-camouflage-green-700 w-[300px]">Concepto</TableHead>
                       <TableHead className="font-semibold text-camouflage-green-700 w-[120px]">Precio</TableHead>
                       <TableHead className="font-semibold text-camouflage-green-700 w-[120px]">Descuento %</TableHead>
                       <TableHead className="font-semibold text-camouflage-green-700 w-[150px]">Impuesto</TableHead>
@@ -755,21 +585,12 @@ export default function NewSalesInvoice() {
                     {formData.items.map((item) => (
                       <TableRow key={item.id} className="border-camouflage-green-100 hover:bg-transparent">
                         <TableCell className="w-[300px]">
-                          <Select 
-                            value={item.productId} 
-                            onValueChange={(value) => updateItem(item.id, 'productId', value)}
-                          >
-                            <SelectTrigger className="border-camouflage-green-300 h-8 rounded-lg bg-white text-left w-full">
-                              <SelectValue placeholder="Seleccionar producto" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-3xl">
-                              {products.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Input
+                            value={item.concept}
+                            onChange={(e) => updateItem(item.id, 'concept', e.target.value)}
+                            placeholder="Concepto del item"
+                            className="border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full"
+                          />
                         </TableCell>
                         <TableCell className="w-[120px]">
                           <Input
@@ -777,10 +598,7 @@ export default function NewSalesInvoice() {
                             value={item.price || ""}
                             onChange={(e) => updateItem(item.id, 'price', parseFloat(e.target.value) || 0)}
                             placeholder="0"
-                            disabled={!item.productId}
-                            className={`border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full ${
-                              !item.productId ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
+                            className="border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full"
                           />
                         </TableCell>
                         <TableCell className="w-[120px]">
@@ -789,21 +607,15 @@ export default function NewSalesInvoice() {
                             value={item.discount || ""}
                             onChange={(e) => updateItem(item.id, 'discount', parseFloat(e.target.value) || 0)}
                             placeholder="0"
-                            disabled={!item.productId}
-                            className={`border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full ${
-                              !item.productId ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
+                            className="border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full"
                           />
                         </TableCell>
                         <TableCell className="w-[150px]">
                           <Select 
                             value={item.taxRate.toString()} 
                             onValueChange={(value) => updateItem(item.id, 'taxRate', parseFloat(value))}
-                            disabled={!item.productId}
                           >
-                            <SelectTrigger className={`border-camouflage-green-300 h-8 rounded-lg bg-white text-left w-full ${
-                              !item.productId ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}>
+                            <SelectTrigger className="border-camouflage-green-300 h-8 rounded-lg bg-white text-left w-full">
                               <SelectValue placeholder="Seleccionar impuesto" />
                             </SelectTrigger>
                             <SelectContent className="rounded-3xl">
@@ -819,10 +631,7 @@ export default function NewSalesInvoice() {
                             value={item.quantity || ""}
                             onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
                             placeholder="1"
-                            disabled={!item.productId}
-                            className={`border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full ${
-                              !item.productId ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
+                            className="border-camouflage-green-300 h-8 rounded-lg bg-white placeholder:text-camouflage-green-500 text-left w-full"
                           />
                         </TableCell>
                         <TableCell className="font-medium text-camouflage-green-900 w-[120px]">
@@ -866,9 +675,9 @@ export default function NewSalesInvoice() {
                 <div className="text-sm text-camouflage-green-600">Subtotal</div>
                 <div className="text-2xl font-bold text-camouflage-green-900">${totals.subtotal.toLocaleString()}</div>
               </div>
-              <div className="bg-camouflage-green-100 p-4 rounded-lg border border-camouflage-green-300">
-                <div className="text-sm text-camouflage-green-600">Descuento</div>
-                <div className="text-2xl font-bold text-camouflage-green-900">-${totals.totalDiscount.toLocaleString()}</div>
+              <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+                <div className="text-sm text-red-600">Descuento</div>
+                <div className="text-2xl font-bold text-red-900">-${totals.totalDiscount.toLocaleString()}</div>
               </div>
               <div className="bg-camouflage-green-200 p-4 rounded-lg border border-camouflage-green-400">
                 <div className="text-sm text-camouflage-green-700">Impuesto</div>
@@ -882,64 +691,64 @@ export default function NewSalesInvoice() {
           </CardContent>
         </Card>
 
-        {/* Modal para nuevo vendedor */}
-        {showNewSalesperson && (
+        {/* Modal para nuevo proveedor */}
+        {showNewSupplier && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            onClick={closeNewSalespersonModal}
+            onClick={closeNewSupplierModal}
           >
             <Card className="w-full max-w-md border-camouflage-green-200">
               <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
               <CardHeader>
-                <CardTitle className="text-camouflage-green-900">Nuevo Vendedor</CardTitle>
+                <CardTitle className="text-camouflage-green-900">Nuevo Proveedor</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="salespersonName" className="text-camouflage-green-700">
+                  <Label htmlFor="supplierName" className="text-camouflage-green-700">
                     Nombre *
                   </Label>
                   <Input
-                    id="salespersonName"
-                    value={newSalesperson.name}
-                    onChange={(e) => setNewSalesperson(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Nombre del vendedor"
+                    id="supplierName"
+                    value={newSupplier.name}
+                    onChange={(e) => setNewSupplier(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Nombre del proveedor"
                     className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="salespersonId" className="text-camouflage-green-700">
+                  <Label htmlFor="supplierId" className="text-camouflage-green-700">
                     Identificación *
                   </Label>
                   <Input
-                    id="salespersonId"
-                    value={newSalesperson.identification}
-                    onChange={(e) => setNewSalesperson(prev => ({ ...prev, identification: e.target.value }))}
-                    placeholder="Cédula, DNI, etc."
+                    id="supplierId"
+                    value={newSupplier.identification}
+                    onChange={(e) => setNewSupplier(prev => ({ ...prev, identification: e.target.value }))}
+                    placeholder="NIT, RUC, etc."
                     className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="salespersonObservation" className="text-camouflage-green-700">
+                  <Label htmlFor="supplierObservation" className="text-camouflage-green-700">
                     Observación
                   </Label>
                   <Textarea
-                    id="salespersonObservation"
-                    value={newSalesperson.observation}
-                    onChange={(e) => setNewSalesperson(prev => ({ ...prev, observation: e.target.value }))}
+                    id="supplierObservation"
+                    value={newSupplier.observation}
+                    onChange={(e) => setNewSupplier(prev => ({ ...prev, observation: e.target.value }))}
                     placeholder="Observaciones adicionales"
                     className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
                   />
                 </div>
                 <div className="flex gap-2 pt-4">
                   <Button
-                    onClick={handleNewSalespersonSubmit}
+                    onClick={handleNewSupplierSubmit}
                     className="flex-1 bg-camouflage-green-700 hover:bg-camouflage-green-800"
                   >
-                    Crear Vendedor
+                    Crear Proveedor
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={closeNewSalespersonModal}
+                    onClick={closeNewSupplierModal}
                     className="flex-1 border-camouflage-green-300"
                   >
                     Cancelar
@@ -951,56 +760,56 @@ export default function NewSalesInvoice() {
           </div>
         )}
 
-        {/* Modal para editar vendedor */}
-        {showEditSalesperson && editingSalesperson && (
+        {/* Modal para editar proveedor */}
+        {showEditSupplier && editingSupplier && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            onClick={closeEditSalespersonModal}
+            onClick={closeEditSupplierModal}
           >
             <Card className="w-full max-w-md border-camouflage-green-200">
               <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
               <CardHeader>
-                <CardTitle className="text-camouflage-green-900">Editar Vendedor</CardTitle>
+                <CardTitle className="text-camouflage-green-900">Editar Proveedor</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="editSalespersonName" className="text-camouflage-green-700">
+                  <Label htmlFor="editSupplierName" className="text-camouflage-green-700">
                     Nombre *
                   </Label>
                   <Input
-                    id="editSalespersonName"
-                    value={editingSalesperson.data.name}
-                    onChange={(e) => setEditingSalesperson(prev => prev ? {
+                    id="editSupplierName"
+                    value={editingSupplier.data.name}
+                    onChange={(e) => setEditingSupplier(prev => prev ? {
                       ...prev,
                       data: { ...prev.data, name: e.target.value }
                     } : null)}
-                    placeholder="Nombre del vendedor"
+                    placeholder="Nombre del proveedor"
                     className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="editSalespersonId" className="text-camouflage-green-700">
+                  <Label htmlFor="editSupplierId" className="text-camouflage-green-700">
                     Identificación *
                   </Label>
                   <Input
-                    id="editSalespersonId"
-                    value={editingSalesperson.data.identification}
-                    onChange={(e) => setEditingSalesperson(prev => prev ? {
+                    id="editSupplierId"
+                    value={editingSupplier.data.identification}
+                    onChange={(e) => setEditingSupplier(prev => prev ? {
                       ...prev,
                       data: { ...prev.data, identification: e.target.value }
                     } : null)}
-                    placeholder="Cédula, DNI, etc."
+                    placeholder="NIT, RUC, etc."
                     className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="editSalespersonObservation" className="text-camouflage-green-700">
+                  <Label htmlFor="editSupplierObservation" className="text-camouflage-green-700">
                     Observación
                   </Label>
                   <Textarea
-                    id="editSalespersonObservation"
-                    value={editingSalesperson.data.observation}
-                    onChange={(e) => setEditingSalesperson(prev => prev ? {
+                    id="editSupplierObservation"
+                    value={editingSupplier.data.observation}
+                    onChange={(e) => setEditingSupplier(prev => prev ? {
                       ...prev,
                       data: { ...prev.data, observation: e.target.value }
                     } : null)}
@@ -1010,14 +819,14 @@ export default function NewSalesInvoice() {
                 </div>
                 <div className="flex gap-2 pt-4">
                   <Button
-                    onClick={handleEditSalespersonSubmit}
+                    onClick={handleEditSupplierSubmit}
                     className="flex-1 bg-camouflage-green-700 hover:bg-camouflage-green-800"
                   >
-                    Actualizar Vendedor
+                    Actualizar Proveedor
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={closeEditSalespersonModal}
+                    onClick={closeEditSupplierModal}
                     className="flex-1 border-camouflage-green-300"
                   >
                     Cancelar
@@ -1029,11 +838,11 @@ export default function NewSalesInvoice() {
           </div>
         )}
 
-        {/* Modal de confirmación para eliminar vendedor */}
-        {showDeleteSalesperson && deletingSalesperson && (
+        {/* Modal de confirmación para eliminar proveedor */}
+        {showDeleteSupplier && deletingSupplier && (
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            onClick={closeDeleteSalespersonModal}
+            onClick={closeDeleteSupplierModal}
           >
             <Card className="w-full max-w-md border-camouflage-green-200">
               <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
@@ -1042,21 +851,21 @@ export default function NewSalesInvoice() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-camouflage-green-700">
-                  ¿Estás seguro de que quieres eliminar al vendedor <strong>{deletingSalesperson.name}</strong>?
+                  ¿Estás seguro de que quieres eliminar al proveedor <strong>{deletingSupplier.name}</strong>?
                 </p>
                 <p className="text-sm text-red-600">
                   Esta acción no se puede deshacer.
                 </p>
                 <div className="flex gap-2 pt-4">
                   <Button
-                    onClick={handleDeleteSalespersonConfirm}
+                    onClick={handleDeleteSupplierConfirm}
                     className="flex-1 bg-red-600 hover:bg-red-700"
                   >
                     Eliminar
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={closeDeleteSalespersonModal}
+                    onClick={closeDeleteSupplierModal}
                     className="flex-1 border-camouflage-green-300"
                   >
                     Cancelar

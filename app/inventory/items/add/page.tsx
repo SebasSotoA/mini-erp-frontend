@@ -248,7 +248,7 @@ export default function AddInventoryItemPage() {
             <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
               <SelectValue placeholder="Selecciona una opción" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-3xl">
               <SelectItem value="Sí">Sí</SelectItem>
               <SelectItem value="No">No</SelectItem>
             </SelectContent>
@@ -503,7 +503,7 @@ export default function AddInventoryItemPage() {
                       <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
                         <SelectValue placeholder="Selecciona una categoría" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="rounded-3xl">
                         <SelectItem value="none">Sin categoría</SelectItem>
                         <SelectItem value="General">General</SelectItem>
                         <SelectItem value="Servicios">Servicios</SelectItem>
@@ -527,7 +527,7 @@ export default function AddInventoryItemPage() {
                       }`}>
                         <SelectValue placeholder="Selecciona una unidad" />
                       </SelectTrigger>
-                      <SelectContent side="bottom" align="start" avoidCollisions={false}>
+                      <SelectContent side="bottom" align="start" avoidCollisions={false} className="rounded-3xl">
                         {itemType === "product" ? (
                           <>
                             {/* Unidad */}
@@ -648,7 +648,7 @@ export default function AddInventoryItemPage() {
                       <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
                         <SelectValue placeholder="Ninguno (0%)" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="rounded-3xl">
                         <SelectItem value="0">Ninguno (0%)</SelectItem>
                         <SelectItem value="5">IVA - (5%)</SelectItem>
                         <SelectItem value="19">IVA - (19%)</SelectItem>
@@ -956,7 +956,7 @@ export default function AddInventoryItemPage() {
                 <SelectTrigger className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none">
                   <SelectValue placeholder="Selecciona una bodega" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-3xl">
                   <SelectItem value="Principal">Principal</SelectItem>
                   <SelectItem value="Secundaria">Secundaria</SelectItem>
                   <SelectItem value="Almacén">Almacén</SelectItem>
