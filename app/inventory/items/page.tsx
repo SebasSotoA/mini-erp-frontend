@@ -376,7 +376,7 @@ export default function SalesItems() {
                       <div className=" py-3">
                         <input
                           type="text"
-                          placeholder="Referencia"
+                          placeholder="Código SKU"
                           value={filters.sku}
                           onChange={(e) => handleFilterChange("sku", e.target.value)}
                           className="w-24 rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
@@ -535,7 +535,7 @@ export default function SalesItems() {
                         onClick={() => handleSort("sku")}
                         className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
                       >
-                        Referencia
+                        Código SKU
                         <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
                           <ChevronUp
                             className={`h-3 w-3 ${sortField === "sku" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}

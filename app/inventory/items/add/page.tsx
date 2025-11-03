@@ -24,13 +24,13 @@ import { useExtraFields } from "@/contexts/extra-fields-context"
 import { useToast } from "@/hooks/use-toast"
 
 export default function AddInventoryItemPage() {
-  type ItemType = "product" | "service"
+  type ItemType = "product"
 
   const router = useRouter()
   const { addProduct } = useInventory()
   const { extraFields } = useExtraFields()
   const { toast } = useToast()
-  const [itemType, setItemType] = useState<ItemType>("product")
+  const itemType: ItemType = "product"
   const [name, setName] = useState("")
   const [unit, setUnit] = useState("Unidad")
   const [warehouse, setWarehouse] = useState("Principal")
@@ -42,7 +42,6 @@ export default function AddInventoryItemPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isImageDragOver, setIsImageDragOver] = useState(false)
-  const [reference, setReference] = useState("")
   const [code, setCode] = useState("")
   const [category, setCategory] = useState("")
   const [description, setDescription] = useState("")
@@ -53,7 +52,7 @@ export default function AddInventoryItemPage() {
   // Validación con Zod + RHF (controlamos el estado local y sincronizamos con RHF)
   const addSchema = z
     .object({
-      type: z.enum(["product", "service"]),
+      type: z.enum(["product"]),
       name: z.string().trim().min(1, "El nombre es requerido"),
       unit: z.string().trim().min(1, "La unidad es requerida"),
       basePrice: z
@@ -329,15 +328,15 @@ export default function AddInventoryItemPage() {
 
   const doSubmit = async (createAnother: boolean) => {
     // Construir el objeto Product (mock) y persistir en contexto
-    const resolvedCategory = category || (itemType === "service" ? "Servicios" : "Productos")
-    const costValue = itemType === "product" ? parseFloat(initialCost || "0") : 0
-    const stockValue = itemType === "product" ? parseInt(quantity || "0") || 0 : 0
+    const resolvedCategory = category || "Productos"
+    const costValue = parseFloat(initialCost || "0")
+    const stockValue = parseInt(quantity || "0") || 0
     const base = parseFloat(basePrice || "0")
     const total = parseFloat(totalPrice || "0")
     try {
       addProduct({
         name: name.trim(),
-        sku: (reference || code || name).trim(),
+        sku: (code || name).trim(),
         basePrice: base,
         taxPercent: parseFloat(tax || "0"),
         price: total,
@@ -371,7 +370,7 @@ export default function AddInventoryItemPage() {
     if (createAnother) {
       // reset manteniendo tipo
       setName("")
-      setUnit(itemType === "service" ? "Servicio" : "Unidad")
+      setUnit("Unidad")
       setWarehouse("Principal")
       setBasePrice("")
       setTax("0")
@@ -380,7 +379,6 @@ export default function AddInventoryItemPage() {
       setInitialCost("")
       setImageFile(null)
       setImagePreview(null)
-      setReference("")
       setCode("")
       setCategory("")
       setDescription("")
@@ -397,7 +395,7 @@ export default function AddInventoryItemPage() {
           <div>
             <h1 className="text-3xl font-bold text-camouflage-green-900">Nuevo ítem de venta</h1>
             <p className="mt-1 max-w-3xl text-camouflage-green-600">
-              Crea tus productos inventariables y/o servicios que ofreces para registrar en tus ventas.
+              Crea tus productos inventariables para registrar en tus ventas.
             </p>
           </div>
         </div>
@@ -406,47 +404,6 @@ export default function AddInventoryItemPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left - Form */}
           <div className="space-y-6 lg:col-span-2">
-            {/* Tipo */}
-            <Card className="border-camouflage-green-200">
-              <CardHeader>
-                <CardTitle className="text-camouflage-green-900">Tipo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setItemType("product")
-                      setUnit("Unidad")
-                    }}
-                    className={`flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                      itemType === "product"
-                        ? "border-camouflage-green-500 bg-camouflage-green-50 text-camouflage-green-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:border-camouflage-green-300 hover:bg-camouflage-green-50"
-                    }`}
-                  >
-                    Producto
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setItemType("service")
-                      setUnit("Servicio")
-                    }}
-                    className={`flex-1 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                      itemType === "service"
-                        ? "border-camouflage-green-500 bg-camouflage-green-50 text-camouflage-green-700"
-                        : "border-gray-200 bg-white text-gray-600 hover:border-camouflage-green-300 hover:bg-camouflage-green-50"
-                    }`}
-                  >
-                    Servicio
-                  </button>
-                </div>
-                <p className="mt-3 text-xs text-gray-700">
-                  Ten en cuenta que, una vez creado, no podrás cambiar el tipo de ítem ni su condición variable.
-                </p>
-              </CardContent>
-            </Card>
 
             {/* Información general */}
             <Card className="border-camouflage-green-200">
@@ -454,39 +411,27 @@ export default function AddInventoryItemPage() {
                 <CardTitle className="text-camouflage-green-900">Información general</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-sm text-gray-700" htmlFor="name">
-                    Nombre <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value)
-                      setValue("name", e.target.value, { shouldValidate: true })
-                    }}
-                    placeholder="Nombre del producto o servicio"
-                    className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
-                      errors?.name ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
-                    }`}
-                  />
-                </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-700" htmlFor="reference">
-                      Referencia
+                    <Label className="text-sm text-gray-700" htmlFor="name">
+                      Nombre <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      id="reference"
-                      value={reference}
-                      onChange={(e) => setReference(e.target.value)}
-                      placeholder="Referencia interna"
-                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                      id="name"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value)
+                        setValue("name", e.target.value, { shouldValidate: true })
+                      }}
+                      placeholder="Nombre del producto"
+                      className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                        errors?.name ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                      }`}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-sm text-gray-700" htmlFor="code">
-                      Código del producto o servicio
+                      Código del producto
                     </Label>
                     <Input
                       id="code"
@@ -507,7 +452,6 @@ export default function AddInventoryItemPage() {
                       <SelectContent className="rounded-3xl">
                         <SelectItem value="none">Sin categoría</SelectItem>
                         <SelectItem value="General">General</SelectItem>
-                        <SelectItem value="Servicios">Servicios</SelectItem>
                         <SelectItem value="Productos">Productos</SelectItem>
                       </SelectContent>
                     </Select>
@@ -529,76 +473,52 @@ export default function AddInventoryItemPage() {
                         <SelectValue placeholder="Selecciona una unidad" />
                       </SelectTrigger>
                       <SelectContent side="bottom" align="start" avoidCollisions={false} className="rounded-3xl">
-                        {itemType === "product" ? (
-                          <>
-                            {/* Unidad */}
-                            <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                              Unidad
-                            </div>
-                            <SelectItem value="Unidad">Unidad</SelectItem>
-                            <SelectItem value="Pieza">Pieza</SelectItem>
-                            <SelectItem value="Paquete">Paquete</SelectItem>
-                            <SelectItem value="Caja">Caja</SelectItem>
-                            <SelectItem value="Docena">Docena</SelectItem>
+                        {/* Unidad */}
+                        <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          Unidad
+                        </div>
+                        <SelectItem value="Unidad">Unidad</SelectItem>
+                        <SelectItem value="Pieza">Pieza</SelectItem>
+                        <SelectItem value="Paquete">Paquete</SelectItem>
+                        <SelectItem value="Caja">Caja</SelectItem>
+                        <SelectItem value="Docena">Docena</SelectItem>
 
-                            {/* Longitud */}
-                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                              Longitud
-                            </div>
-                            <SelectItem value="Metro">Metro</SelectItem>
-                            <SelectItem value="Centímetro">Centímetro</SelectItem>
-                            <SelectItem value="Kilómetro">Kilómetro</SelectItem>
-                            <SelectItem value="Pulgada">Pulgada</SelectItem>
-                            <SelectItem value="Pie">Pie</SelectItem>
+                        {/* Longitud */}
+                        <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          Longitud
+                        </div>
+                        <SelectItem value="Metro">Metro</SelectItem>
+                        <SelectItem value="Centímetro">Centímetro</SelectItem>
+                        <SelectItem value="Kilómetro">Kilómetro</SelectItem>
+                        <SelectItem value="Pulgada">Pulgada</SelectItem>
+                        <SelectItem value="Pie">Pie</SelectItem>
 
-                            {/* Área */}
-                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                              Área
-                            </div>
-                            <SelectItem value="Metro²">Metro²</SelectItem>
-                            <SelectItem value="Centímetro²">Centímetro²</SelectItem>
-                            <SelectItem value="Hectárea">Hectárea</SelectItem>
+                        {/* Área */}
+                        <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          Área
+                        </div>
+                        <SelectItem value="Metro²">Metro²</SelectItem>
+                        <SelectItem value="Centímetro²">Centímetro²</SelectItem>
+                        <SelectItem value="Hectárea">Hectárea</SelectItem>
 
-                            {/* Volumen */}
-                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                              Volumen
-                            </div>
-                            <SelectItem value="Litro">Litro</SelectItem>
-                            <SelectItem value="Mililitro">Mililitro</SelectItem>
-                            <SelectItem value="Metro³">Metro³</SelectItem>
-                            <SelectItem value="Galón">Galón</SelectItem>
+                        {/* Volumen */}
+                        <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          Volumen
+                        </div>
+                        <SelectItem value="Litro">Litro</SelectItem>
+                        <SelectItem value="Mililitro">Mililitro</SelectItem>
+                        <SelectItem value="Metro³">Metro³</SelectItem>
+                        <SelectItem value="Galón">Galón</SelectItem>
 
-                            {/* Peso */}
-                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                              Peso
-                            </div>
-                            <SelectItem value="Kilogramo">Kilogramo</SelectItem>
-                            <SelectItem value="Gramo">Gramo</SelectItem>
-                            <SelectItem value="Tonelada">Tonelada</SelectItem>
-                            <SelectItem value="Libra">Libra</SelectItem>
-                            <SelectItem value="Onza">Onza</SelectItem>
-                          </>
-                        ) : (
-                          <>
-                            {/* Servicio */}
-                            <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                              Servicio
-                            </div>
-                            <SelectItem value="Servicio">Servicio</SelectItem>
-                            <SelectItem value="Consultoría">Consultoría</SelectItem>
-                            <SelectItem value="Proyecto">Proyecto</SelectItem>
-
-                            {/* Tiempo */}
-                            <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                              Tiempo
-                            </div>
-                            <SelectItem value="Hora">Hora</SelectItem>
-                            <SelectItem value="Día">Día</SelectItem>
-                            <SelectItem value="Semana">Semana</SelectItem>
-                            <SelectItem value="Mes">Mes</SelectItem>
-                            <SelectItem value="Año">Año</SelectItem>
-                          </>
-                        )}
+                        {/* Peso */}
+                        <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          Peso
+                        </div>
+                        <SelectItem value="Kilogramo">Kilogramo</SelectItem>
+                        <SelectItem value="Gramo">Gramo</SelectItem>
+                        <SelectItem value="Tonelada">Tonelada</SelectItem>
+                        <SelectItem value="Libra">Libra</SelectItem>
+                        <SelectItem value="Onza">Onza</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -611,7 +531,7 @@ export default function AddInventoryItemPage() {
                     id="description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Descripción del producto o servicio"
+                    placeholder="Descripción del producto"
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
                     rows={4}
                   />
@@ -678,8 +598,7 @@ export default function AddInventoryItemPage() {
             </Card>
 
             {/* Detalle de Inventario */}
-            {itemType === "product" && (
-              <Card className="border-camouflage-green-200">
+            <Card className="border-camouflage-green-200">
                 <CardHeader>
                   <CardTitle className="text-camouflage-green-900">Detalle de Inventario</CardTitle>
                 </CardHeader>
@@ -725,7 +644,7 @@ export default function AddInventoryItemPage() {
                   </div>
                 </CardContent>
               </Card>
-            )}
+
 
              {/* Campos adicionales */}
              <Card className="border-camouflage-green-200">
@@ -824,7 +743,7 @@ export default function AddInventoryItemPage() {
               <CardContent>
                 <div className="max-w-sm space-y-2">
                   <Label className="text-sm text-gray-700" htmlFor="initialCost">
-                    Costo inicial {itemType === "product" && <span className="text-red-500">*</span>}
+                    Costo inicial <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="initialCost"
@@ -900,7 +819,7 @@ export default function AddInventoryItemPage() {
                       <div className="text-lg font-semibold text-camouflage-green-900">{name || "Nombre del ítem"}</div>
                       <div className="font-medium text-camouflage-green-700">${priceToShow || "0.00"}</div>
                       <div className="text-xs text-camouflage-green-600">
-                        {itemType === "product" ? "Producto" : "Servicio"}
+                        Producto
                       </div>
                     </div>
                   </div>
@@ -940,8 +859,7 @@ export default function AddInventoryItemPage() {
         </div>
       </div>
       {/* Modal Agregar Bodega */}
-      {itemType === "product" && (
-        <Modal
+      <Modal
           isOpen={isWarehouseModalOpen}
           onClose={() => {
             setIsWarehouseModalOpen(false)
@@ -1009,7 +927,6 @@ export default function AddInventoryItemPage() {
             </div>
           </div>
         </Modal>
-      )}
       
       {/* Mensaje flotante de error */}
       {showErrorToast && (

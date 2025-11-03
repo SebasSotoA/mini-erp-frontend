@@ -76,6 +76,7 @@ const salespersonSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
   identification: z.string().min(1, "La identificación es requerida"),
   observation: z.string().optional(),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
 })
 
 type SalespersonFormSchema = z.infer<typeof salespersonSchema>
@@ -96,6 +97,7 @@ interface NewSalespersonForm {
   name: string
   identification: string
   observation: string
+  email: string
 }
 
 export default function NewSalesInvoice() {
@@ -122,6 +124,7 @@ export default function NewSalesInvoice() {
     name: "",
     identification: "",
     observation: "",
+    email: "",
   })
 
   // Estado para editar vendedor
@@ -201,13 +204,16 @@ export default function NewSalesInvoice() {
       isActive: true,
     })
 
+    // Sincronizar email al formulario principal
+    handleInputChange("email", newSalesperson.email || "")
+
     toast({
       title: "Vendedor creado",
       description: "El vendedor se ha creado correctamente.",
     })
 
     // Limpiar el formulario y cerrar modal
-    setNewSalesperson({ name: "", identification: "", observation: "" })
+    setNewSalesperson({ name: "", identification: "", observation: "", email: "" })
     setShowNewSalesperson(false)
     
     // Resetear el Select para que no quede en "new-salesperson"
@@ -223,6 +229,7 @@ export default function NewSalesInvoice() {
           name: salesperson.name,
           identification: salesperson.identification,
           observation: salesperson.observation || "",
+          email: formData.email || "",
         }
       })
       setShowEditSalesperson(true)
@@ -249,6 +256,9 @@ export default function NewSalesInvoice() {
       observation: editingSalesperson.data.observation,
       isActive: true,
     })
+
+    // Sincronizar email al formulario principal
+    handleInputChange("email", editingSalesperson.data.email || "")
 
     toast({
       title: "Vendedor actualizado",
@@ -427,7 +437,7 @@ export default function NewSalesInvoice() {
   // Funciones para cerrar modales
   const closeNewSalespersonModal = () => {
     setShowNewSalesperson(false)
-    setNewSalesperson({ name: "", identification: "", observation: "" })
+    setNewSalesperson({ name: "", identification: "", observation: "", email: "" })
   }
 
   const closeEditSalespersonModal = () => {
@@ -582,22 +592,7 @@ export default function NewSalesInvoice() {
                 </div>
               </div>
 
-              {/* Email */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-camouflage-green-700">
-                  Correo Electrónico
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  placeholder="cliente@email.com"
-                  className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 ${
-                    errors?.email ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                  }`}
-                />
-              </div>
+              
 
               {/* Fecha */}
               <div className="space-y-2">
@@ -612,9 +607,9 @@ export default function NewSalesInvoice() {
                 />
               </div>
 
-              {/* Forma de Pago y Medio de Pago */}
-              <div className="space-y-2 md:col-span-2">
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+              {/* Forma de Pago, Plazo (si crédito) y Medio de Pago */}
+              <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
                   {/* Forma de Pago */}
                   <div className="space-y-2">
                     <Label htmlFor="paymentType" className="text-camouflage-green-700">
@@ -632,6 +627,28 @@ export default function NewSalesInvoice() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Plazo de Pago (solo si Crédito) */}
+                  {formData.paymentType === "credit" && (
+                    <div className="space-y-2">
+                      <Label htmlFor="paymentTerm" className="text-camouflage-green-700">
+                        Plazo de Pago *
+                      </Label>
+                      <Select value={formData.paymentTerm} onValueChange={(value) => handleInputChange("paymentTerm", value)}>
+                        <SelectTrigger className={`border-camouflage-green-300 bg-white ${
+                          errors?.paymentTerm ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
+                        }`}>
+                          <SelectValue placeholder="Seleccionar plazo de pago" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-3xl">
+                          <SelectItem value="8">8 días</SelectItem>
+                          <SelectItem value="15">15 días</SelectItem>
+                          <SelectItem value="30">30 días</SelectItem>
+                          <SelectItem value="60">60 días</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   {/* Medio de Pago */}
                   <div className="space-y-2">
@@ -656,66 +673,22 @@ export default function NewSalesInvoice() {
                 </div>
               </div>
 
-              {/* Plazo de Pago y Observaciones - Solo visible cuando se selecciona Crédito */}
-              {formData.paymentType === "credit" && (
-                <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    {/* Plazo de Pago - Ocupa 1 columna (alineado con Fecha) */}
-                    <div className="space-y-2">
-                      <Label htmlFor="paymentTerm" className="text-camouflage-green-700">
-                        Plazo de Pago *
-                      </Label>
-                      <Select value={formData.paymentTerm} onValueChange={(value) => handleInputChange("paymentTerm", value)}>
-                        <SelectTrigger className={`border-camouflage-green-300 bg-white ${
-                          errors?.paymentTerm ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                        }`}>
-                          <SelectValue placeholder="Seleccionar plazo de pago" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-3xl">
-                          <SelectItem value="8">8 días</SelectItem>
-                          <SelectItem value="15">15 días</SelectItem>
-                          <SelectItem value="30">30 días</SelectItem>
-                          <SelectItem value="60">60 días</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Observaciones - Ocupa 2 columnas (alineado con Forma de Pago + Medio de Pago) */}
-                    <div className="space-y-2 md:col-span-1 lg:col-span-2">
-                      <Label htmlFor="observations" className="text-camouflage-green-700">
-                        Observaciones
-                      </Label>
-                      <Textarea
-                        id="observations"
-                        value={formData.observations}
-                        onChange={(e) => handleInputChange("observations", e.target.value)}
-                        placeholder="Observaciones adicionales sobre la factura..."
-                        className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 ${
-                          errors?.observations ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                        }`}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Observaciones - Solo visible cuando NO es crédito */}
-              {formData.paymentType !== "credit" && (
-                <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                  <Label htmlFor="observations" className="text-camouflage-green-700">
-                    Observaciones
-                  </Label>
-                  <Textarea
-                    id="observations"
-                    value={formData.observations}
-                    onChange={(e) => handleInputChange("observations", e.target.value)}
-                    placeholder="Observaciones adicionales sobre la factura..."
-                    className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 ${
-                      errors?.observations ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                    }`}
-                  />
-                </div>
-              )}
+              {/* Observaciones - Siempre en su propia fila y de ancho completo */}
+              <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                <Label htmlFor="observations" className="text-camouflage-green-700">
+                  Observaciones
+                </Label>
+                <Textarea
+                  id="observations"
+                  value={formData.observations}
+                  onChange={(e) => handleInputChange("observations", e.target.value)}
+                  placeholder="Observaciones adicionales sobre la factura..."
+                  autoComplete="off"
+                  className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 min-h-[80px] resize-none focus:outline-none focus:ring-0 ${
+                    errors?.observations ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
+                  }`}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -906,6 +879,21 @@ export default function NewSalesInvoice() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="salespersonEmail" className="text-camouflage-green-700">
+                    Correo Electrónico
+                  </Label>
+                  <Input
+                    id="salespersonEmail"
+                    type="email"
+                    value={newSalesperson.email}
+                    onChange={(e) => setNewSalesperson(prev => ({ ...prev, email: e.target.value }))}
+                    placeholder="correo@vendedor.com"
+                    className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 ${
+                      errors?.email ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
+                    }`}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="salespersonId" className="text-camouflage-green-700">
                     Identificación *
                   </Label>
@@ -975,6 +963,22 @@ export default function NewSalesInvoice() {
                       data: { ...prev.data, name: e.target.value }
                     } : null)}
                     placeholder="Nombre del vendedor"
+                    className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editSalespersonEmail" className="text-camouflage-green-700">
+                    Correo Electrónico
+                  </Label>
+                  <Input
+                    id="editSalespersonEmail"
+                    type="email"
+                    value={editingSalesperson.data.email}
+                    onChange={(e) => setEditingSalesperson(prev => prev ? {
+                      ...prev,
+                      data: { ...prev.data, email: e.target.value }
+                    } : null)}
+                    placeholder="correo@vendedor.com"
                     className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
                   />
                 </div>
