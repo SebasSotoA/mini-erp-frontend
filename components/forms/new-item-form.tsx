@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, HelpCircle, ExternalLink, Check, AlertCircle } from "lucide-react"
+import { Plus, HelpCircle, ExternalLink, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -22,18 +22,18 @@ interface NewItemFormProps {
   onSuccess?: () => void
 }
 
-type ItemType = "product" | "service"
+type ItemType = "product"
 
 export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
   const { addProduct } = useInventory()
   const { getRequiredFields } = useExtraFields()
-  const [itemType, setItemType] = useState<ItemType>("product")
+  const itemType: ItemType = "product"
   const [extraFieldValues, setExtraFieldValues] = useState<Record<string, string>>({})
   const [showErrorToast, setShowErrorToast] = useState(false)
 
   const schema = z
     .object({
-      type: z.enum(["product", "service"]),
+      type: z.enum(["product"]),
       name: z.string().trim().min(1, "El nombre es requerido"),
       unitOfMeasure: z.string().trim().min(1, "La unidad es requerida"),
       warehouse: z.string().trim().min(1, "La bodega es requerida"),
@@ -84,13 +84,6 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
 
   const watchedValues = watch()
 
-  // Efecto para manejar el cambio de tipo automáticamente
-  useEffect(() => {
-    const newUnitOfMeasure = itemType === "product" ? "Unidad" : "Servicio"
-    setValue("type", itemType, { shouldValidate: false })
-    setValue("unitOfMeasure", newUnitOfMeasure, { shouldValidate: false })
-  }, [itemType, setValue])
-
   // Efecto para inicializar valores por defecto de campos extra requeridos
   useEffect(() => {
     const requiredFields = getRequiredFields()
@@ -106,11 +99,6 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
       setExtraFieldValues(prev => ({ ...prev, ...defaultValues }))
     }
   }, [getRequiredFields])
-
-  const handleTypeChange = (newType: ItemType) => {
-    setItemType(newType)
-    // El useEffect se encargará del resto
-  }
 
   const handleExtraFieldChange = (fieldId: string, value: string) => {
     setExtraFieldValues(prev => ({
@@ -144,7 +132,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
     const newProduct = {
       name: data.name,
       sku: `SKU-${Date.now()}`,
-      description: `${itemType === "product" ? "Producto" : "Servicio"}: ${data.name}`,
+      description: `Producto: ${data.name}`,
       basePrice: parseFloat(data.basePrice) || 0,
       taxPercent: parseFloat(data.tax) || 0,
       price: parseFloat(data.totalPrice) || 0,
@@ -152,7 +140,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
       stock: parseInt(data.quantity || "0") || 0,
       minStock: 5,
       maxStock: 100,
-      category: itemType === "product" ? "Productos" : "Servicios",
+      category: "Productos",
       supplier: "Proveedor General",
       totalSold: 0,
       reorderPoint: 10,
@@ -178,30 +166,6 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
     setTimeout(() => setShowErrorToast(false), 4000)
   }
 
-  const ItemTypeButton = ({
-    type,
-    label,
-    isSelected,
-    onClick,
-  }: {
-    type: ItemType
-    label: string
-    isSelected: boolean
-    onClick: () => void
-  }) => (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
-        isSelected
-          ? "border-camouflage-green-500 bg-camouflage-green-50 text-camouflage-green-700"
-          : "border-gray-200 bg-white text-gray-600 hover:border-camouflage-green-300 hover:bg-camouflage-green-50"
-      }`}
-    >
-      {label}
-      {isSelected && <Check className="h-4 w-4 text-camouflage-green-600" />}
-    </button>
-  )
 
   return (
     <div className="relative">
@@ -210,42 +174,6 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
         {/* Campo type registrado (hidden) */}
         <input {...register("type")} type="hidden" />
 
-        {/* Tipo de Item */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm font-medium text-gray-700">
-              Tipo de ítem <span className="text-red-500">*</span>
-            </Label>
-            <Tooltip>
-              <TooltipTrigger>
-                <HelpCircle className="h-4 w-4 text-gray-400 transition-colors hover:text-camouflage-green-600" />
-              </TooltipTrigger>
-              <TooltipContent className="bg-gray-900 text-white border-gray-700">
-                <p>Selecciona si es un producto físico o un servicio</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
-          <div className="flex h-11 gap-3">
-            <ItemTypeButton
-              type="product"
-              label="Producto"
-              isSelected={itemType === "product"}
-              onClick={() => handleTypeChange("product")}
-            />
-            <ItemTypeButton
-              type="service"
-              label="Servicio"
-              isSelected={itemType === "service"}
-              onClick={() => handleTypeChange("service")}
-            />
-          </div>
-          <p className="flex items-center gap-2 text-xs text-gray-700">
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-orange-100 text-xs text-orange-600">
-              !
-            </span>
-            Ten en cuenta que, una vez creado, no podrás cambiar el tipo de ítem ni su condición variable.
-          </p>
-        </div>
 
         {/* Primera fila: Información básica */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -283,7 +211,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             <input {...register("unitOfMeasure")} type="hidden" />
 
             <Select
-              value={watchedValues.unitOfMeasure || (itemType === "product" ? "Unidad" : "Servicio")}
+              value={watchedValues.unitOfMeasure || "Unidad"}
               onValueChange={(value) => setValue("unitOfMeasure", value, { shouldValidate: true })}
             >
               <SelectTrigger className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 focus:outline-none ${
@@ -292,69 +220,47 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent side="bottom" align="start" avoidCollisions={false} className="rounded-3xl">
-                {itemType === "product" ? (
-                  <>
-                    <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Unidad
-                    </div>
-                    <SelectItem value="Unidad">Unidad</SelectItem>
-                    <SelectItem value="Pieza">Pieza</SelectItem>
-                    <SelectItem value="Paquete">Paquete</SelectItem>
-                    <SelectItem value="Caja">Caja</SelectItem>
-                    <SelectItem value="Docena">Docena</SelectItem>
+                <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Unidad
+                </div>
+                <SelectItem value="Unidad">Unidad</SelectItem>
+                <SelectItem value="Pieza">Pieza</SelectItem>
+                <SelectItem value="Paquete">Paquete</SelectItem>
+                <SelectItem value="Caja">Caja</SelectItem>
+                <SelectItem value="Docena">Docena</SelectItem>
 
-                    <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Longitud
-                    </div>
-                    <SelectItem value="Metro">Metro</SelectItem>
-                    <SelectItem value="Centímetro">Centímetro</SelectItem>
-                    <SelectItem value="Kilómetro">Kilómetro</SelectItem>
-                    <SelectItem value="Pulgada">Pulgada</SelectItem>
-                    <SelectItem value="Pie">Pie</SelectItem>
+                <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Longitud
+                </div>
+                <SelectItem value="Metro">Metro</SelectItem>
+                <SelectItem value="Centímetro">Centímetro</SelectItem>
+                <SelectItem value="Kilómetro">Kilómetro</SelectItem>
+                <SelectItem value="Pulgada">Pulgada</SelectItem>
+                <SelectItem value="Pie">Pie</SelectItem>
 
-                    <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Área
-                    </div>
-                    <SelectItem value="Metro²">Metro²</SelectItem>
-                    <SelectItem value="Centímetro²">Centímetro²</SelectItem>
-                    <SelectItem value="Hectárea">Hectárea</SelectItem>
+                <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Área
+                </div>
+                <SelectItem value="Metro²">Metro²</SelectItem>
+                <SelectItem value="Centímetro²">Centímetro²</SelectItem>
+                <SelectItem value="Hectárea">Hectárea</SelectItem>
 
-                    <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Volumen
-                    </div>
-                    <SelectItem value="Litro">Litro</SelectItem>
-                    <SelectItem value="Mililitro">Mililitro</SelectItem>
-                    <SelectItem value="Metro³">Metro³</SelectItem>
-                    <SelectItem value="Galón">Galón</SelectItem>
+                <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Volumen
+                </div>
+                <SelectItem value="Litro">Litro</SelectItem>
+                <SelectItem value="Mililitro">Mililitro</SelectItem>
+                <SelectItem value="Metro³">Metro³</SelectItem>
+                <SelectItem value="Galón">Galón</SelectItem>
 
-                    <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Peso
-                    </div>
-                    <SelectItem value="Kilogramo">Kilogramo</SelectItem>
-                    <SelectItem value="Gramo">Gramo</SelectItem>
-                    <SelectItem value="Tonelada">Tonelada</SelectItem>
-                    <SelectItem value="Libra">Libra</SelectItem>
-                    <SelectItem value="Onza">Onza</SelectItem>
-                  </>
-                ) : (
-                  <>
-                    <div className="sticky top-0 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Servicio
-                    </div>
-                    <SelectItem value="Servicio">Servicio</SelectItem>
-                    <SelectItem value="Consultoría">Consultoría</SelectItem>
-                    <SelectItem value="Proyecto">Proyecto</SelectItem>
-
-                    <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Tiempo
-                    </div>
-                    <SelectItem value="Hora">Hora</SelectItem>
-                    <SelectItem value="Día">Día</SelectItem>
-                    <SelectItem value="Semana">Semana</SelectItem>
-                    <SelectItem value="Mes">Mes</SelectItem>
-                    <SelectItem value="Año">Año</SelectItem>
-                  </>
-                )}
+                <div className="sticky top-0 mt-2 bg-gray-50 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Peso
+                </div>
+                <SelectItem value="Kilogramo">Kilogramo</SelectItem>
+                <SelectItem value="Gramo">Gramo</SelectItem>
+                <SelectItem value="Tonelada">Tonelada</SelectItem>
+                <SelectItem value="Libra">Libra</SelectItem>
+                <SelectItem value="Onza">Onza</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -450,9 +356,8 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
           </div>
         </div>
 
-        {/* Tercera fila: Cantidad y Costo inicial (solo Producto) */}
-        {itemType === "product" && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* Tercera fila: Cantidad y Costo inicial */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <div className="flex h-5 items-center gap-2">
                 <Label htmlFor="quantity" className="text-sm font-medium text-gray-700">
@@ -498,7 +403,6 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               />
             </div>
           </div>
-        )}
 
         {/* Tarjeta de advertencia para campos extra requeridos */}
         <RequiredFieldsWarning 
@@ -526,7 +430,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
               disabled={isSubmitting}
               className="bg-camouflage-green-700 px-6 text-white hover:bg-camouflage-green-800"
             >
-              Crear {itemType === "product" ? "producto" : "servicio"}
+              Crear producto
             </Button>
           </div>
         </div>
