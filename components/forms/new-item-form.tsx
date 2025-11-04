@@ -12,9 +12,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useInventory } from "@/contexts/inventory-context"
 import { useExtraFields } from "@/contexts/extra-fields-context"
 import { RequiredFieldsWarning } from "./required-fields-warning"
+import { useCreateProducto } from "@/hooks/api/use-productos"
+import { mapProductToCreateDto } from "@/lib/api/services/productos.service"
 
 
 interface NewItemFormProps {
@@ -25,8 +26,8 @@ interface NewItemFormProps {
 type ItemType = "product"
 
 export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
-  const { addProduct } = useInventory()
   const { getRequiredFields } = useExtraFields()
+  const createMutation = useCreateProducto()
   const itemType: ItemType = "product"
   const [extraFieldValues, setExtraFieldValues] = useState<Record<string, string>>({})
   const [showErrorToast, setShowErrorToast] = useState(false)
@@ -66,7 +67,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
     setValue,
     watch,
     getValues,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormSchema>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -129,27 +130,46 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
   }
 
   const onSubmit = async (data: FormSchema) => {
-    const newProduct = {
-      name: data.name,
-      sku: `SKU-${Date.now()}`,
-      description: `Producto: ${data.name}`,
-      basePrice: parseFloat(data.basePrice) || 0,
-      taxPercent: parseFloat(data.tax) || 0,
-      price: parseFloat(data.totalPrice) || 0,
-      cost: parseFloat(data.initialCost || "0") || 0,
-      stock: parseInt(data.quantity || "0") || 0,
-      minStock: 5,
-      maxStock: 100,
-      category: "Productos",
-      supplier: "Proveedor General",
-      totalSold: 0,
-      reorderPoint: 10,
-      leadTime: 7,
-    }
+    try {
+      // Mapear campos extra a formato del backend
+      const camposExtra = Object.entries(extraFieldValues).map(([fieldId, valor]) => ({
+        campoExtraId: fieldId,
+        valor: String(valor),
+      }))
 
-    addProduct(newProduct)
-    onSuccess?.()
-    onClose()
+      // Crear DTO del backend
+      const createDto = mapProductToCreateDto(
+        {
+          name: data.name,
+          sku: undefined, // El backend lo genera automáticamente si no se proporciona
+          description: `Producto: ${data.name}`,
+          basePrice: parseFloat(data.basePrice) || 0,
+          taxPercent: parseFloat(data.tax) || 0,
+          cost: parseFloat(data.initialCost || "0") || 0,
+          unit: data.unitOfMeasure,
+        },
+        {
+          // Por ahora, estos campos no están disponibles en el formulario
+          // Se pueden agregar en el futuro
+          categoriaId: undefined,
+          bodegaPrincipalId: undefined,
+          cantidadInicial: parseInt(data.quantity || "0") || undefined,
+        },
+      )
+
+      // Agregar campos extra si hay
+      if (camposExtra.length > 0) {
+        createDto.camposExtra = camposExtra
+      }
+
+      await createMutation.mutateAsync(createDto)
+      
+      onSuccess?.()
+      onClose()
+    } catch (error) {
+      // Los errores ya se manejan en el hook
+      console.error("Error al crear producto:", error)
+    }
   }
 
   const handleFormSubmit = async (data: FormSchema) => {
@@ -427,7 +447,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
+              disabled={createMutation.isPending}
               className="bg-camouflage-green-700 px-6 text-white hover:bg-camouflage-green-800"
             >
               Crear producto

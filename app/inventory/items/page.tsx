@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState } from "react"
 
 import { NewItemForm } from "@/components/forms/new-item-form"
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
@@ -37,24 +37,20 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Modal } from "@/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import { PaginationConfig } from "@/lib/types/inventory-value"
-import { ItemFilters, SortConfig, SortField, SortDirection } from "@/lib/types/items"
-import { applyFiltersAndSort } from "@/lib/utils/item-filters"
+import { ItemFilters, SortField, SortDirection } from "@/lib/types/items"
+import { useProductos, useActivateProducto, useDeactivateProducto, useDeleteProducto } from "@/hooks/api/use-productos"
+import { mapFiltersToQueryParams } from "@/lib/api/utils"
 
 export default function SalesItems() {
-  const { products, updateProduct, deleteProduct } = useInventory()
   const router = useRouter()
   const { toast } = useToast()
 
-  // Estado local para los productos (similar a bodegas)
-  const [localProducts, setLocalProducts] = useState(products)
-
-  // Sincronizar el estado local con el contexto cuando cambien los productos
-  useEffect(() => {
-    setLocalProducts(products)
-  }, [products])
+  // Mutations
+  const activateMutation = useActivateProducto()
+  const deactivateMutation = useDeactivateProducto()
+  const deleteMutation = useDeleteProducto()
 
   // Estado para paginación
   const [currentPage, setCurrentPage] = useState(1)
@@ -79,38 +75,57 @@ export default function SalesItems() {
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
 
+  // Mapear filtros y paginación a parámetros de query del backend
+  const queryParams = useMemo(() => {
+    return mapFiltersToQueryParams(
+      filters,
+      { page: currentPage, pageSize: itemsPerPage },
+      sortField ? { field: sortField, direction: sortDirection } : undefined,
+    )
+  }, [filters, currentPage, itemsPerPage, sortField, sortDirection])
+
+  // Obtener productos desde la API
+  const { data, isLoading, isFetching, error } = useProductos(queryParams)
+
+  const products = data?.items || []
+  const pagination: PaginationConfig = useMemo(() => {
+    if (!data) {
+      return {
+        currentPage: 1,
+        itemsPerPage: 20,
+        totalItems: 0,
+        totalPages: 0,
+      }
+    }
+    return {
+      currentPage: data.page,
+      itemsPerPage: data.pageSize,
+      totalItems: data.totalCount,
+      totalPages: data.totalPages,
+    }
+  }, [data])
+
   // Selección múltiple
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const selectedCount = selectedIds.size
-  console.log("Current selectedCount:", selectedCount, "selectedIds:", Array.from(selectedIds))
   const isSelected = (id: string) => selectedIds.has(id)
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) {
-        console.log("Removing from selection:", id)
         next.delete(id)
       } else {
-        console.log("Adding to selection:", id)
         next.add(id)
       }
-      console.log("New selectedIds:", Array.from(next))
       return next
     })
   }
   const clearSelection = () => setSelectedIds(new Set())
 
   // Lógica para determinar el estado de los botones de acciones masivas
-  const selectedProducts = localProducts.filter((p) => selectedIds.has(p.id))
+  const selectedProducts = products.filter((p) => selectedIds.has(p.id))
   const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p) => p.isActive ?? true)
   const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p) => !(p.isActive ?? true))
-  const hasMixedStates = selectedProducts.length > 0 && !allSelectedActive && !allSelectedInactive
-
-  // Configuración de ordenamiento
-  const sortConfig: SortConfig = {
-    field: sortField,
-    direction: sortDirection,
-  }
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -119,14 +134,13 @@ export default function SalesItems() {
       setSortField(field)
       setSortDirection("asc")
     }
-    // Limpiar selección al cambiar ordenamiento
+    setCurrentPage(1) // Reset to first page when sorting
     clearSelection()
   }
 
   const handleFilterChange = (field: keyof ItemFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }))
     setCurrentPage(1) // Reset to first page when filtering
-    // Limpiar selección al cambiar filtros
     clearSelection()
   }
 
@@ -143,79 +157,52 @@ export default function SalesItems() {
       status: "",
     })
     setCurrentPage(1)
-    // Limpiar selección al limpiar filtros
     clearSelection()
   }
 
-  // Apply filters and sorting
-  const sortedProducts = applyFiltersAndSort(localProducts, filters, sortConfig)
-
-  // Calcular configuración de paginación
-  const pagination: PaginationConfig = useMemo(() => {
-    const totalItems = sortedProducts.length
-    const totalPages = Math.ceil(totalItems / itemsPerPage)
-
-    return {
-      currentPage,
-      itemsPerPage,
-      totalItems,
-      totalPages,
-    }
-  }, [sortedProducts.length, currentPage, itemsPerPage])
-
-  // Productos para mostrar en la página actual
-  const currentProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return sortedProducts.slice(startIndex, endIndex)
-  }, [sortedProducts, currentPage, itemsPerPage])
   const allCurrentSelected = useMemo(
-    () => currentProducts.length > 0 && currentProducts.every((p) => selectedIds.has(p.id)),
-    [currentProducts, selectedIds],
+    () => products.length > 0 && products.every((p) => selectedIds.has(p.id)),
+    [products, selectedIds],
   )
   const toggleSelectAllCurrent = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (allCurrentSelected) {
-        console.log(
-          "Deselecting all current products:",
-          currentProducts.map((p) => ({ id: p.id, name: p.name })),
-        )
-        currentProducts.forEach((p) => next.delete(p.id))
+        products.forEach((p) => next.delete(p.id))
       } else {
-        console.log(
-          "Selecting all current products:",
-          currentProducts.map((p) => ({ id: p.id, name: p.name })),
-        )
-        currentProducts.forEach((p) => next.add(p.id))
+        products.forEach((p) => next.add(p.id))
       }
-      console.log("New selectedIds after toggle all:", Array.from(next))
       return next
     })
   }
 
-  // Acciones masivas (similar a bodegas)
-  const bulkSetActive = (isActive: boolean) => {
-    console.log("bulkSetActive called with:", { isActive, selectedIds: Array.from(selectedIds) })
+  // Acciones masivas
+  const bulkSetActive = async (isActive: boolean) => {
     if (selectedIds.size === 0) return
 
-    setLocalProducts((prevProducts) =>
-      prevProducts.map((product) => (selectedIds.has(product.id) ? { ...product, isActive } : product)),
-    )
-    toast({
-      title: isActive ? "Ítems activados" : "Ítems desactivados",
-      description: `${selectedIds.size} ítem(s) actualizados.`,
-    })
-    clearSelection()
+    const ids = Array.from(selectedIds)
+    const promises = ids.map((id) => (isActive ? activateMutation.mutateAsync(id) : deactivateMutation.mutateAsync(id)))
+
+    try {
+      await Promise.all(promises)
+      clearSelection()
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
-  const bulkDelete = () => {
-    console.log("bulkDelete called with selectedIds:", Array.from(selectedIds))
+  const bulkDelete = async () => {
     if (selectedIds.size === 0) return
 
-    setLocalProducts((prevProducts) => prevProducts.filter((product) => !selectedIds.has(product.id)))
-    toast({ title: "Ítems eliminados", description: `${selectedIds.size} ítem(s) eliminados.` })
-    clearSelection()
+    const ids = Array.from(selectedIds)
+    const promises = ids.map((id) => deleteMutation.mutateAsync(id))
+
+    try {
+      await Promise.all(promises)
+      clearSelection()
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
@@ -250,7 +237,7 @@ export default function SalesItems() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-camouflage-green-900">
-                Items Disponibles ({pagination.totalItems.toLocaleString()})
+                Items Disponibles ({isLoading ? "..." : pagination.totalItems.toLocaleString()})
               </CardTitle>
               <div className="flex items-center gap-2">
                 {selectedCount > 0 && (
@@ -605,7 +592,27 @@ export default function SalesItems() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentProducts.map((product) => (
+                {isLoading && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={7} className="py-12 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+                        <p className="text-camouflage-green-600">Cargando productos...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isLoading && error && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={7} className="py-12 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <p className="font-medium text-red-600">Error al cargar productos</p>
+                        <p className="text-sm text-red-500">{error instanceof Error ? error.message : "Error desconocido"}</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isLoading && !error && products.map((product) => (
                   <TableRow
                     key={product.id}
                     className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
@@ -684,10 +691,13 @@ export default function SalesItems() {
                           title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
                           onClick={() => {
                             const current = product.isActive ?? true
-                            setLocalProducts((prevProducts) =>
-                              prevProducts.map((p) => (p.id === product.id ? { ...p, isActive: !current } : p)),
-                            )
+                            if (current) {
+                              deactivateMutation.mutate(product.id)
+                            } else {
+                              activateMutation.mutate(product.id)
+                            }
                           }}
+                          disabled={activateMutation.isPending || deactivateMutation.isPending}
                         >
                           {(product.isActive ?? true) ? (
                             <Power className="h-4 w-4" />
@@ -718,15 +728,17 @@ export default function SalesItems() {
                               <AlertDialogAction
                                 className="bg-red-600 hover:bg-red-700"
                                 onClick={() => {
-                                  setLocalProducts((prevProducts) => prevProducts.filter((p) => p.id !== product.id))
-                                  toast({ title: "Ítem eliminado", description: `Se eliminó "${product.name}".` })
-                                  // si estaba seleccionado, lo sacamos
-                                  setSelectedIds((prev) => {
-                                    const next = new Set(prev)
-                                    next.delete(product.id)
-                                    return next
+                                  deleteMutation.mutate(product.id, {
+                                    onSuccess: () => {
+                                      setSelectedIds((prev) => {
+                                        const next = new Set(prev)
+                                        next.delete(product.id)
+                                        return next
+                                      })
+                                    },
                                   })
                                 }}
+                                disabled={deleteMutation.isPending}
                               >
                                 Eliminar
                               </AlertDialogAction>
@@ -737,22 +749,22 @@ export default function SalesItems() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {currentProducts.length === 0 && (
+                {!isLoading && !error && products.length === 0 && (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={7} className="py-12 text-center">
                       <div className="flex flex-col items-center gap-4">
                         <ShoppingCart className="h-12 w-12 text-camouflage-green-300" />
                         <div>
                           <p className="font-medium text-camouflage-green-600">
-                            {sortedProducts.length === 0 ? "No hay items registrados" : "No se encontraron items"}
+                            {pagination.totalItems === 0 ? "No hay items registrados" : "No se encontraron items"}
                           </p>
                           <p className="mt-1 text-sm text-camouflage-green-500">
-                            {sortedProducts.length === 0
+                            {pagination.totalItems === 0
                               ? "Comienza agregando tu primer item de venta"
                               : "Intenta ajustar los filtros de búsqueda"}
                           </p>
                         </div>
-                        {sortedProducts.length === 0 && (
+                        {pagination.totalItems === 0 && (
                           <Button
                             onClick={() => setIsNewItemModalOpen(true)}
                             variant="primary"
@@ -770,11 +782,13 @@ export default function SalesItems() {
           </CardContent>
 
           {/* Paginación */}
-          <PaginationControls
-            pagination={pagination}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={handleItemsPerPageChange}
-          />
+          {!isLoading && !error && (
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          )}
         </Card>
       </div>
 

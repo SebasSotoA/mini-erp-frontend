@@ -15,9 +15,10 @@ import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import { ExtendedProduct } from "@/lib/types/items"
+import { useProducto, useUpdateProducto } from "@/hooks/api/use-productos"
+import { mapProductToUpdateDto } from "@/lib/api/services/productos.service"
 
 export default function EditInventoryItemPage() {
   type ItemType = "product" | "service"
@@ -25,10 +26,10 @@ export default function EditInventoryItemPage() {
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
-  const { getProductById, updateProduct } = useInventory()
   const { toast } = useToast()
-
-  const product = id ? getProductById(id) : undefined
+  
+  const { data: product, isLoading, error } = useProducto(id)
+  const updateMutation = useUpdateProducto()
 
   // Estado de formulario (mismos campos del formulario avanzado de creación)
   const [itemType, setItemType] = useState<ItemType>("product")
@@ -78,7 +79,7 @@ export default function EditInventoryItemPage() {
   const {
     handleSubmit,
     setValue,
-    formState: { isSubmitting },
+    formState: {},
   } = useForm<EditFormSchema>({
     resolver: zodResolver(editSchema),
     defaultValues: {
@@ -210,8 +211,8 @@ export default function EditInventoryItemPage() {
     }
 
     try {
-      // Mapear a Product parcial y actualizar en contexto
-      updateProduct(id, {
+      // Mapear a DTO del backend
+      const updateDto = mapProductToUpdateDto({
         name,
         sku: reference,
         category,
@@ -220,15 +221,11 @@ export default function EditInventoryItemPage() {
         basePrice: basePrice ? parseFloat(basePrice) : (product as ExtendedProduct).basePrice,
         taxPercent: tax ? parseFloat(tax) : (product as ExtendedProduct).taxPercent,
         price: totalPrice ? parseFloat(totalPrice) : product.price,
-        stock: quantity ? parseInt(quantity) : product.stock,
         cost: initialCost ? parseFloat(initialCost) : product.cost,
         imageUrl: imagePreview === null ? undefined : imagePreview || (product as ExtendedProduct).imageUrl,
       })
 
-      toast({
-        title: "¡Éxito!",
-        description: "El ítem ha sido actualizado correctamente.",
-      })
+      await updateMutation.mutateAsync({ id, data: updateDto })
 
       if (createAnother) {
         router.push(`/inventory/items/add`)
@@ -236,15 +233,31 @@ export default function EditInventoryItemPage() {
         router.push(`/inventory/items/${id}`)
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudo actualizar el ítem. Inténtalo de nuevo.",
-        variant: "destructive",
-      })
+      // Los errores ya se manejan en el hook
+      console.error("Error al actualizar producto:", error)
     }
   }
 
-  if (!product) {
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="space-y-6">
+          <Card className="border-camouflage-green-200">
+            <CardHeader>
+              <CardTitle className="text-camouflage-green-900">Cargando...</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (error || !product) {
     return (
       <MainLayout>
         <div className="space-y-6">
@@ -254,16 +267,18 @@ export default function EditInventoryItemPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <p className="text-camouflage-green-700">El ítem solicitado no existe o fue eliminado.</p>
-                  <Button
-                    variant="ghost"
-                    size="md2"
-                    onClick={() => router.push("/inventory/items")}
-                    className="text-black bg-white hover:text-black border border-gray-700 hover:bg-gray-100"
-                  >
-                    <ArrowLeft className="mr-2 h-4 w-4 text-black" />
-                    Volver a la lista
-                  </Button>
+                <p className="text-camouflage-green-700">
+                  {error instanceof Error ? error.message : "El ítem solicitado no existe o fue eliminado."}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="md2"
+                  onClick={() => router.push("/inventory/items")}
+                  className="text-black bg-white hover:text-black border border-gray-700 hover:bg-gray-100"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4 text-black" />
+                  Volver a la lista
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -671,10 +686,10 @@ export default function EditInventoryItemPage() {
                 <Button
                   variant="secondary"
                   className="w-full"
-                  disabled={isSubmitting}
+                  disabled={updateMutation.isPending}
                   onClick={() => doSubmit(true)}
                 >
-                  {isSubmitting ? "Guardando..." : "Guardar y crear otro"}
+                  {updateMutation.isPending ? "Guardando..." : "Guardar y crear otro"}
                 </Button>
               </div>
             </div>

@@ -9,39 +9,57 @@ import { MainLayout } from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useInventory } from "@/contexts/inventory-context"
+import { useProducto, useProductoBodegas, useActivateProducto, useDeactivateProducto } from "@/hooks/api/use-productos"
+import { useMovimientosByProducto } from "@/hooks/api/use-movimientos-inventario"
 
 export default function ItemDetailsPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
-  const { getProductById, updateProduct, stockMovements, warehouses, productStocks } = useInventory()
-
-  // Estado para los modales
-
+  
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
-  const product = id ? getProductById(id) : undefined
-  const movementsForProduct = product ? stockMovements.filter((m) => m.productId === product.id) : []
-  const recentMovements = movementsForProduct
-    .slice()
-    .sort((a, b) => (a.date < b.date ? 1 : -1))
-    .slice(0, 10)
+  const { data: product, isLoading, error } = useProducto(id)
+  const { data: bodegas, isLoading: isLoadingBodegas, error: errorBodegas } = useProductoBodegas(id)
+  const { data: movimientos, isLoading: isLoadingMovimientos, error: errorMovimientos } = useMovimientosByProducto(id)
+  const activateMutation = useActivateProducto()
+  const deactivateMutation = useDeactivateProducto()
+
+  // Movimientos recientes (primeros 10)
+  const recentMovements = movimientos?.slice(0, 10) || []
 
   // Derivados y placeholders para campos que aún no están en el modelo
-  const itemType = product ? (product.category === "Servicios" ? "Servicio" : "Producto") : "-"
-  const unitOfMeasure = "N/D" // pendiente de modelo
+  const itemType = product?.category === "Servicios" ? "Servicio" : "Producto"
+  const unitOfMeasure = product?.unit || "N/D"
   const reference = product?.sku ?? "N/D"
-  const codigoProductoServicio = reference // por ahora usamos la misma referencia
+  const codigoProductoServicio = reference
   const descripcion = product?.description ?? "Sin descripción"
 
-  // Precios: el modelo guarda price como total. Impuesto y base aún no están modelados.
-  const precioTotal = product ? product.price : 0
-  const impuestoAplicado = (product as any)?.taxPercent != null ? `${(product as any).taxPercent}%` : "N/D"
-  const precioSinImpuesto = (product as any)?.basePrice != null ? (product as any).basePrice.toLocaleString() : "N/D"
-  const costoInicial = product ? product.cost : 0
-  // Intentar detectar una URL de imagen si el modelo la provee en el futuro
-  const imageUrl = (product as any)?.imageUrl ?? (product as any)?.image ?? null
+  // Precios
+  const precioTotal = product?.price || 0
+  const impuestoAplicado = product?.taxPercent != null ? `${product.taxPercent}%` : "N/D"
+  const precioSinImpuesto = product?.basePrice != null ? product.basePrice.toLocaleString() : "N/D"
+  const costoInicial = product?.cost || 0
+  const imageUrl = product?.imageUrl ?? null
 
-  if (!product) {
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="space-y-6">
+          <Card className="border-camouflage-green-200">
+            <CardHeader>
+              <CardTitle className="text-camouflage-green-900">Cargando...</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (error || !product) {
     return (
       <MainLayout>
         <div className="space-y-6">
@@ -51,7 +69,9 @@ export default function ItemDetailsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <p className="text-camouflage-green-700">El ítem solicitado no existe o fue eliminado.</p>
+                <p className="text-camouflage-green-700">
+                  {error instanceof Error ? error.message : "El ítem solicitado no existe o fue eliminado."}
+                </p>
                 <Button
                   variant="outline"
                   onClick={() => router.push("/inventory/items")}
@@ -119,8 +139,13 @@ export default function ItemDetailsPage() {
             title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
             onClick={() => {
               const current = product.isActive ?? true
-              updateProduct(product.id, { isActive: !current })
+              if (current) {
+                deactivateMutation.mutate(product.id)
+              } else {
+                activateMutation.mutate(product.id)
+              }
             }}
+            disabled={activateMutation.isPending || deactivateMutation.isPending}
           >
             {(product.isActive ?? true) ? <Power className="mr-2 h-4 w-4" /> : <PowerOff className="mr-2 h-4 w-4" />}
             {(product.isActive ?? true) ? "Activado" : "Desactivado"}
@@ -233,53 +258,66 @@ export default function ItemDetailsPage() {
             <CardTitle className="text-xl text-camouflage-green-900">Stock por Bodega</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="-mx-2 overflow-x-auto sm:mx-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-camouflage-green-200 hover:bg-transparent">
-                    <TableHead className="font-semibold text-camouflage-green-700">Bodega</TableHead>
-                    <TableHead className="text-center font-semibold text-camouflage-green-700">Stock Actual</TableHead>
-                    <TableHead className="text-center font-semibold text-camouflage-green-700">Cantidad Mínima</TableHead>
-                    <TableHead className="text-center font-semibold text-camouflage-green-700">Cantidad Máxima</TableHead>
-                    <TableHead className="text-center font-semibold text-camouflage-green-700">Estado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {warehouses.filter(w => w.isActive).map((warehouse) => {
-                    const stock = productStocks.find(ps => ps.productId === product.id && ps.warehouseId === warehouse.id)
-                    const currentStock = stock?.quantity || 0
-                    const isLowStock = currentStock <= product.minStock
-                    const isOverStock = currentStock >= product.maxStock
-                    
-                    return (
-                      <TableRow key={warehouse.id} className="border-camouflage-green-100">
-                        <TableCell className="font-medium text-camouflage-green-900">{warehouse.name}</TableCell>
-                        <TableCell className="text-center">
-                          <span className={`font-semibold ${isLowStock ? 'text-red-600' : isOverStock ? 'text-orange-600' : 'text-camouflage-green-700'}`}>
-                            {currentStock}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center text-camouflage-green-600">{product.minStock}</TableCell>
-                        <TableCell className="text-center text-camouflage-green-600">{product.maxStock}</TableCell>
-                        <TableCell className="text-center">
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                              isLowStock
-                                ? "bg-red-100 text-red-800"
-                                : isOverStock
-                                  ? "bg-orange-100 text-orange-800"
-                                  : "bg-camouflage-green-100 text-camouflage-green-800"
-                            }`}
-                          >
-                            {isLowStock ? "Bajo Stock" : isOverStock ? "Sobre Stock" : "Normal"}
-                          </span>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            {isLoadingBodegas ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+              </div>
+            ) : errorBodegas ? (
+              <div className="text-sm text-red-600">
+                {errorBodegas instanceof Error ? errorBodegas.message : "Error al cargar bodegas"}
+              </div>
+            ) : !bodegas || bodegas.length === 0 ? (
+              <div className="text-sm text-camouflage-green-600">No hay bodegas asignadas para este producto.</div>
+            ) : (
+              <div className="-mx-2 overflow-x-auto sm:mx-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-camouflage-green-200 hover:bg-transparent">
+                      <TableHead className="font-semibold text-camouflage-green-700">Bodega</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Stock Actual</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Cantidad Mínima</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Cantidad Máxima</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {bodegas.map((bodega) => {
+                      const currentStock = bodega.cantidadInicial || 0
+                      const minStock = bodega.cantidadMinima ?? 0
+                      const maxStock = bodega.cantidadMaxima ?? Infinity
+                      const isLowStock = minStock > 0 && currentStock <= minStock
+                      const isOverStock = maxStock !== Infinity && currentStock >= maxStock
+                      
+                      return (
+                        <TableRow key={bodega.bodegaId} className="border-camouflage-green-100">
+                          <TableCell className="font-medium text-camouflage-green-900">{bodega.bodegaNombre}</TableCell>
+                          <TableCell className="text-center">
+                            <span className={`font-semibold ${isLowStock ? 'text-red-600' : isOverStock ? 'text-orange-600' : 'text-camouflage-green-700'}`}>
+                              {currentStock}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-camouflage-green-600">{minStock > 0 ? minStock : "-"}</TableCell>
+                          <TableCell className="text-center text-camouflage-green-600">{maxStock !== Infinity ? maxStock : "-"}</TableCell>
+                          <TableCell className="text-center">
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                isLowStock
+                                  ? "bg-red-100 text-red-800"
+                                  : isOverStock
+                                    ? "bg-orange-100 text-orange-800"
+                                    : "bg-camouflage-green-100 text-camouflage-green-800"
+                              }`}
+                            >
+                              {isLowStock ? "Bajo Stock" : isOverStock ? "Sobre Stock" : "Normal"}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -289,7 +327,15 @@ export default function ItemDetailsPage() {
             <CardTitle className="text-xl text-camouflage-green-900">Historial de movimientos</CardTitle>
           </CardHeader>
           <CardContent>
-            {recentMovements.length === 0 ? (
+            {isLoadingMovimientos ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+              </div>
+            ) : errorMovimientos ? (
+              <div className="text-sm text-red-600">
+                {errorMovimientos instanceof Error ? errorMovimientos.message : "Error al cargar movimientos"}
+              </div>
+            ) : recentMovements.length === 0 ? (
               <div className="text-sm text-camouflage-green-600">No hay movimientos registrados para este ítem.</div>
             ) : (
               <div className="-mx-2 overflow-x-auto sm:mx-0">
