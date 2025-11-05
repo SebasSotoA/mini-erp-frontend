@@ -71,8 +71,72 @@ export function useCreateProducto() {
     mutationFn: async (data: CreateProductoDto) => {
       return await productosService.createProducto(data)
     },
+    onMutate: async (newProduct) => {
+      // Cancelar cualquier query en curso para evitar sobrescribir nuestro optimistic update
+      await queryClient.cancelQueries({ queryKey: productoKeys.lists() })
+
+      // Snapshot del valor anterior para rollback
+      const previousQueries = queryClient.getQueriesData({ queryKey: productoKeys.lists() })
+
+      // Optimistic update: actualizar todas las queries de lista
+      queryClient.setQueriesData(
+        { queryKey: productoKeys.lists() },
+        (old: { items: Product[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasPreviousPage: boolean; hasNextPage: boolean } | undefined) => {
+          if (!old) return old
+          
+          // Crear producto optimístico temporal (se actualizará con la respuesta real)
+          const optimisticProduct: Product = {
+            id: `temp-${Date.now()}`,
+            name: newProduct.nombre || "",
+            sku: newProduct.codigoSku || "",
+            price: newProduct.precioBase || 0,
+            basePrice: newProduct.precioBase || 0,
+            taxPercent: (newProduct.impuestoPorcentaje || 0) * 100,
+            cost: newProduct.costoInicial || 0,
+            category: "",
+            stock: newProduct.cantidadInicial || 0,
+            minStock: 0,
+            maxStock: 0,
+            description: newProduct.descripcion || "",
+            supplier: "",
+            unit: newProduct.unidadMedida || "Unidad",
+            isActive: true,
+            expiryDate: undefined,
+            createdAt: new Date().toISOString(),
+            lastSold: undefined,
+            totalSold: 0,
+            reorderPoint: 0,
+            leadTime: 0,
+            warehouseId: undefined,
+            imageUrl: newProduct.imagenProductoUrl || undefined,
+          }
+          
+          return {
+            ...old,
+            items: [optimisticProduct, ...old.items],
+            totalCount: old.totalCount + 1,
+          }
+        }
+      )
+
+      return { previousQueries }
+    },
+    onError: (error: ApiError, newProduct, context) => {
+      // Revertir cambios si falla
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+      
+      toast({
+        title: "Error al crear producto",
+        description: error.message || "Ocurrió un error al crear el producto.",
+        variant: "destructive",
+      })
+    },
     onSuccess: (response) => {
-      // Invalidar la lista de productos para refetch
+      // Invalidar la lista de productos para refetch con datos reales
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       
       toast({
@@ -80,12 +144,9 @@ export function useCreateProducto() {
         description: response.message || "Producto creado exitosamente.",
       })
     },
-    onError: (error: ApiError) => {
-      toast({
-        title: "Error al crear producto",
-        description: error.message || "Ocurrió un error al crear el producto.",
-        variant: "destructive",
-      })
+    onSettled: () => {
+      // Asegurar que los datos estén sincronizados después de completar
+      queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
     },
   })
 }
@@ -101,8 +162,82 @@ export function useUpdateProducto() {
     mutationFn: async ({ id, data }: { id: string; data: UpdateProductoDto }) => {
       return await productosService.updateProducto(id, data)
     },
+    onMutate: async ({ id, data }) => {
+      // Cancelar queries en curso
+      await queryClient.cancelQueries({ queryKey: productoKeys.detail(id) })
+      await queryClient.cancelQueries({ queryKey: productoKeys.lists() })
+
+      // Snapshot del valor anterior
+      const previousProduct = queryClient.getQueryData<Product>(productoKeys.detail(id))
+      const previousQueries = queryClient.getQueriesData({ queryKey: productoKeys.lists() })
+
+      // Optimistic update del detalle del producto
+      if (previousProduct) {
+        const optimisticProduct: Product = {
+          ...previousProduct,
+          name: data.nombre ?? previousProduct.name,
+          sku: data.codigoSku ?? previousProduct.sku,
+          basePrice: data.precioBase ?? previousProduct.basePrice,
+          taxPercent: data.impuestoPorcentaje !== undefined ? data.impuestoPorcentaje * 100 : previousProduct.taxPercent,
+          price: data.precioBase ? data.precioBase * (1 + (data.impuestoPorcentaje ?? (previousProduct.taxPercent || 0) / 100)) : previousProduct.price,
+          cost: data.costoInicial ?? previousProduct.cost,
+          description: data.descripcion ?? previousProduct.description,
+          unit: data.unidadMedida ?? previousProduct.unit,
+          imageUrl: data.imagenProductoUrl ?? previousProduct.imageUrl,
+        }
+        queryClient.setQueryData<Product>(productoKeys.detail(id), optimisticProduct)
+      }
+
+      // Optimistic update de la lista
+      queryClient.setQueriesData(
+        { queryKey: productoKeys.lists() },
+        (old: { items: Product[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasPreviousPage: boolean; hasNextPage: boolean } | undefined) => {
+          if (!old) return old
+          
+          return {
+            ...old,
+            items: old.items.map((item) => {
+              if (item.id === id && previousProduct) {
+                return {
+                  ...item,
+                  name: data.nombre ?? item.name,
+                  sku: data.codigoSku ?? item.sku,
+                  basePrice: data.precioBase ?? item.basePrice,
+                  taxPercent: data.impuestoPorcentaje !== undefined ? data.impuestoPorcentaje * 100 : item.taxPercent,
+                  price: data.precioBase ? data.precioBase * (1 + (data.impuestoPorcentaje ?? (item.taxPercent || 0) / 100)) : item.price,
+                  cost: data.costoInicial ?? item.cost,
+                  description: data.descripcion ?? item.description,
+                  unit: data.unidadMedida ?? item.unit,
+                  imageUrl: data.imagenProductoUrl ?? item.imageUrl,
+                }
+              }
+              return item
+            }),
+          }
+        }
+      )
+
+      return { previousProduct, previousQueries }
+    },
+    onError: (error: ApiError, variables, context) => {
+      // Revertir cambios si falla
+      if (context?.previousProduct) {
+        queryClient.setQueryData<Product>(productoKeys.detail(variables.id), context.previousProduct)
+      }
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+      
+      toast({
+        title: "Error al actualizar producto",
+        description: error.message || "Ocurrió un error al actualizar el producto.",
+        variant: "destructive",
+      })
+    },
     onSuccess: (response, variables) => {
-      // Invalidar la lista y el detalle del producto
+      // Invalidar la lista y el detalle del producto para sincronizar con datos reales
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.id) })
       
@@ -111,12 +246,10 @@ export function useUpdateProducto() {
         description: response.message || "Producto actualizado exitosamente.",
       })
     },
-    onError: (error: ApiError) => {
-      toast({
-        title: "Error al actualizar producto",
-        description: error.message || "Ocurrió un error al actualizar el producto.",
-        variant: "destructive",
-      })
+    onSettled: (data, error, variables) => {
+      // Asegurar sincronización final
+      queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.id) })
+      queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
     },
   })
 }
@@ -132,21 +265,60 @@ export function useActivateProducto() {
     mutationFn: async (id: string) => {
       return await productosService.activateProducto(id)
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: productoKeys.detail(id) })
+      await queryClient.cancelQueries({ queryKey: productoKeys.lists() })
+
+      const previousProduct = queryClient.getQueryData<Product>(productoKeys.detail(id))
+      const previousQueries = queryClient.getQueriesData({ queryKey: productoKeys.lists() })
+
+      // Optimistic update
+      if (previousProduct) {
+        queryClient.setQueryData<Product>(productoKeys.detail(id), {
+          ...previousProduct,
+          isActive: true,
+        })
+      }
+
+      queryClient.setQueriesData(
+        { queryKey: productoKeys.lists() },
+        (old: { items: Product[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasPreviousPage: boolean; hasNextPage: boolean } | undefined) => {
+          if (!old) return old
+          
+          return {
+            ...old,
+            items: old.items.map((item) =>
+              item.id === id ? { ...item, isActive: true } : item
+            ),
+          }
+        }
+      )
+
+      return { previousProduct, previousQueries }
+    },
+    onError: (error: ApiError, id, context) => {
+      if (context?.previousProduct) {
+        queryClient.setQueryData<Product>(productoKeys.detail(id), context.previousProduct)
+      }
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+      
+      toast({
+        title: "Error al activar producto",
+        description: error.message || "Ocurrió un error al activar el producto.",
+        variant: "destructive",
+      })
+    },
     onSuccess: (response, id) => {
-      // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(id) })
       
       toast({
         title: "Producto activado",
         description: response.message || "Producto activado exitosamente.",
-      })
-    },
-    onError: (error: ApiError) => {
-      toast({
-        title: "Error al activar producto",
-        description: error.message || "Ocurrió un error al activar el producto.",
-        variant: "destructive",
       })
     },
   })
@@ -163,21 +335,60 @@ export function useDeactivateProducto() {
     mutationFn: async (id: string) => {
       return await productosService.deactivateProducto(id)
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: productoKeys.detail(id) })
+      await queryClient.cancelQueries({ queryKey: productoKeys.lists() })
+
+      const previousProduct = queryClient.getQueryData<Product>(productoKeys.detail(id))
+      const previousQueries = queryClient.getQueriesData({ queryKey: productoKeys.lists() })
+
+      // Optimistic update
+      if (previousProduct) {
+        queryClient.setQueryData<Product>(productoKeys.detail(id), {
+          ...previousProduct,
+          isActive: false,
+        })
+      }
+
+      queryClient.setQueriesData(
+        { queryKey: productoKeys.lists() },
+        (old: { items: Product[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasPreviousPage: boolean; hasNextPage: boolean } | undefined) => {
+          if (!old) return old
+          
+          return {
+            ...old,
+            items: old.items.map((item) =>
+              item.id === id ? { ...item, isActive: false } : item
+            ),
+          }
+        }
+      )
+
+      return { previousProduct, previousQueries }
+    },
+    onError: (error: ApiError, id, context) => {
+      if (context?.previousProduct) {
+        queryClient.setQueryData<Product>(productoKeys.detail(id), context.previousProduct)
+      }
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+      
+      toast({
+        title: "Error al desactivar producto",
+        description: error.message || "Ocurrió un error al desactivar el producto.",
+        variant: "destructive",
+      })
+    },
     onSuccess: (response, id) => {
-      // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(id) })
       
       toast({
         title: "Producto desactivado",
         description: response.message || "Producto desactivado exitosamente.",
-      })
-    },
-    onError: (error: ApiError) => {
-      toast({
-        title: "Error al desactivar producto",
-        description: error.message || "Ocurrió un error al desactivar el producto.",
-        variant: "destructive",
       })
     },
   })
@@ -194,8 +405,44 @@ export function useDeleteProducto() {
     mutationFn: async (id: string) => {
       return await productosService.deleteProducto(id)
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: productoKeys.lists() })
+
+      const previousQueries = queryClient.getQueriesData({ queryKey: productoKeys.lists() })
+
+      // Optimistic update: remover de la lista
+      queryClient.setQueriesData(
+        { queryKey: productoKeys.lists() },
+        (old: { items: Product[]; totalCount: number; page: number; pageSize: number; totalPages: number; hasPreviousPage: boolean; hasNextPage: boolean } | undefined) => {
+          if (!old) return old
+          
+          const itemToRemove = old.items.find((item) => item.id === id)
+          return {
+            ...old,
+            items: old.items.filter((item) => item.id !== id),
+            totalCount: Math.max(0, old.totalCount - (itemToRemove ? 1 : 0)),
+          }
+        }
+      )
+
+      return { previousQueries }
+    },
+    onError: (error: ApiError, id, context) => {
+      // Revertir cambios si falla
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data)
+        })
+      }
+      
+      toast({
+        title: "Error al eliminar producto",
+        description: error.message || "Ocurrió un error al eliminar el producto.",
+        variant: "destructive",
+      })
+    },
     onSuccess: (response, id) => {
-      // Invalidar la lista de productos
+      // Invalidar la lista de productos para sincronizar
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       // Remover el producto específico de la caché
       queryClient.removeQueries({ queryKey: productoKeys.detail(id) })
@@ -203,13 +450,6 @@ export function useDeleteProducto() {
       toast({
         title: "Producto eliminado",
         description: response.message || "Producto eliminado exitosamente.",
-      })
-    },
-    onError: (error: ApiError) => {
-      toast({
-        title: "Error al eliminar producto",
-        description: error.message || "Ocurrió un error al eliminar el producto.",
-        variant: "destructive",
       })
     },
   })

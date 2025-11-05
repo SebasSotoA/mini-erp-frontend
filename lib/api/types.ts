@@ -229,3 +229,43 @@ export interface CreateCampoExtraDto {
   esRequerido: boolean
 }
 
+/**
+ * DTOs para el módulo de Inventario (Valor de Inventario)
+ */
+export interface InventarioFilterDto {
+  bodegaIds?: string[]
+  categoriaIds?: string[]
+  estado?: "activo" | "inactivo" | "todos"
+  q?: string
+  page?: number
+  pageSize?: number
+}
+
+export interface InventarioProductoDto {
+  nombre: string
+  codigoSku: string
+  bodega: string
+  cantidad: number
+  costoUnitario: number
+  valorTotal: number
+  categoria: string
+}
+
+export interface InventarioFiltrosAplicadosDto {
+  Bodegas?: string
+  Categorias?: string
+  Estado?: string
+}
+
+export interface InventarioResumenDto {
+  valorTotal: number
+  stockTotal: number
+  page: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  productos: InventarioProductoDto[]
+  filtrosAplicados: InventarioFiltrosAplicadosDto
+  fechaGeneracion: string
+}
+

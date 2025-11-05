@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 
 import { NewItemForm } from "@/components/forms/new-item-form"
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
@@ -210,6 +210,16 @@ export default function SalesItems() {
     setCurrentPage(1) // Reset to first page when changing items per page
   }
 
+  // Prefetch de rutas de detalle cuando se cargan productos (solo los primeros 5 para no sobrecargar)
+  useEffect(() => {
+    if (products.length > 0) {
+      products.slice(0, 5).forEach((product) => {
+        router.prefetch(`/inventory/items/${product.id}`)
+        router.prefetch(`/inventory/items/${product.id}/edit`)
+      })
+    }
+  }, [products, router])
+
   return (
     <MainLayout>
       <div className="space-y-6">
@@ -347,30 +357,32 @@ export default function SalesItems() {
                 {/* Fila de filtros con transición suave - SOLO cuando showFilters es true */}
                 {showFilters && (
                   <TableRow className="animate-in slide-in-from-top-2 border-camouflage-green-200 bg-camouflage-green-50/30 duration-300 hover:bg-transparent">
-                    <TableHead className="w-[36px]">{/* Columna vacía para alinear con checkbox */}</TableHead>
-                    <TableHead className="w-[200px]">
-                      <div className=" py-3">
+                    <TableHead className="w-[36px]">
+                      <div className="pl-3">{/* Columna vacía para alinear con checkbox */}</div>
+                    </TableHead>
+                    <TableHead className="w-[200px] pl-0">
+                      <div className="py-3">
                         <input
                           type="text"
                           placeholder="Nombre"
                           value={filters.name}
                           onChange={(e) => handleFilterChange("name", e.target.value)}
-                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[120px]">
-                      <div className=" py-3">
+                    <TableHead className="w-[120px] pl-0">
+                      <div className="py-3">
                         <input
                           type="text"
                           placeholder="Código SKU"
                           value={filters.sku}
                           onChange={(e) => handleFilterChange("sku", e.target.value)}
-                          className="w-24 rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[100px]">
+                    <TableHead className="w-[100px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
@@ -381,7 +393,7 @@ export default function SalesItems() {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[250px]">
+                    <TableHead className="w-[250px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
@@ -392,8 +404,8 @@ export default function SalesItems() {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[120px]">
-                      <div className="flex items-center gap-1 py-3">
+                    <TableHead className="w-[120px] text-center">
+                      <div className="flex items-center justify-center gap-1 py-3">
                         <Select
                           value={filters.stockOperator}
                           onValueChange={(value) => {

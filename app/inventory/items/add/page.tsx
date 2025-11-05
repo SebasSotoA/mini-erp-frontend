@@ -1,9 +1,9 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Tag, ChevronsUpDown, AlertCircle, X } from "lucide-react"
+import { Plus, Tag, ChevronsUpDown, AlertCircle, X, CheckCircle } from "lucide-react"
 import Image from "next/image"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useMemo, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
@@ -32,6 +32,7 @@ export default function AddInventoryItemPage() {
   type ItemType = "product"
 
   const router = useRouter()
+  const searchParams = useSearchParams()
   const createMutation = useCreateProducto()
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -64,6 +65,30 @@ export default function AddInventoryItemPage() {
   const [extraFieldValues, setExtraFieldValues] = useState<Record<string, string>>({})
   const [showErrorToast, setShowErrorToast] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  
+  // Estados para tarjetas de éxito personalizadas
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
+  
+  // Prefetch de rutas relevantes
+  useEffect(() => {
+    // Prefetch de la ruta de lista
+    router.prefetch("/inventory/items")
+  }, [router])
+  
+  // Verificar si viene de una edición exitosa (guardar y crear otro)
+  useEffect(() => {
+    const updated = searchParams?.get("updated")
+    if (updated === "true") {
+      setShowSuccessToast(true)
+      setSuccessMessage("Producto actualizado exitosamente. Ahora puedes crear otro.")
+      setTimeout(() => setShowSuccessToast(false), 5000)
+      // Limpiar el parámetro de la URL sin recargar la página
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, "", newUrl)
+    }
+  }, [searchParams])
+  
   const [initialCostError, setInitialCostError] = useState(false)
   const [quantityError, setQuantityError] = useState(false)
   const [bodegaPrincipalError, setBodegaPrincipalError] = useState(false)
@@ -1225,24 +1250,70 @@ export default function AddInventoryItemPage() {
         createDto.camposExtra = camposExtra
       }
 
-      const response = await createMutation.mutateAsync(createDto)
-
-      // Si se creó el producto exitosamente y hay una imagen en carpeta temporal, moverla a la carpeta del producto
-      if (response.data?.id && finalImageUrl && finalImageUrl.includes("/temp/")) {
-        try {
-          const newImageUrl = await moveImageToProductFolder(finalImageUrl, response.data.id)
-          // Actualizar la URL de la imagen en el producto
-          // Nota: Esto requeriría una actualización adicional del producto, pero por ahora
-          // la imagen funciona con la URL temporal. Si quieres moverla, puedes hacer una actualización aquí.
-          setUploadedImageUrl(newImageUrl)
-        } catch (error) {
-          console.error("Error al mover imagen a carpeta del producto:", error)
-          // No es crítico, la imagen sigue funcionando desde la carpeta temporal
+      // Iniciar la creación (el hook maneja optimistic updates automáticamente)
+      const createPromise = createMutation.mutateAsync(createDto)
+      
+      // Si es "Guardar y crear otro", esperar la creación, mostrar éxito y resetear
+      if (createAnother) {
+        // Esperar la creación antes de resetear
+        const response = await createPromise
+        
+        // Si se creó el producto exitosamente y hay una imagen en carpeta temporal, moverla a la carpeta del producto
+        if (response.data?.id && finalImageUrl && finalImageUrl.includes("/temp/")) {
+          moveImageToProductFolder(finalImageUrl, response.data.id)
+            .then((newImageUrl) => {
+              setUploadedImageUrl(newImageUrl)
+            })
+            .catch((error) => {
+              console.error("Error al mover imagen a carpeta del producto:", error)
+            })
         }
+        
+        // Guardar el nombre del producto para el mensaje de éxito
+        const productName = name.trim()
+        
+        // Resetear formulario
+        setName("")
+        setUnit("Unidad")
+        setWarehouse("")
+        setSelectedBodegaId("")
+        setBasePrice("")
+        setTax("0")
+        setTotalPrice("")
+        setQuantity("")
+        setQuantityMin("")
+        setQuantityMax("")
+        setInitialCost("")
+        setImageFile(null)
+        setImagePreview(null)
+        setCode("")
+        setSelectedCategoriaId("none")
+        setDescription("")
+        setInventoryByWarehouse([])
+        setSelectedExtraFields([])
+        setExtraFieldValues({})
+        
+        // Mostrar tarjeta de éxito DESPUÉS de resetear el formulario
+        setSuccessMessage(`Producto "${productName}" creado exitosamente. Puedes crear otro producto ahora.`)
+        setShowSuccessToast(true)
+        setTimeout(() => setShowSuccessToast(false), 5000)
+        
+        return
       }
-
-      // El toast de éxito ya se muestra en el hook useCreateProducto
-      // No necesitamos duplicar aquí, pero podemos agregar un pequeño delay para asegurar que se muestre
+      
+      // Para "Guardar": navegar optimísticamente a la lista
+      router.replace("/inventory/items")
+      
+      // Mover imagen en background si es necesario
+      createPromise
+        .then((response) => {
+          if (response.data?.id && finalImageUrl && finalImageUrl.includes("/temp/")) {
+            return moveImageToProductFolder(finalImageUrl, response.data.id)
+          }
+        })
+        .catch((error) => {
+          console.error("Error al mover imagen a carpeta del producto:", error)
+        })
     } catch (error: any) {
       // Los errores ya se manejan en el hook, pero agregar toast adicional si es necesario
       console.error("Error al crear producto:", error)
@@ -1270,30 +1341,7 @@ export default function AddInventoryItemPage() {
       return
     }
 
-    if (createAnother) {
-      // reset manteniendo tipo
-      setName("")
-      setUnit("Unidad")
-      setWarehouse("")
-      setSelectedBodegaId("")
-      setBasePrice("")
-      setTax("0")
-      setTotalPrice("")
-      setQuantity("")
-      setQuantityMin("")
-      setQuantityMax("")
-      setInitialCost("")
-      setImageFile(null)
-      setImagePreview(null)
-      setCode("")
-      setSelectedCategoriaId("none")
-      setDescription("")
-      setInventoryByWarehouse([])
-      setSelectedExtraFields([])
-      setExtraFieldValues({})
-      return
-    }
-    router.push("/inventory/items")
+      // La navegación y reset ya se manejan arriba
   }
 
   return (
@@ -2338,6 +2386,18 @@ export default function AddInventoryItemPage() {
             <AlertCircle className="h-5 w-5 text-red-600" />
             <p className="text-sm font-medium text-red-800">
               {errorMessage || "Error, verifica los campos marcados en rojo para continuar"}
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Toast de éxito personalizado */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-sm font-medium text-green-800">
+              {successMessage || "Producto creado exitosamente"}
             </p>
           </div>
         </div>

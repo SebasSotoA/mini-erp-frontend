@@ -1,15 +1,14 @@
-import { Product } from "@/contexts/inventory-context"
+import type { InventarioProductoDto, InventarioResumenDto } from "@/lib/api/types"
 
 // Tipos para filtros del módulo Valor de Inventario
 export interface InventoryValueFilters {
-  search: string
-  warehouse: string
-  dateUntil: Date | null
-  category: string
-  status: "active" | "inactive" | "all" | ""
+  bodegaIds: string[]
+  categoriaIds: string[]
+  estado: "activo" | "inactivo" | "todos"
+  q: string
 }
 
-// Configuración de ordenamiento
+// Configuración de ordenamiento (mantenido para compatibilidad, aunque el backend no lo soporta aún)
 export type SortField = "name" | "sku" | "stock" | "total"
 export type SortDirection = "asc" | "desc"
 
@@ -18,26 +17,21 @@ export interface SortConfig {
   direction: SortDirection
 }
 
-// Producto extendido para el módulo de valor
-export interface InventoryValueProduct extends Omit<Product, "basePrice" | "taxPercent" | "unit" | "imageUrl"> {
-  basePrice?: number
-  taxPercent?: number
-  unit?: string
-  imageUrl?: string
-  cost: number
-  total: number
+// Producto del módulo de valor (mapeado desde InventarioProductoDto)
+export interface InventoryValueProduct {
+  nombre: string
+  codigoSku: string
+  bodega: string
+  cantidad: number
+  costoUnitario: number
+  valorTotal: number
+  categoria: string
 }
 
-// Métricas del inventario
+// Métricas del inventario (mapeado desde InventarioResumenDto)
 export interface InventoryMetrics {
-  totalValue: number
-  totalStock: number
-  totalCost: number
-  warehouseDistribution: Array<{
-    warehouse: string
-    value: number
-    percentage: number
-  }>
+  valorTotal: number
+  stockTotal: number
 }
 
 // Configuración de paginación

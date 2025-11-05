@@ -3,90 +3,138 @@
 import { DollarSign } from "lucide-react"
 import { useState, useMemo } from "react"
 
-import { FiltersHeader } from "@/components/inventory-value/filters-header"
+import { InventoryFilters } from "@/components/inventory-value/inventory-filters"
 import { InventoryTable } from "@/components/inventory-value/inventory-table"
 import { MetricsCards } from "@/components/inventory-value/metrics-cards"
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useInventory } from "@/contexts/inventory-context"
-import { useToast } from "@/hooks/use-toast"
-import {
-  InventoryValueFilters,
-  SortConfig,
-  SortField,
-  InventoryMetrics,
-  PaginationConfig,
-} from "@/lib/types/inventory-value"
-import { applyFiltersAndSort, calculateInventoryMetrics } from "@/lib/utils/inventory-value-filters"
+import { useInventarioResumen } from "@/hooks/api/use-inventario"
+import { useBodegas } from "@/hooks/api/use-bodegas"
+import { useCategorias } from "@/hooks/api/use-categorias"
+import { InventoryValueFilters, InventoryMetrics, PaginationConfig } from "@/lib/types/inventory-value"
+import { inventarioService } from "@/lib/api/services/inventario.service"
+import type { InventarioFilterDto } from "@/lib/api/types"
+
+// Valores por defecto para los filtros
+const DEFAULT_FILTERS: InventoryValueFilters = {
+  bodegaIds: [],
+  categoriaIds: [],
+  estado: "activo",
+  q: "",
+}
 
 export default function InventoryValue() {
-  const { getInventoryValueProducts, getWarehouses, getCategories } = useInventory()
-  const { toast } = useToast()
-
-  // Estado para filtros
-  const [filters, setFilters] = useState<InventoryValueFilters>({
-    search: "",
-    warehouse: "all",
-    dateUntil: null,
-    category: "all",
-    status: "all",
-  })
-
-  // Estado para ordenamiento
-  const [sortConfig, setSortConfig] = useState<SortConfig>({
-    field: "name",
-    direction: "asc",
-  })
+  // Estado para filtros aplicados (los que se envían al backend)
+  const [appliedFilters, setAppliedFilters] = useState<InventoryValueFilters>(DEFAULT_FILTERS)
+  // Estado para filtros pendientes (los que el usuario está configurando)
+  const [pendingFilters, setPendingFilters] = useState<InventoryValueFilters>(DEFAULT_FILTERS)
 
   // Estado para paginación
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
 
-  // Obtener datos del contexto
-  const allProducts = getInventoryValueProducts()
-  const warehouses = getWarehouses()
-  const categories = getCategories()
+  // Obtener bodegas y categorías para los filtros
+  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useBodegas(true)
+  const { data: categories = [], isLoading: isLoadingCategories } = useCategorias(true)
 
-  // Aplicar filtros y ordenamiento
-  const filteredAndSortedProducts = useMemo(() => {
-    return applyFiltersAndSort(allProducts, filters, sortConfig)
-  }, [allProducts, filters, sortConfig])
-
-  // Calcular métricas
-  const metrics: InventoryMetrics = useMemo(() => {
-    return calculateInventoryMetrics(allProducts, filters)
-  }, [allProducts, filters])
-
-  // Calcular paginación
-  const pagination: PaginationConfig = useMemo(() => {
-    const totalItems = filteredAndSortedProducts.length
-    const totalPages = Math.ceil(totalItems / itemsPerPage)
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    const paginatedProducts = filteredAndSortedProducts.slice(startIndex, endIndex)
-
-    return {
-      currentPage,
-      itemsPerPage,
-      totalItems,
-      totalPages,
+  // Construir parámetros para la API
+  const apiParams: InventarioFilterDto = useMemo(() => {
+    const params: InventarioFilterDto = {
+      page: currentPage,
+      pageSize: itemsPerPage,
+      estado: appliedFilters.estado,
     }
-  }, [filteredAndSortedProducts, currentPage, itemsPerPage])
 
-  // Productos para mostrar en la página actual
-  const currentPageProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredAndSortedProducts.slice(startIndex, endIndex)
-  }, [filteredAndSortedProducts, currentPage, itemsPerPage])
+    if (appliedFilters.bodegaIds.length > 0) {
+      params.bodegaIds = appliedFilters.bodegaIds
+    }
 
-  // Manejar cambio de ordenamiento
-  const handleSort = (field: SortField) => {
-    setSortConfig((prev) => ({
-      field,
-      direction: prev.field === field && prev.direction === "asc" ? "desc" : "asc",
-    }))
+    if (appliedFilters.categoriaIds.length > 0) {
+      params.categoriaIds = appliedFilters.categoriaIds
+    }
+
+    if (appliedFilters.q.trim()) {
+      params.q = appliedFilters.q.trim()
+    }
+
+    return params
+  }, [appliedFilters, currentPage, itemsPerPage])
+
+  // Obtener datos del inventario
+  const { data: inventarioData, isLoading, error } = useInventarioResumen(apiParams)
+
+  // Mapear datos a los tipos del frontend
+  const products = inventarioData?.productos || []
+  const metrics: InventoryMetrics = useMemo(() => {
+    if (!inventarioData) {
+      return {
+        valorTotal: 0,
+        stockTotal: 0,
+      }
+    }
+    return {
+      valorTotal: inventarioData.valorTotal,
+      stockTotal: inventarioData.stockTotal,
+    }
+  }, [inventarioData])
+
+  const pagination: PaginationConfig = useMemo(() => {
+    if (!inventarioData) {
+      return {
+        currentPage: 1,
+        itemsPerPage: 20,
+        totalItems: 0,
+        totalPages: 0,
+      }
+    }
+    return {
+      currentPage: inventarioData.page,
+      itemsPerPage: inventarioData.pageSize,
+      totalItems: inventarioData.totalCount,
+      totalPages: inventarioData.totalPages,
+    }
+  }, [inventarioData])
+
+  // Aplicar filtros (botón "Buscar")
+  const handleApplyFilters = () => {
+    setAppliedFilters({ ...pendingFilters })
+    setCurrentPage(1) // Reset a la primera página
+  }
+
+  // Limpiar filtros
+  const handleClearFilters = () => {
+    setPendingFilters(DEFAULT_FILTERS)
+    setAppliedFilters(DEFAULT_FILTERS)
+    setCurrentPage(1)
+  }
+
+  // Remover un filtro individual
+  const handleRemoveFilter = (type: "bodega" | "categoria" | "estado" | "q", value?: string) => {
+    const newFilters = { ...appliedFilters }
+
+    switch (type) {
+      case "bodega":
+        if (value) {
+          newFilters.bodegaIds = newFilters.bodegaIds.filter((id) => id !== value)
+        }
+        break
+      case "categoria":
+        if (value) {
+          newFilters.categoriaIds = newFilters.categoriaIds.filter((id) => id !== value)
+        }
+        break
+      case "estado":
+        newFilters.estado = "activo"
+        break
+      case "q":
+        newFilters.q = ""
+        break
+    }
+
+    setAppliedFilters(newFilters)
+    setPendingFilters(newFilters) // Sincronizar también los filtros pendientes
+    setCurrentPage(1)
   }
 
   // Manejar cambio de página
@@ -100,27 +148,17 @@ export default function InventoryValue() {
     setCurrentPage(1) // Reset a la primera página
   }
 
-  // Manejar exportación
+  // Manejar exportación a PDF
   const handleExport = () => {
-    toast({
-      title: "Exportación iniciada",
-      description: "Se está preparando el archivo para descarga...",
-    })
-
-    // TODO: Implementar exportación real
-    setTimeout(() => {
-      toast({
-        title: "Exportación completada",
-        description: "El archivo se ha descargado exitosamente.",
-      })
-    }, 2000)
+    try {
+      const pdfUrl = inventarioService.getInventarioResumenPdfUrl(apiParams)
+      window.open(pdfUrl, "_blank")
+    } catch (error) {
+      console.error("Error al generar URL del PDF:", error)
+    }
   }
 
-  // Resetear página cuando cambien los filtros
-  const handleFiltersChange = (newFilters: InventoryValueFilters) => {
-    setFilters(newFilters)
-    setCurrentPage(1)
-  }
+  const isLoadingData = isLoading || isLoadingWarehouses || isLoadingCategories
 
   return (
     <MainLayout>
@@ -139,7 +177,7 @@ export default function InventoryValue() {
         </div>
 
         {/* Métricas principales */}
-        <MetricsCards metrics={metrics} />
+        {!isLoading && inventarioData && <MetricsCards metrics={metrics} />}
 
         {/* Filtros */}
         <Card className="border-camouflage-green-200">
@@ -147,12 +185,17 @@ export default function InventoryValue() {
             <CardTitle className="text-camouflage-green-900">Filtros y Búsqueda</CardTitle>
           </CardHeader>
           <CardContent>
-            <FiltersHeader
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
+            <InventoryFilters
+              filters={appliedFilters}
+              pendingFilters={pendingFilters}
+              onFiltersChange={setPendingFilters}
+              onApplyFilters={handleApplyFilters}
+              onClearFilters={handleClearFilters}
+              onRemoveFilter={handleRemoveFilter}
               onExport={handleExport}
               warehouses={warehouses}
               categories={categories}
+              isLoading={isLoadingData}
             />
           </CardContent>
         </Card>
@@ -160,14 +203,30 @@ export default function InventoryValue() {
         {/* Tabla de inventario */}
         <Card className="border-camouflage-green-200">
           <CardContent className="p-0">
-            <InventoryTable products={currentPageProducts} sortConfig={sortConfig} onSort={handleSort} />
-
-            {/* Paginación */}
-            <PaginationControls
-              pagination={pagination}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-            />
+            {isLoadingData ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+                  <p className="text-sm text-camouflage-green-600">Cargando datos...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="py-8 text-center text-red-600">
+                <p>Error al cargar los datos del inventario. Por favor, intenta nuevamente.</p>
+              </div>
+            ) : (
+              <>
+                <InventoryTable products={products} />
+                {/* Paginación */}
+                {pagination.totalPages > 0 && (
+                  <PaginationControls
+                    pagination={pagination}
+                    onPageChange={handlePageChange}
+                    onItemsPerPageChange={handleItemsPerPageChange}
+                  />
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

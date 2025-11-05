@@ -1,9 +1,9 @@
 "use client"
 
-import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag, ArrowLeft } from "lucide-react"
+import { ShoppingCart, ShoppingBag, Edit, Power, PowerOff, Tag, ArrowLeft, CheckCircle } from "lucide-react"
 import Image from "next/image"
-import { useParams, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 
 import { MainLayout } from "@/components/layout/main-layout"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import { useMovimientosByProducto } from "@/hooks/api/use-movimientos-inventario
 export default function ItemDetailsPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
   const { data: product, isLoading, error } = useProducto(id)
@@ -22,6 +23,21 @@ export default function ItemDetailsPage() {
   const { data: movimientos, isLoading: isLoadingMovimientos, error: errorMovimientos } = useMovimientosByProducto(id)
   const activateMutation = useActivateProducto()
   const deactivateMutation = useDeactivateProducto()
+  
+  // Estado para mostrar toast de éxito cuando se viene de una edición
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
+  
+  // Verificar si viene de una edición exitosa
+  useEffect(() => {
+    const updated = searchParams?.get("updated")
+    if (updated === "true") {
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+      // Limpiar el parámetro de la URL sin recargar la página
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, "", newUrl)
+    }
+  }, [searchParams])
 
   // Movimientos recientes (primeros 10)
   const recentMovements = movimientos?.slice(0, 10) || []
@@ -385,6 +401,17 @@ export default function ItemDetailsPage() {
         </Card>
       </div>
 
+      {/* Toast de éxito cuando se viene de una edición */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-sm font-medium text-green-800">
+              Producto actualizado exitosamente
+            </p>
+          </div>
+        </div>
+      )}
     </MainLayout>
   )
 }

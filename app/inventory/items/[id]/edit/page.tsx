@@ -88,6 +88,7 @@ export default function EditInventoryItemPage() {
   // Estados para tarjetas de error personalizadas
   const [showErrorToast, setShowErrorToast] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
+  
 
   // Validación con Zod + RHF (controlamos el estado local y sincronizamos con RHF)
   const editSchema = z
@@ -233,6 +234,16 @@ export default function EditInventoryItemPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // Prefetch de rutas relevantes
+  useEffect(() => {
+    if (id) {
+      // Prefetch de la ruta de detalle
+      router.prefetch(`/inventory/items/${id}`)
+      // Prefetch de la ruta de creación si es necesario
+      router.prefetch(`/inventory/items/add`)
+    }
+  }, [id, router])
 
   // Inicializar formulario con datos del producto
   useEffect(() => {
@@ -1238,6 +1249,140 @@ export default function EditInventoryItemPage() {
 
   const priceToShow = useMemo(() => totalPrice || basePrice || "0.00", [totalPrice, basePrice])
 
+  // Detectar si hay cambios en el formulario
+  const hasChanges = useMemo(() => {
+    if (!product || !productoOriginal || !isInitializedRef.current) return false
+
+    // Comparar campos básicos
+    if (name.trim() !== (product.name || "").trim()) return true
+    if (code.trim() !== (product.sku || "").trim()) return true
+    if (description.trim() !== (product.description || "").trim()) return true
+    
+    // Comparar categoría
+    const categoriaIdOriginal = productoOriginal.categoriaId || "none"
+    if (selectedCategoriaId !== categoriaIdOriginal) return true
+    
+    // Comparar unidad
+    const unitOriginal = (product as ExtendedProduct).unit ?? "Unidad"
+    if (unit !== unitOriginal) return true
+    
+    // Comparar precios (con tolerancia para decimales)
+    const basePriceOriginal = (product as ExtendedProduct).basePrice ?? product.price
+    if (Math.abs(parseFloat(basePrice || "0") - basePriceOriginal) > 0.01) return true
+    
+    const taxOriginal = (product as ExtendedProduct).taxPercent ?? 0
+    if (Math.abs(parseFloat(tax || "0") - taxOriginal) > 0.01) return true
+    
+    if (Math.abs(parseFloat(totalPrice || "0") - product.price) > 0.01) return true
+    
+    // Comparar costo
+    if (Math.abs(parseFloat(initialCost || "0") - product.cost) > 0.01) return true
+    
+    // Comparar imagen
+    if (imageFile) return true // Nueva imagen seleccionada
+    if (imagePreview === null && originalImageUrl) return true // Imagen eliminada
+    if (imagePreview && originalImageUrl && imagePreview !== originalImageUrl) return true // Imagen diferente
+    
+    // Comparar bodega principal
+    const bodegaPrincipalOriginal = productoOriginal.bodegaPrincipalId || null
+    if (selectedBodegaId !== bodegaPrincipalOriginal) return true
+    
+    // Comparar cantidades de bodega principal
+    const bodegaPrincipal = productoBodegas.find((b: ProductoBodegaBackend) => b.esPrincipal === true)
+    if (bodegaPrincipal) {
+      const quantityValue = parseInt(quantity || "0")
+      if (quantityValue !== bodegaPrincipal.cantidadInicial) return true
+      
+      const quantityMinValue = quantityMin ? parseInt(quantityMin) : null
+      if (quantityMinValue !== bodegaPrincipal.cantidadMinima) return true
+      
+      const quantityMaxValue = quantityMax ? parseInt(quantityMax) : null
+      if (quantityMaxValue !== bodegaPrincipal.cantidadMaxima) return true
+    } else if (selectedBodegaId) {
+      // Si no hay bodega principal pero hay una seleccionada, hay cambio
+      if (quantity && parseInt(quantity) !== 0) return true
+      if (quantityMin) return true
+      if (quantityMax) return true
+    }
+    
+    // Comparar campos extra seleccionados
+    const camposExtraOriginales = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId).sort()
+    const camposExtraSeleccionados = [...selectedExtraFields].sort()
+    if (JSON.stringify(camposExtraOriginales) !== JSON.stringify(camposExtraSeleccionados)) return true
+    
+    // Comparar valores de campos extra
+    for (const campo of productoCamposExtra) {
+      const valorOriginal = campo.valor || ""
+      const campoExtra = extraFields.find(f => f.id === campo.campoExtraId)
+      const userValue = extraFieldValues[campo.campoExtraId]?.trim() || ""
+      const defaultValue = campoExtra?.defaultValue || ""
+      const valorActual = userValue || defaultValue
+      
+      if (valorActual.trim() !== valorOriginal.trim()) return true
+    }
+    
+    // Verificar si hay campos extra nuevos con valores
+    const camposExtraNuevos = selectedExtraFields.filter(fieldId => 
+      !productoCamposExtra.some((ce: ProductoCampoExtraBackend) => ce.campoExtraId === fieldId)
+    )
+    for (const fieldId of camposExtraNuevos) {
+      const campoExtra = extraFields.find(f => f.id === fieldId)
+      const userValue = extraFieldValues[fieldId]?.trim() || ""
+      const defaultValue = campoExtra?.defaultValue || ""
+      const valor = userValue || defaultValue
+      if (valor && valor.trim() !== "") return true
+    }
+    
+    // Comparar bodegas adicionales
+    const bodegasAdicionalesOriginales = productoBodegas
+      .filter((b: ProductoBodegaBackend) => !b.esPrincipal)
+      .map((b: ProductoBodegaBackend) => ({
+        bodegaId: b.bodegaId,
+        cantidadInicial: b.cantidadInicial,
+        cantidadMinima: b.cantidadMinima,
+        cantidadMaxima: b.cantidadMaxima,
+      }))
+      .sort((a, b) => a.bodegaId.localeCompare(b.bodegaId))
+    
+    const bodegasAdicionalesActuales = inventoryByWarehouse
+      .map(w => ({
+        bodegaId: w.bodegaId,
+        cantidadInicial: w.qtyInit,
+        cantidadMinima: w.qtyMin ?? null,
+        cantidadMaxima: w.qtyMax ?? null,
+      }))
+      .sort((a, b) => a.bodegaId.localeCompare(b.bodegaId))
+    
+    if (JSON.stringify(bodegasAdicionalesOriginales) !== JSON.stringify(bodegasAdicionalesActuales)) return true
+    
+    return false
+  }, [
+    product,
+    productoOriginal,
+    name,
+    code,
+    description,
+    selectedCategoriaId,
+    unit,
+    basePrice,
+    tax,
+    totalPrice,
+    initialCost,
+    imageFile,
+    imagePreview,
+    originalImageUrl,
+    selectedBodegaId,
+    quantity,
+    quantityMin,
+    quantityMax,
+    productoBodegas,
+    productoCamposExtra,
+    selectedExtraFields,
+    extraFieldValues,
+    extraFields,
+    inventoryByWarehouse,
+  ])
+
   const onImageChange = (file: File | null) => {
     // Si se está eliminando la imagen
     if (!file) {
@@ -1713,156 +1858,137 @@ export default function EditInventoryItemPage() {
         bodegaPrincipalId: selectedBodegaId, // Incluir la bodega principal seleccionada
       })
       console.log("🔵 DTO creado:", updateDto)
-      console.log("🔵 Llamando a updateMutation.mutateAsync...")
-
-      await updateMutation.mutateAsync({ id, data: updateDto })
-      console.log("✅ Producto actualizado exitosamente")
-
-      // Actualizar bodega principal con las cantidades
-      console.log("🔵 Verificando si necesita actualizar bodega principal...")
-      const bodegaPrincipalActual = productoBodegas.find((b: ProductoBodegaBackend) => b.esPrincipal === true)
-      const bodegaPrincipalIdActual = bodegaPrincipalActual?.bodegaId || bodegaPrincipalIdFromProduct || selectedBodegaId
       
-      // Verificar si la bodega principal cambió o si las cantidades cambiaron
-      const bodegaCambio = bodegaPrincipalIdActual !== selectedBodegaId
-      const cantidadesCambiaron = bodegaPrincipalActual 
-        ? (bodegaPrincipalActual.cantidadInicial !== quantityValue ||
-           bodegaPrincipalActual.cantidadMinima !== quantityMinValue ||
-           bodegaPrincipalActual.cantidadMaxima !== quantityMaxValue)
-        : true
-
-      console.log("🔵 bodegaCambio:", bodegaCambio, "cantidadesCambiaron:", cantidadesCambiaron)
-      if (bodegaCambio || cantidadesCambiaron) {
-        console.log("🔵 Actualizando bodega principal...")
-        // Si la bodega principal cambió, primero actualizar la nueva
-        if (bodegaCambio && bodegaPrincipalIdActual && bodegaPrincipalIdActual !== selectedBodegaId) {
-          // Si hay una bodega principal anterior, actualizarla primero
-          // (Nota: En este caso, el backend maneja el cambio de bodega principal)
-        }
-
-        // Actualizar o agregar la bodega principal
-        try {
-          // Verificar si la bodega ya existe en productoBodegas
-          const bodegaExiste = productoBodegas.some((b: ProductoBodegaBackend) => b.bodegaId === selectedBodegaId)
-          console.log("🔵 bodegaExiste:", bodegaExiste)
-          
-          if (bodegaExiste) {
-            // Actualizar bodega existente
-            console.log("🔵 Actualizando bodega existente...")
-            await updateBodegaMutation.mutateAsync({
-              productId: id,
-              bodegaId: selectedBodegaId,
-              data: {
-                cantidadInicial: quantityValue,
-                cantidadMinima: quantityMinValue ?? null,
-                cantidadMaxima: quantityMaxValue ?? null,
-              },
-            })
-            console.log("✅ Bodega actualizada exitosamente")
-          } else {
-            // Agregar nueva bodega principal
-            console.log("🔵 Agregando nueva bodega principal...")
-            await addBodegaMutation.mutateAsync({
-              productId: id,
-              data: {
-                bodegaId: selectedBodegaId,
-                cantidadInicial: quantityValue,
-                cantidadMinima: quantityMinValue ?? null,
-                cantidadMaxima: quantityMaxValue ?? null,
-              },
-            })
-            console.log("✅ Bodega agregada exitosamente")
-          }
-        } catch (error) {
-          console.error("❌ Error al actualizar bodega principal:", error)
-          console.error("Error completo:", JSON.stringify(error, null, 2))
-          // Continuar aunque haya error en la bodega, el producto ya se actualizó
-        }
+      // Iniciar la petición principal y navegar inmediatamente (optimistic navigation)
+      // El hook maneja optimistic updates automáticamente
+      console.log("🔵 Iniciando actualización en background...")
+      const updatePromise = updateMutation.mutateAsync({ id, data: updateDto })
+      
+      // Navegar inmediatamente sin esperar (optimistic navigation)
+      // Pasar parámetro en URL para mostrar toast de éxito en la página destino
+      console.log("🔵 Navegando optimísticamente... createAnother:", createAnother)
+      if (createAnother) {
+        router.replace(`/inventory/items/add?updated=true`)
       } else {
-        console.log("🔵 No es necesario actualizar la bodega principal")
+        router.replace(`/inventory/items/${id}?updated=true`)
       }
+      
+      // Continuar con bodega y campos extra en background usando .then() para que continúen aunque el componente se desmonte
+      updatePromise
+        .then((updateResponse) => {
+          console.log("✅ Producto actualizado exitosamente, continuando con bodega y campos extra...")
+          
+          // Actualizar bodega principal con las cantidades
+          console.log("🔵 Verificando si necesita actualizar bodega principal...")
+          const bodegaPrincipalActual = productoBodegas.find((b: ProductoBodegaBackend) => b.esPrincipal === true)
+          const bodegaPrincipalIdActual = bodegaPrincipalActual?.bodegaId || bodegaPrincipalIdFromProduct || selectedBodegaId
+          
+          // Verificar si la bodega principal cambió o si las cantidades cambiaron
+          const bodegaCambio = bodegaPrincipalIdActual !== selectedBodegaId
+          const cantidadesCambiaron = bodegaPrincipalActual 
+            ? (bodegaPrincipalActual.cantidadInicial !== quantityValue ||
+               bodegaPrincipalActual.cantidadMinima !== quantityMinValue ||
+               bodegaPrincipalActual.cantidadMaxima !== quantityMaxValue)
+            : true
 
-      // Actualizar campos extra del producto
-      console.log("🔵 Actualizando campos extra...")
-      try {
-        // Obtener campos extra actuales del backend
-        const camposExtraActuales = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId)
-        
-        // Campos que deben estar presentes (seleccionados)
-        const camposExtraParaActualizar = selectedExtraFields.map((fieldId) => {
-          const field = extraFields.find(f => f.id === fieldId)
-          if (!field) return null
-          // Usar valor del usuario si existe (incluso si está vacío), sino usar defaultValue
-          const userValue = extraFieldValues[fieldId]?.trim() || ""
-          const defaultValue = field.defaultValue || ""
-          const finalValue = userValue || defaultValue
-          return {
-            campoExtraId: fieldId,
-            valor: finalValue,
+          console.log("🔵 bodegaCambio:", bodegaCambio, "cantidadesCambiaron:", cantidadesCambiaron)
+          if (bodegaCambio || cantidadesCambiaron) {
+            console.log("🔵 Actualizando bodega principal...")
+            
+            // Actualizar o agregar la bodega principal
+            const bodegaExiste = productoBodegas.some((b: ProductoBodegaBackend) => b.bodegaId === selectedBodegaId)
+            
+            if (bodegaExiste) {
+              // Actualizar bodega existente
+              return updateBodegaMutation.mutateAsync({
+                productId: id,
+                bodegaId: selectedBodegaId,
+                data: {
+                  cantidadInicial: quantityValue,
+                  cantidadMinima: quantityMinValue ?? null,
+                  cantidadMaxima: quantityMaxValue ?? null,
+                },
+              }).then(() => updateResponse)
+            } else {
+              // Agregar nueva bodega principal
+              return addBodegaMutation.mutateAsync({
+                productId: id,
+                data: {
+                  bodegaId: selectedBodegaId,
+                  cantidadInicial: quantityValue,
+                  cantidadMinima: quantityMinValue ?? null,
+                  cantidadMaxima: quantityMaxValue ?? null,
+                },
+              }).then(() => updateResponse)
+            }
           }
-        }).filter((campo): campo is NonNullable<typeof campo> => campo !== null)
-
-        // Asegurar que todos los campos requeridos estén incluidos
-        camposExtraRequeridos.forEach((field) => {
-          if (!camposExtraParaActualizar.find(c => c.campoExtraId === field.id)) {
-            const userValue = extraFieldValues[field.id]?.trim() || ""
+          return updateResponse
+        })
+        .then(() => {
+          // Actualizar campos extra del producto
+          console.log("🔵 Actualizando campos extra...")
+          
+          // Obtener campos extra actuales del backend
+          const camposExtraActuales = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId)
+          
+          // Campos que deben estar presentes (seleccionados)
+          const camposExtraParaActualizar = selectedExtraFields.map((fieldId) => {
+            const field = extraFields.find(f => f.id === fieldId)
+            if (!field) return null
+            const userValue = extraFieldValues[fieldId]?.trim() || ""
             const defaultValue = field.defaultValue || ""
             const finalValue = userValue || defaultValue
-            camposExtraParaActualizar.push({
-              campoExtraId: field.id,
+            return {
+              campoExtraId: fieldId,
               valor: finalValue,
-            })
-          }
-        })
+            }
+          }).filter((campo): campo is NonNullable<typeof campo> => campo !== null)
 
-        // Eliminar campos que ya no están seleccionados (excepto campos requeridos)
-        const camposParaEliminar = camposExtraActuales.filter(campoId => {
-          // No eliminar campos requeridos
-          const campo = extraFields.find(f => f.id === campoId)
-          if (campo?.isRequired) return false
-          // Eliminar si no está en selectedExtraFields
-          return !selectedExtraFields.includes(campoId)
-        })
-
-        // Eliminar campos extra que ya no están seleccionados
-        for (const campoId of camposParaEliminar) {
-          try {
-            await productosService.deleteProductoCampoExtra(id, campoId)
-            console.log(`🔵 Campo extra eliminado: ${campoId}`)
-          } catch (error) {
-            console.error(`❌ Error al eliminar campo extra ${campoId}:`, error)
-            // Continuar con los demás campos
-          }
-        }
-
-        // Actualizar o agregar cada campo extra usando el endpoint PUT /productos/{productId}/campos-extra/{campoExtraId}
-        for (const campo of camposExtraParaActualizar) {
-          await productosService.setProductoCampoExtra(id, campo.campoExtraId, {
-            valor: campo.valor
+          // Asegurar que todos los campos requeridos estén incluidos
+          camposExtraRequeridos.forEach((field) => {
+            if (!camposExtraParaActualizar.find(c => c.campoExtraId === field.id)) {
+              const userValue = extraFieldValues[field.id]?.trim() || ""
+              const defaultValue = field.defaultValue || ""
+              const finalValue = userValue || defaultValue
+              camposExtraParaActualizar.push({
+                campoExtraId: field.id,
+                valor: finalValue,
+              })
+            }
           })
-        }
 
-        // Invalidar query de campos extra para actualizar la UI
-        queryClient.invalidateQueries({ queryKey: productoKeys.camposExtra(id) })
-        console.log("✅ Campos extra actualizados exitosamente")
-      } catch (error) {
-        console.error("❌ Error al actualizar campos extra:", error)
-        // Continuar aunque haya error en los campos extra, el producto ya se actualizó
-      }
+          // Eliminar campos que ya no están seleccionados (excepto campos requeridos)
+          const camposParaEliminar = camposExtraActuales.filter(campoId => {
+            const campo = extraFields.find(f => f.id === campoId)
+            if (campo?.isRequired) return false
+            return !selectedExtraFields.includes(campoId)
+          })
 
-      // El toast de éxito ya se muestra en el hook useUpdateProducto
-      // Agregamos un toast adicional personalizado para mayor claridad
-      toast({
-        title: "✅ Producto actualizado",
-        description: `El producto "${name.trim()}" ha sido actualizado exitosamente.`,
-      })
+          // Eliminar campos extra que ya no están seleccionados
+          const deletePromises = camposParaEliminar.map(campoId =>
+            productosService.deleteProductoCampoExtra(id, campoId).catch((error) => {
+              console.error(`❌ Error al eliminar campo extra ${campoId}:`, error)
+            })
+          )
 
-      console.log("🔵 Redirigiendo... createAnother:", createAnother)
-      if (createAnother) {
-        router.push(`/inventory/items/add`)
-      } else {
-        router.push(`/inventory/items/${id}`)
-      }
+          // Actualizar o agregar cada campo extra
+          const updatePromises = camposExtraParaActualizar.map(campo =>
+            productosService.setProductoCampoExtra(id, campo.campoExtraId, {
+              valor: campo.valor
+            })
+          )
+
+          return Promise.all([...deletePromises, ...updatePromises])
+        })
+        .then(() => {
+          // Invalidar query de campos extra para actualizar la UI
+          queryClient.invalidateQueries({ queryKey: productoKeys.camposExtra(id) })
+          console.log("✅ Campos extra actualizados exitosamente")
+        })
+        .catch((error) => {
+          console.error("❌ Error en background updates:", error)
+          // Los errores ya se manejan en los hooks con toasts
+        })
     } catch (error: any) {
       console.error("Error al actualizar producto:", error)
       console.error("Error completo:", JSON.stringify(error, null, 2))
@@ -2742,17 +2868,32 @@ export default function EditInventoryItemPage() {
                 <CardContent className="pt-6">
                   <div className="space-y-4">
                     <div>
-                      <div className="aspect-square w-full overflow-hidden rounded-lg">
+                      {/* Image uploader */}
+                      <div
+                        className={`aspect-square w-full cursor-pointer overflow-hidden rounded-lg transition-colors ${
+                          isImageDragOver
+                            ? "border-2 border-camouflage-green-500 bg-camouflage-green-50"
+                            : "hover:bg-camouflage-green-25 border-2 border-dashed border-gray-300 hover:border-camouflage-green-400"
+                        }`}
+                        onClick={handleImageAreaClick}
+                        onDragOver={handleImageDragOver}
+                        onDragLeave={handleImageDragLeave}
+                        onDrop={handleImageDrop}
+                        title={imagePreview ? "Haz clic para cambiar la imagen" : "Haz clic o arrastra una imagen aquí"}
+                      >
                         {imagePreview ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
                         ) : (
-                          <div className="flex aspect-square items-center justify-center border-2 border-dashed border-gray-300 bg-white">
-                            <Tag className="h-14 w-14 text-gray-300" />
+                          <div className="flex aspect-square flex-col items-center justify-center bg-white">
+                            <Tag className="mb-2 h-14 w-14 text-gray-300" />
+                            <p className="px-2 text-center text-xs text-gray-500">
+                              Haz clic o arrastra una imagen aquí
+                            </p>
                           </div>
                         )}
                       </div>
-                      <div className="mt-3">
+                      <div className="mt-3 space-y-2">
                         <input
                           id="image"
                           type="file"
@@ -2762,7 +2903,7 @@ export default function EditInventoryItemPage() {
                           className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-camouflage-green-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-camouflage-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         {isUploadingImage && (
-                          <div className="mt-2 text-sm text-camouflage-green-600 flex items-center gap-2">
+                          <div className="text-sm text-camouflage-green-600 flex items-center gap-2">
                             <div className="h-4 w-4 animate-spin rounded-full border-2 border-camouflage-green-300 border-t-camouflage-green-600"></div>
                             Subiendo imagen...
                           </div>
@@ -2771,8 +2912,11 @@ export default function EditInventoryItemPage() {
                           <Button
                             type="button"
                             variant="outline"
-                            className="mt-2 w-full border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-                            onClick={() => onImageChange(null)}
+                            className="w-full border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onImageChange(null)
+                            }}
                             disabled={isUploadingImage}
                           >
                             Eliminar imagen
@@ -2806,7 +2950,7 @@ export default function EditInventoryItemPage() {
                     type="button"
                     variant="primary"
                     className="w-full"
-                    disabled={updateMutation.isPending || isUploadingImage}
+                    disabled={!hasChanges || updateMutation.isPending || isUploadingImage}
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
@@ -2821,7 +2965,7 @@ export default function EditInventoryItemPage() {
                   type="button"
                   variant="secondary"
                   className="w-full"
-                  disabled={updateMutation.isPending || isUploadingImage}
+                  disabled={!hasChanges || updateMutation.isPending || isUploadingImage}
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()

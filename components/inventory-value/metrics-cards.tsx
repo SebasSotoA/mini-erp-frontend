@@ -1,6 +1,6 @@
 "use client"
 
-import { DollarSign, Package, TrendingUp } from "lucide-react"
+import { DollarSign, Package } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { InventoryMetrics } from "@/lib/types/inventory-value"
@@ -9,7 +9,7 @@ interface MetricsCardsProps {
   metrics: InventoryMetrics
 }
 
-export function MetricsCards({ metrics }: MetricsCardsProps) {
+export function InventorySummary({ metrics }: MetricsCardsProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("es-CO", {
       style: "currency",
@@ -28,8 +28,8 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
             <DollarSign className="h-6 w-6 text-camouflage-green-600" />
           </div>
           <div className="ml-4">
-            <p className="text-sm font-medium text-camouflage-green-600">Valor Total</p>
-            <p className="text-2xl font-bold text-camouflage-green-900">{formatCurrency(metrics.totalValue)}</p>
+            <p className="text-sm font-medium text-camouflage-green-600">💰 Valor Total del Inventario</p>
+            <p className="text-2xl font-bold text-camouflage-green-900">{formatCurrency(metrics.valorTotal)}</p>
             <p className="text-xs text-camouflage-green-500">Inventario actual</p>
           </div>
         </CardContent>
@@ -42,8 +42,8 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
             <Package className="h-6 w-6 text-camouflage-green-600" />
           </div>
           <div className="ml-4">
-            <p className="text-sm font-medium text-camouflage-green-600">Stock Total</p>
-            <p className="text-2xl font-bold text-camouflage-green-900">{metrics.totalStock.toLocaleString()}</p>
+            <p className="text-sm font-medium text-camouflage-green-600">📦 Stock Total</p>
+            <p className="text-2xl font-bold text-camouflage-green-900">{metrics.stockTotal.toLocaleString()}</p>
             <p className="text-xs text-camouflage-green-500">Unidades disponibles</p>
           </div>
         </CardContent>
@@ -51,3 +51,6 @@ export function MetricsCards({ metrics }: MetricsCardsProps) {
     </div>
   )
 }
+
+// Exportar también como MetricsCards para mantener compatibilidad
+export { InventorySummary as MetricsCards }
