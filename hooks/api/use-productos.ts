@@ -4,11 +4,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { productosService, mapProductoToProduct } from "@/lib/api/services/productos.service"
-import type { ProductosQueryParams, ProductoBodegaBackend, ProductoCampoExtraBackend } from "@/lib/api/types"
+import type { ProductosQueryParams, ProductoBodegaBackend, ProductoCampoExtraBackend, AddProductoBodegaDto, UpdateProductoBodegaDto } from "@/lib/api/types"
 import type { Product } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import type { CreateProductoDto, UpdateProductoDto } from "@/lib/api/types"
-import { ApiError } from "@/lib/api/errors"
+import { ApiError, NetworkError } from "@/lib/api/errors"
 
 /**
  * Query key factory para productos
@@ -240,6 +240,138 @@ export function useProductoCamposExtra(productId: string | undefined) {
       return await productosService.getProductoCamposExtra(productId)
     },
     enabled: !!productId,
+  })
+}
+
+/**
+ * Hook para agregar producto a una bodega
+ */
+export function useAddProductoBodega() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ productId, data }: { productId: string; data: AddProductoBodegaDto }) => {
+      return await productosService.addProductoBodega(productId, data)
+    },
+    onSuccess: (response, variables) => {
+      // Invalidar la lista de bodegas del producto
+      queryClient.invalidateQueries({ queryKey: productoKeys.bodegas(variables.productId) })
+      // Invalidar el detalle del producto para actualizar el stock total
+      queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.productId) })
+      
+      toast({
+        title: "Bodega agregada",
+        description: response.message || "Producto agregado a la bodega exitosamente.",
+      })
+    },
+    onError: (error: Error) => {
+      let errorMessage = "Ocurrió un error al agregar el producto a la bodega."
+      let errorTitle = "Error al agregar bodega"
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor. Por favor, verifica que la API esté en ejecución e intenta nuevamente."
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMessage
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMessage
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+/**
+ * Hook para actualizar cantidades de producto en una bodega
+ */
+export function useUpdateProductoBodega() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ productId, bodegaId, data }: { productId: string; bodegaId: string; data: UpdateProductoBodegaDto }) => {
+      return await productosService.updateProductoBodega(productId, bodegaId, data)
+    },
+    onSuccess: (response, variables) => {
+      // Invalidar la lista de bodegas del producto
+      queryClient.invalidateQueries({ queryKey: productoKeys.bodegas(variables.productId) })
+      // Invalidar el detalle del producto para actualizar el stock total
+      queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.productId) })
+      
+      toast({
+        title: "Bodega actualizada",
+        description: response.message || "Cantidades actualizadas exitosamente.",
+      })
+    },
+    onError: (error: Error) => {
+      let errorMessage = "Ocurrió un error al actualizar las cantidades en la bodega."
+      let errorTitle = "Error al actualizar bodega"
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor. Por favor, verifica que la API esté en ejecución e intenta nuevamente."
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMessage
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMessage
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+/**
+ * Hook para remover producto de una bodega
+ */
+export function useDeleteProductoBodega() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ productId, bodegaId }: { productId: string; bodegaId: string }) => {
+      return await productosService.deleteProductoBodega(productId, bodegaId)
+    },
+    onSuccess: (response, variables) => {
+      // Invalidar la lista de bodegas del producto
+      queryClient.invalidateQueries({ queryKey: productoKeys.bodegas(variables.productId) })
+      // Invalidar el detalle del producto para actualizar el stock total
+      queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.productId) })
+      
+      toast({
+        title: "Bodega removida",
+        description: response.message || "Producto removido de la bodega exitosamente.",
+      })
+    },
+    onError: (error: Error) => {
+      let errorMessage = "Ocurrió un error al remover el producto de la bodega."
+      let errorTitle = "Error al remover bodega"
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor. Por favor, verifica que la API esté en ejecución e intenta nuevamente."
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMessage
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMessage
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      })
+    },
   })
 }
 

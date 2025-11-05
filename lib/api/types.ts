@@ -39,12 +39,14 @@ export interface ProductoBackend {
   impuestoPorcentaje: number
   costoInicial: number
   categoriaId: string | null
+  categoriaNombre: string | null
   codigoSku: string
   descripcion: string | null
   activo: boolean
   fechaCreacion: string
   imagenProductoUrl: string | null
   stockActual: number // Stock calculado (suma de todas las bodegas)
+  bodegaPrincipalId: string // ID de la bodega principal del producto
 }
 
 export interface ProductoBodegaBackend {
@@ -54,6 +56,7 @@ export interface ProductoBodegaBackend {
   cantidadInicial: number // Stock actual en esta bodega
   cantidadMinima: number | null
   cantidadMaxima: number | null
+  esPrincipal: boolean // Indica si esta bodega es la principal del producto
 }
 
 /**
@@ -85,6 +88,42 @@ export interface MovimientoInventarioBackend {
 }
 
 /**
+ * Tipo para categorías del backend
+ */
+export interface CategoriaBackend {
+  id: string
+  nombre: string
+  descripcion?: string | null
+  activo: boolean
+  fechaCreacion: string
+}
+
+/**
+ * Tipo para bodegas del backend
+ */
+export interface BodegaBackend {
+  id: string
+  nombre: string
+  direccion?: string | null
+  activo: boolean
+  fechaCreacion: string
+}
+
+/**
+ * Tipo para campos extra del backend
+ */
+export interface CampoExtraBackend {
+  id: string
+  nombre: string
+  tipoDato: string // "Texto", "Número", "NúmeroDecimal", "Fecha", "SiNo"
+  descripcion?: string | null
+  valorPorDefecto?: string | null
+  esRequerido: boolean
+  activo: boolean
+  fechaCreacion: string
+}
+
+/**
  * DTOs para crear/actualizar productos
  */
 export interface CreateProductoDto {
@@ -99,6 +138,8 @@ export interface CreateProductoDto {
   imagenProductoUrl?: string | null
   bodegaPrincipalId?: string
   cantidadInicial?: number
+  cantidadMinima?: number | null
+  cantidadMaxima?: number | null
   bodegasAdicionales?: Array<{
     bodegaId: string
     cantidadInicial: number
@@ -115,12 +156,35 @@ export interface UpdateProductoDto {
   nombre?: string
   unidadMedida?: string
   precioBase?: number
-  impuestoPorcentaje?: number
+  impuestoPorcentaje?: number // Debe ser decimal (0.19) cuando se envía al backend
   costoInicial?: number
   categoriaId?: string | null
   codigoSku?: string
   descripcion?: string | null
   imagenProductoUrl?: string | null
+}
+
+/**
+ * DTOs para gestionar bodegas del producto
+ */
+export interface AddProductoBodegaDto {
+  bodegaId: string
+  cantidadInicial: number
+  cantidadMinima?: number | null
+  cantidadMaxima?: number | null
+}
+
+export interface UpdateProductoBodegaDto {
+  cantidadInicial?: number
+  cantidadMinima?: number | null
+  cantidadMaxima?: number | null
+}
+
+/**
+ * DTO para asignar/actualizar campo extra del producto
+ */
+export interface SetProductoCampoExtraDto {
+  valor: string
 }
 
 /**
@@ -142,5 +206,25 @@ export interface ProductosQueryParams {
   onlyInactive?: boolean
   orderBy?: "nombre" | "precio" | "sku" | "fecha"
   orderDesc?: boolean
+}
+
+/**
+ * DTOs para crear/actualizar bodegas
+ */
+export interface CreateBodegaDto {
+  nombre: string
+  direccion?: string | null
+  observaciones?: string | null
+}
+
+/**
+ * DTOs para crear/actualizar campos extra
+ */
+export interface CreateCampoExtraDto {
+  nombre: string
+  tipoDato: string // "Texto", "Número", "NúmeroDecimal", "Fecha", "SiNo"
+  descripcion?: string | null
+  valorPorDefecto?: string | null
+  esRequerido: boolean
 }
 

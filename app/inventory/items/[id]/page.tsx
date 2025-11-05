@@ -172,16 +172,12 @@ export default function ItemDetailsPage() {
             <CardContent>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <div className="text-base text-camouflage-green-600">Código</div>
-                  <div className="font-medium text-camouflage-green-900">{product.id}</div>
-                </div>
-                <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Referencia</div>
                   <div className="font-medium text-camouflage-green-900">{reference}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Categoría</div>
-                  <div className="font-medium text-camouflage-green-900">{product.category}</div>
+                  <div className="font-medium text-camouflage-green-900">{product.category || "Sin categoría"}</div>
                 </div>
                 <div className="space-y-1">
                   <div className="text-base text-camouflage-green-600">Tipo ítem</div>

@@ -9,19 +9,34 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useExtraFields } from "@/contexts/extra-fields-context"
-
 interface RequiredFieldsWarningProps {
   onFieldChange: (fieldId: string, value: string) => void
   fieldValues: Record<string, string>
+  requiredFields: Array<{
+    id: string
+    name: string
+    type: "texto" | "número" | "número decimal" | "fecha" | "si/no"
+    description: string
+    defaultValue: string
+    isRequired: boolean
+    isActive: boolean
+  }>
+  isLoading?: boolean
 }
 
-export function RequiredFieldsWarning({ onFieldChange, fieldValues }: RequiredFieldsWarningProps) {
-  const { getRequiredFields } = useExtraFields()
+export function RequiredFieldsWarning({ onFieldChange, fieldValues, requiredFields, isLoading = false }: RequiredFieldsWarningProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   
-  const requiredFields = getRequiredFields()
-  
+  if (isLoading) {
+    return (
+      <Card className="border-orange-200 bg-orange-50">
+        <CardContent className="pt-6">
+          <div className="text-sm text-orange-700">Cargando campos adicionales...</div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (requiredFields.length === 0) {
     return null
   }

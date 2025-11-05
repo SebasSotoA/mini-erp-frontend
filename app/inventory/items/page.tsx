@@ -489,7 +489,7 @@ export default function SalesItems() {
                         onCheckedChange={(checked) => {
                           console.log("Select all checkbox changed:", {
                             checked,
-                            currentProducts: currentProducts.map((p) => ({ id: p.id, name: p.name })),
+                            currentProducts: products.map((p) => ({ id: p.id, name: p.name })),
                           })
                           toggleSelectAllCurrent()
                         }}

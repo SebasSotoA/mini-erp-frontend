@@ -9,6 +9,9 @@ import type {
   ProductoCampoExtraBackend,
   CreateProductoDto,
   UpdateProductoDto,
+  AddProductoBodegaDto,
+  UpdateProductoBodegaDto,
+  SetProductoCampoExtraDto,
   ProductosQueryParams,
   PaginatedResponse,
   ApiResponse,
@@ -31,7 +34,7 @@ export function mapProductoToProduct(producto: ProductoBackend): Product {
     basePrice: producto.precioBase,
     taxPercent: producto.impuestoPorcentaje * 100, // Convertir a porcentaje para el frontend (0.19 -> 19)
     cost: producto.costoInicial,
-    category: producto.categoriaId || "",
+    category: producto.categoriaNombre || "",
     stock: producto.stockActual || 0, // Stock calculado del backend (suma de todas las bodegas)
     minStock: 0, // Se obtiene de ProductoBodega si es necesario
     maxStock: 0, // Se obtiene de ProductoBodega si es necesario
@@ -58,21 +61,36 @@ export function mapProductToCreateDto(
   additionalData?: {
     bodegaPrincipalId?: string
     cantidadInicial?: number
-    categoriaId?: string
+    cantidadMinima?: number | null
+    cantidadMaxima?: number | null
+    categoriaId?: string | null
+    bodegasAdicionales?: Array<{
+      bodegaId: string
+      cantidadInicial: number
+      cantidadMinima?: number | null
+      cantidadMaxima?: number | null
+    }>
   },
 ): CreateProductoDto {
+  // Convertir impuesto de porcentaje (19) a decimal (0.19)
+  const taxPercent = product.taxPercent || 0
+  const impuestoDecimal = taxPercent / 100
+
   return {
     nombre: product.name || "",
     unidadMedida: product.unit || "Unidad",
     precioBase: product.basePrice || 0,
-    impuestoPorcentaje: product.taxPercent || 0,
+    impuestoPorcentaje: impuestoDecimal, // Backend espera decimal (0.19)
     costoInicial: product.cost || 0,
-    categoriaId: additionalData?.categoriaId || product.category || null,
+    categoriaId: additionalData?.categoriaId !== undefined ? additionalData.categoriaId : (product.category || null),
     codigoSku: product.sku || undefined, // Si no se proporciona, el backend lo genera
     descripcion: product.description || null,
     imagenProductoUrl: product.imageUrl || null,
     bodegaPrincipalId: additionalData?.bodegaPrincipalId,
     cantidadInicial: additionalData?.cantidadInicial,
+    cantidadMinima: additionalData?.cantidadMinima ?? null,
+    cantidadMaxima: additionalData?.cantidadMaxima ?? null,
+    bodegasAdicionales: additionalData?.bodegasAdicionales,
   }
 }
 
@@ -82,11 +100,15 @@ export function mapProductToCreateDto(
 export function mapProductToUpdateDto(
   product: Partial<Product>,
 ): UpdateProductoDto {
+  // Convertir impuesto de porcentaje (19) a decimal (0.19)
+  const taxPercent = product.taxPercent
+  const impuestoDecimal = taxPercent !== undefined ? taxPercent / 100 : undefined
+
   return {
     nombre: product.name,
     unidadMedida: product.unit,
     precioBase: product.basePrice,
-    impuestoPorcentaje: product.taxPercent,
+    impuestoPorcentaje: impuestoDecimal, // Backend espera decimal (0.19)
     costoInicial: product.cost,
     categoriaId: product.category || null,
     codigoSku: product.sku,
@@ -174,6 +196,58 @@ export const productosService = {
   async getProductoCamposExtra(productId: string): Promise<ProductoCampoExtraBackend[]> {
     const response = await apiGet<ProductoCampoExtraBackend[]>(`/productos/${productId}/campos-extra`)
     return response.data
+  },
+
+  /**
+   * Agregar producto a bodega
+   */
+  async addProductoBodega(
+    productId: string,
+    data: AddProductoBodegaDto,
+  ): Promise<ApiResponse<null>> {
+    return await apiPost(`/productos/${productId}/bodegas`, data)
+  },
+
+  /**
+   * Actualizar cantidades de producto en bodega
+   */
+  async updateProductoBodega(
+    productId: string,
+    bodegaId: string,
+    data: UpdateProductoBodegaDto,
+  ): Promise<ApiResponse<null>> {
+    return await apiPut(`/productos/${productId}/bodegas/${bodegaId}`, data)
+  },
+
+  /**
+   * Remover producto de bodega
+   */
+  async deleteProductoBodega(
+    productId: string,
+    bodegaId: string,
+  ): Promise<ApiResponse<null>> {
+    return await apiDelete(`/productos/${productId}/bodegas/${bodegaId}`)
+  },
+
+  /**
+   * Asignar/actualizar campo extra del producto
+   */
+  async setProductoCampoExtra(
+    productId: string,
+    campoExtraId: string,
+    data: SetProductoCampoExtraDto,
+  ): Promise<ApiResponse<null>> {
+    return await apiPut(`/productos/${productId}/campos-extra/${campoExtraId}`, data)
+  },
+
+  /**
+   * Remover campo extra del producto
+   */
+  async deleteProductoCampoExtra(
+    productId: string,
+    campoExtraId: string,
+  ): Promise<ApiResponse<null>> {
+    return await apiDelete(`/productos/${productId}/campos-extra/${campoExtraId}`)
   },
 }
 

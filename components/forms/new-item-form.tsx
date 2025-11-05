@@ -12,10 +12,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useExtraFields } from "@/contexts/extra-fields-context"
 import { RequiredFieldsWarning } from "./required-fields-warning"
 import { useCreateProducto } from "@/hooks/api/use-productos"
 import { mapProductToCreateDto } from "@/lib/api/services/productos.service"
+import { useCategorias } from "@/hooks/api/use-categorias"
+import { useBodegas } from "@/hooks/api/use-bodegas"
+import { useCamposExtraRequeridos } from "@/hooks/api/use-campos-extra"
 
 
 interface NewItemFormProps {
@@ -26,11 +28,16 @@ interface NewItemFormProps {
 type ItemType = "product"
 
 export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
-  const { getRequiredFields } = useExtraFields()
   const createMutation = useCreateProducto()
+  const { data: categorias = [], isLoading: isLoadingCategorias } = useCategorias(true)
+  const { data: bodegas = [], isLoading: isLoadingBodegas } = useBodegas(true)
+  const { data: requiredFields = [], isLoading: isLoadingCamposExtra } = useCamposExtraRequeridos()
   const itemType: ItemType = "product"
   const [extraFieldValues, setExtraFieldValues] = useState<Record<string, string>>({})
   const [showErrorToast, setShowErrorToast] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string>("")
+  const [selectedCategoriaId, setSelectedCategoriaId] = useState<string>("")
+  const [selectedBodegaId, setSelectedBodegaId] = useState<string>("")
 
   const schema = z
     .object({
@@ -74,7 +81,7 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
       type: "product",
       name: "",
       unitOfMeasure: "Unidad", // Por defecto "Unidad" para productos
-      warehouse: "Principal",
+      warehouse: "",
       basePrice: "",
       tax: "",
       totalPrice: "",
@@ -87,19 +94,23 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
 
   // Efecto para inicializar valores por defecto de campos extra requeridos
   useEffect(() => {
-    const requiredFields = getRequiredFields()
-    const defaultValues: Record<string, string> = {}
+    if (requiredFields.length === 0) return
     
-    requiredFields.forEach(field => {
-      if (field.defaultValue && !extraFieldValues[field.id]) {
-        defaultValues[field.id] = field.defaultValue
-      }
+    setExtraFieldValues(prev => {
+      const defaultValues: Record<string, string> = {}
+      let hasChanges = false
+      
+      requiredFields.forEach(field => {
+        // Solo agregar valor por defecto si no existe ya un valor (incluyendo vacío)
+        if (field.defaultValue && prev[field.id] === undefined) {
+          defaultValues[field.id] = field.defaultValue
+          hasChanges = true
+        }
+      })
+      
+      return hasChanges ? { ...prev, ...defaultValues } : prev
     })
-    
-    if (Object.keys(defaultValues).length > 0) {
-      setExtraFieldValues(prev => ({ ...prev, ...defaultValues }))
-    }
-  }, [getRequiredFields])
+  }, [requiredFields]) // Ejecutar cuando cambien los campos requeridos
 
   const handleExtraFieldChange = (fieldId: string, value: string) => {
     setExtraFieldValues(prev => ({
@@ -131,11 +142,41 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
 
   const onSubmit = async (data: FormSchema) => {
     try {
-      // Mapear campos extra a formato del backend
-      const camposExtra = Object.entries(extraFieldValues).map(([fieldId, valor]) => ({
-        campoExtraId: fieldId,
-        valor: String(valor),
-      }))
+      // Validar que se haya seleccionado una bodega
+      if (!selectedBodegaId) {
+        throw new Error("Debe seleccionar una bodega")
+      }
+
+      // Validar campos extra requeridos
+      const missingRequiredFields: string[] = []
+      
+      requiredFields.forEach((field) => {
+        const value = extraFieldValues[field.id]?.trim() || ""
+        // Si el campo tiene un valor por defecto, verificar si fue cambiado
+        const defaultValue = field.defaultValue || ""
+        const finalValue = value || defaultValue
+        
+        if (!finalValue || finalValue.trim() === "") {
+          missingRequiredFields.push(field.name)
+        }
+      })
+
+      if (missingRequiredFields.length > 0) {
+        const errorMsg = `Debes completar los siguientes campos obligatorios: ${missingRequiredFields.join(", ")}`
+        setErrorMessage(errorMsg)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 5000)
+        return
+      }
+
+      // Mapear campos extra requeridos a formato del backend (incluir valores por defecto si no fueron cambiados)
+      const camposExtra = requiredFields.map((field) => {
+        const value = extraFieldValues[field.id]?.trim() || field.defaultValue || ""
+        return {
+          campoExtraId: field.id,
+          valor: String(value),
+        }
+      })
 
       // Crear DTO del backend
       const createDto = mapProductToCreateDto(
@@ -144,20 +185,18 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
           sku: undefined, // El backend lo genera automáticamente si no se proporciona
           description: `Producto: ${data.name}`,
           basePrice: parseFloat(data.basePrice) || 0,
-          taxPercent: parseFloat(data.tax) || 0,
+          taxPercent: parseFloat(data.tax) || 0, // El mapper convierte a decimal
           cost: parseFloat(data.initialCost || "0") || 0,
           unit: data.unitOfMeasure,
         },
         {
-          // Por ahora, estos campos no están disponibles en el formulario
-          // Se pueden agregar en el futuro
-          categoriaId: undefined,
-          bodegaPrincipalId: undefined,
+          categoriaId: selectedCategoriaId || null,
+          bodegaPrincipalId: selectedBodegaId,
           cantidadInicial: parseInt(data.quantity || "0") || undefined,
         },
       )
 
-      // Agregar campos extra si hay
+      // Agregar campos extra requeridos (siempre deben estar presentes si hay campos requeridos)
       if (camposExtra.length > 0) {
         createDto.camposExtra = camposExtra
       }
@@ -167,8 +206,9 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
       onSuccess?.()
       onClose()
     } catch (error) {
-      // Los errores ya se manejan en el hook
+      // Los errores de API ya se manejan en el hook
       console.error("Error al crear producto:", error)
+      throw error // Re-lanzar para que handleFormSubmit lo capture
     }
   }
 
@@ -291,18 +331,25 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
             </Label>
             <input {...register("warehouse")} type="hidden" />
             <Select
-              value={watchedValues.warehouse || "Principal"}
-              onValueChange={(value) => setValue("warehouse", value, { shouldValidate: true })}
+              value={selectedBodegaId}
+              onValueChange={(bodegaId) => {
+                setSelectedBodegaId(bodegaId)
+                const bodega = bodegas.find(b => b.id === bodegaId)
+                setValue("warehouse", bodega?.nombre || "", { shouldValidate: true })
+              }}
+              disabled={isLoadingBodegas}
             >
               <SelectTrigger className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 focus:outline-none ${
                 errors.warehouse ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
               }`}>
-                <SelectValue />
+                <SelectValue placeholder={isLoadingBodegas ? "Cargando bodegas..." : "Selecciona una bodega"} />
               </SelectTrigger>
               <SelectContent className="rounded-3xl">
-                <SelectItem value="Principal">Principal</SelectItem>
-                <SelectItem value="Secundaria">Secundaria</SelectItem>
-                <SelectItem value="Almacén">Almacén</SelectItem>
+                {bodegas.map((bodega) => (
+                  <SelectItem key={bodega.id} value={bodega.id}>
+                    {bodega.nombre}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -428,6 +475,8 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
         <RequiredFieldsWarning 
           onFieldChange={handleExtraFieldChange}
           fieldValues={extraFieldValues}
+          requiredFields={requiredFields}
+          isLoading={isLoadingCamposExtra}
         />
 
         {/* Acciones */}
@@ -460,10 +509,10 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
       {/* Mensaje flotante de error */}
       {showErrorToast && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
-            <AlertCircle className="h-5 w-5 text-red-600" />
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300 max-w-md">
+            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
             <p className="text-sm font-medium text-red-800">
-              Error, verifica los campos marcados en rojo para continuar
+              {errorMessage || "Error, verifica los campos marcados en rojo y los campos adicionales obligatorios para continuar"}
             </p>
           </div>
         </div>
