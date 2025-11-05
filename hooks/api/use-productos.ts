@@ -76,7 +76,7 @@ export function useCreateProducto() {
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       
       toast({
-        title: "Producto creado",
+        title: "✅ Producto creado",
         description: response.message || "Producto creado exitosamente.",
       })
     },
@@ -107,7 +107,7 @@ export function useUpdateProducto() {
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.id) })
       
       toast({
-        title: "Producto actualizado",
+        title: "✅ Producto actualizado",
         description: response.message || "Producto actualizado exitosamente.",
       })
     },
@@ -261,7 +261,7 @@ export function useAddProductoBodega() {
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.productId) })
       
       toast({
-        title: "Bodega agregada",
+        title: "✅ Bodega agregada",
         description: response.message || "Producto agregado a la bodega exitosamente.",
       })
     },
@@ -305,7 +305,7 @@ export function useUpdateProductoBodega() {
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.productId) })
       
       toast({
-        title: "Bodega actualizada",
+        title: "✅ Bodega actualizada",
         description: response.message || "Cantidades actualizadas exitosamente.",
       })
     },

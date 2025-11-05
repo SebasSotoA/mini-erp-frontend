@@ -98,7 +98,7 @@ export function mapProductToCreateDto(
  * Mapea un producto del frontend al DTO de actualización del backend
  */
 export function mapProductToUpdateDto(
-  product: Partial<Product>,
+  product: Partial<Product> & { bodegaPrincipalId?: string },
 ): UpdateProductoDto {
   // Convertir impuesto de porcentaje (19) a decimal (0.19)
   const taxPercent = product.taxPercent
@@ -114,6 +114,7 @@ export function mapProductToUpdateDto(
     codigoSku: product.sku,
     descripcion: product.description || null,
     imagenProductoUrl: product.imageUrl || null,
+    bodegaPrincipalId: product.bodegaPrincipalId, // Incluir bodegaPrincipalId si está presente
   }
 }
 

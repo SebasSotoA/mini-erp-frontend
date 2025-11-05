@@ -162,6 +162,7 @@ export interface UpdateProductoDto {
   codigoSku?: string
   descripcion?: string | null
   imagenProductoUrl?: string | null
+  bodegaPrincipalId?: string // ID de la bodega principal (opcional en actualización)
 }
 
 /**

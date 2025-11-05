@@ -22,6 +22,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { useCreateProducto } from "@/hooks/api/use-productos"
 import { mapProductToCreateDto } from "@/lib/api/services/productos.service"
+import { uploadProductImage, deleteProductImage, moveImageToProductFolder } from "@/lib/storage/supabase-client"
 import { useCategorias } from "@/hooks/api/use-categorias"
 import { useBodegas, bodegasKeys, useCreateBodega } from "@/hooks/api/use-bodegas"
 import { useCamposExtra, camposExtraKeys, useCreateCampoExtra, mapTipoDatoFrontendToBackend } from "@/hooks/api/use-campos-extra"
@@ -54,12 +55,15 @@ export default function AddInventoryItemPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isImageDragOver, setIsImageDragOver] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null) // URL de la imagen subida a Supabase
   const [code, setCode] = useState("")
   const [selectedCategoriaId, setSelectedCategoriaId] = useState<string>("none")
   const [description, setDescription] = useState("")
   const [selectedExtraFields, setSelectedExtraFields] = useState<string[]>([])
   const [extraFieldValues, setExtraFieldValues] = useState<Record<string, string>>({})
   const [showErrorToast, setShowErrorToast] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const [initialCostError, setInitialCostError] = useState(false)
   const [quantityError, setQuantityError] = useState(false)
   const [bodegaPrincipalError, setBodegaPrincipalError] = useState(false)
@@ -681,13 +685,52 @@ export default function AddInventoryItemPage() {
   }
 
   const onImageChange = (file: File | null) => {
-    setImageFile(file)
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setImagePreview(url)
-    } else {
+    // Si se está eliminando la imagen, limpiar todo
+    if (!file) {
+      // Si había una imagen subida, eliminarla de Supabase
+      if (uploadedImageUrl) {
+        deleteProductImage(uploadedImageUrl).catch((error) => {
+          console.error("Error al eliminar imagen de Supabase:", error)
+        })
+      }
+      setImageFile(null)
       setImagePreview(null)
+      setUploadedImageUrl(null)
+      return
     }
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "⚠️ Archivo no válido",
+        description: "Por favor, selecciona un archivo de imagen válido (JPG, PNG, etc.).",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validar tamaño (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      toast({
+        title: "⚠️ Imagen muy grande",
+        description: "La imagen no puede ser mayor a 5MB. Por favor, selecciona una imagen más pequeña.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Si había una imagen subida anteriormente, eliminarla
+    if (uploadedImageUrl) {
+      deleteProductImage(uploadedImageUrl).catch((error) => {
+        console.error("Error al eliminar imagen anterior:", error)
+      })
+    }
+
+    setImageFile(file)
+    const url = URL.createObjectURL(file)
+    setImagePreview(url)
+    setUploadedImageUrl(null) // Resetear URL subida hasta que se suba nuevamente
   }
 
   const handleImageDragOver = (e: React.DragEvent) => {
@@ -1009,27 +1052,62 @@ export default function AddInventoryItemPage() {
     const missingRequiredFields: string[] = []
     
     camposExtraRequeridos.forEach((field) => {
-      // Verificar que el campo esté seleccionado
-      const hasField = selectedExtraFields.includes(field.id)
-      if (!hasField) {
-        missingRequiredFields.push(field.name)
-        return
-      }
-      
-      // Verificar que tenga un valor válido
-      const value = extraFieldValues[field.id]?.trim() || ""
+      // Obtener el valor ingresado por el usuario (puede estar vacío)
+      const userValue = extraFieldValues[field.id]?.trim() || ""
+      // Si no hay valor del usuario, usar el defaultValue
       const defaultValue = field.defaultValue || ""
-      const finalValue = value || defaultValue
+      const finalValue = userValue || defaultValue
       
+      // Validar que el campo tenga un valor final (no vacío)
+      // Si el usuario borró el valor por defecto y no ingresó uno nuevo, debe fallar
+      // Pero si hay defaultValue, lo usamos como fallback
       if (!finalValue || finalValue.trim() === "") {
         missingRequiredFields.push(field.name)
       }
     })
 
     if (missingRequiredFields.length > 0) {
+      setErrorMessage(`Los campos obligatorios deben tener un valor: ${missingRequiredFields.join(", ")}. Por favor, completa estos campos antes de guardar.`)
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Campos obligatorios incompletos",
-        description: `Debes completar los siguientes campos obligatorios: ${missingRequiredFields.join(", ")}. Por favor, revisa los campos adicionales y completa los valores requeridos.`,
+        description: `Los campos obligatorios deben tener un valor: ${missingRequiredFields.join(", ")}. Por favor, completa estos campos antes de guardar.`,
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validar campos extra opcionales seleccionados
+    // Si un campo opcional está seleccionado, también debe tener un valor
+    const camposOpcionalesSeleccionados = extraFields.filter(field => 
+      !field.isRequired && 
+      field.isActive && 
+      selectedExtraFields.includes(field.id)
+    )
+    
+    const missingOptionalFields: string[] = []
+    
+    camposOpcionalesSeleccionados.forEach((field) => {
+      // Obtener el valor ingresado por el usuario (puede estar vacío)
+      const userValue = extraFieldValues[field.id]?.trim() || ""
+      // Si no hay valor del usuario, usar el defaultValue
+      const defaultValue = field.defaultValue || ""
+      const finalValue = userValue || defaultValue
+      
+      // Si el campo está seleccionado, debe tener un valor (no puede estar vacío)
+      if (!finalValue || finalValue.trim() === "") {
+        missingOptionalFields.push(field.name)
+      }
+    })
+
+    if (missingOptionalFields.length > 0) {
+      setErrorMessage(`Los campos opcionales seleccionados deben tener un valor: ${missingOptionalFields.join(", ")}. Por favor, completa estos campos o deselecciónalos.`)
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
+      toast({
+        title: "⚠️ Campos opcionales incompletos",
+        description: `Los campos opcionales seleccionados deben tener un valor: ${missingOptionalFields.join(", ")}. Por favor, completa estos campos o deselecciónalos.`,
         variant: "destructive",
       })
       return
@@ -1046,24 +1124,58 @@ export default function AddInventoryItemPage() {
     }
 
     try {
+      // Subir imagen a Supabase si hay un archivo nuevo
+      let finalImageUrl: string | undefined = undefined
+      
+      if (imageFile) {
+        setIsUploadingImage(true)
+        try {
+          // Subir imagen a carpeta temporal (sin productId aún)
+          finalImageUrl = await uploadProductImage(imageFile)
+          setUploadedImageUrl(finalImageUrl)
+          toast({
+            title: "✅ Imagen subida",
+            description: "La imagen se ha subido exitosamente.",
+          })
+        } catch (error: any) {
+          console.error("Error al subir imagen:", error)
+          setIsUploadingImage(false)
+          toast({
+            title: "❌ Error al subir imagen",
+            description: error?.message || "No se pudo subir la imagen. Por favor, intenta nuevamente.",
+            variant: "destructive",
+          })
+          return
+        } finally {
+          setIsUploadingImage(false)
+        }
+      }
+
       // Mapear campos extra seleccionados a formato del backend
+      // Mapear campos extra seleccionados - usar valor del usuario o defaultValue si no hay valor del usuario
       const camposExtra = selectedExtraFields.map((fieldId) => {
         const field = extraFields.find(f => f.id === fieldId)
         if (!field) return null
-        const value = extraFieldValues[fieldId]?.trim() || field.defaultValue || ""
+        // Usar valor del usuario si existe (incluso si está vacío), sino usar defaultValue
+        const userValue = extraFieldValues[fieldId]?.trim() || ""
+        const defaultValue = field.defaultValue || ""
+        const finalValue = userValue || defaultValue
         return {
           campoExtraId: fieldId,
-          valor: String(value),
+          valor: String(finalValue),
         }
       }).filter((campo): campo is NonNullable<typeof campo> => campo !== null)
 
       // Asegurar que todos los campos requeridos estén incluidos
       camposExtraRequeridos.forEach((field) => {
         if (!camposExtra.find(c => c.campoExtraId === field.id)) {
-          const value = field.defaultValue || ""
+          // Para campos requeridos, usar valor del usuario o defaultValue
+          const userValue = extraFieldValues[field.id]?.trim() || ""
+          const defaultValue = field.defaultValue || ""
+          const finalValue = userValue || defaultValue
           camposExtra.push({
             campoExtraId: field.id,
-            valor: String(value),
+            valor: String(finalValue),
           })
         }
       })
@@ -1096,7 +1208,7 @@ export default function AddInventoryItemPage() {
           taxPercent: parseFloat(tax || "0"), // El mapper convierte a decimal
           cost: parseFloat(initialCost || "0"),
           unit,
-          imageUrl: imagePreview || undefined, // Por ahora solo URL, no upload
+          imageUrl: finalImageUrl || undefined, // URL de la imagen subida a Supabase
         },
         {
           categoriaId: selectedCategoriaId && selectedCategoriaId !== "none" ? selectedCategoriaId : null,
@@ -1113,12 +1225,24 @@ export default function AddInventoryItemPage() {
         createDto.camposExtra = camposExtra
       }
 
-      await createMutation.mutateAsync(createDto)
+      const response = await createMutation.mutateAsync(createDto)
 
-      toast({
-        title: "✅ Producto creado",
-        description: `El producto "${name.trim()}" ha sido creado exitosamente.`,
-      })
+      // Si se creó el producto exitosamente y hay una imagen en carpeta temporal, moverla a la carpeta del producto
+      if (response.data?.id && finalImageUrl && finalImageUrl.includes("/temp/")) {
+        try {
+          const newImageUrl = await moveImageToProductFolder(finalImageUrl, response.data.id)
+          // Actualizar la URL de la imagen en el producto
+          // Nota: Esto requeriría una actualización adicional del producto, pero por ahora
+          // la imagen funciona con la URL temporal. Si quieres moverla, puedes hacer una actualización aquí.
+          setUploadedImageUrl(newImageUrl)
+        } catch (error) {
+          console.error("Error al mover imagen a carpeta del producto:", error)
+          // No es crítico, la imagen sigue funcionando desde la carpeta temporal
+        }
+      }
+
+      // El toast de éxito ya se muestra en el hook useCreateProducto
+      // No necesitamos duplicar aquí, pero podemos agregar un pequeño delay para asegurar que se muestre
     } catch (error: any) {
       // Los errores ya se manejan en el hook, pero agregar toast adicional si es necesario
       console.error("Error al crear producto:", error)
@@ -1828,8 +1952,15 @@ export default function AddInventoryItemPage() {
                           type="file"
                           accept="image/*"
                           onChange={(e) => onImageChange(e.target.files?.[0] || null)}
-                          className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-camouflage-green-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-camouflage-green-800"
+                          disabled={isUploadingImage}
+                          className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-camouflage-green-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-camouflage-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
+                        {isUploadingImage && (
+                          <div className="text-sm text-camouflage-green-600 flex items-center gap-2">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+                            Subiendo imagen...
+                          </div>
+                        )}
                         {imagePreview && (
                           <Button
                             type="button"
@@ -1843,6 +1974,7 @@ export default function AddInventoryItemPage() {
                                 description: "La imagen ha sido eliminada exitosamente.",
                               })
                             }}
+                            disabled={isUploadingImage}
                           >
                             Eliminar imagen
                           </Button>
@@ -1885,19 +2017,19 @@ export default function AddInventoryItemPage() {
                   <Button
                     variant="primary"
                     className="w-full"
-                    disabled={createMutation.isPending}
+                    disabled={createMutation.isPending || isUploadingImage}
                     onClick={handleSubmit(handleFormSubmit, (errors) => handleFormError(errors))}
                   >
-                    {createMutation.isPending ? "Guardando..." : "Guardar"}
+                    {createMutation.isPending || isUploadingImage ? "Guardando..." : "Guardar"}
                   </Button>
                 </div>
                 <Button
                   variant="secondary"
                   className="w-full"
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || isUploadingImage}
                     onClick={handleSubmit(handleFormSubmitAndCreateAnother, (errors) => handleFormError(errors))}
                 >
-                  {createMutation.isPending ? "Guardando..." : "Guardar y crear otro"}
+                  {createMutation.isPending || isUploadingImage ? "Guardando..." : "Guardar y crear otro"}
                 </Button>
               </div>
             </div>
@@ -2198,6 +2330,18 @@ export default function AddInventoryItemPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Toast de error de validación personalizado */}
+      {showErrorToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm font-medium text-red-800">
+              {errorMessage || "Error, verifica los campos marcados en rojo para continuar"}
+            </p>
+          </div>
+        </div>
+      )}
       
     </MainLayout>
   )

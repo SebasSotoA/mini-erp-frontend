@@ -22,7 +22,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { ExtendedProduct } from "@/lib/types/items"
 import { useProducto, useUpdateProducto, useProductoBodegas, useProductoCamposExtra, useAddProductoBodega, useUpdateProductoBodega, useDeleteProductoBodega, productoKeys } from "@/hooks/api/use-productos"
-import { mapProductToUpdateDto } from "@/lib/api/services/productos.service"
+import { mapProductToUpdateDto, productosService } from "@/lib/api/services/productos.service"
+import { uploadProductImage, deleteProductImage } from "@/lib/storage/supabase-client"
 import { useCategorias } from "@/hooks/api/use-categorias"
 import { useBodegas, bodegasKeys, useCreateBodega } from "@/hooks/api/use-bodegas"
 import { useCamposExtra, camposExtraKeys, mapCampoExtraToFrontend, useCreateCampoExtra, mapTipoDatoFrontendToBackend } from "@/hooks/api/use-campos-extra"
@@ -67,6 +68,9 @@ export default function EditInventoryItemPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [isImageDragOver, setIsImageDragOver] = useState(false)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null) // URL de la imagen subida a Supabase
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null) // URL original de la imagen del producto
   const [code, setCode] = useState("")
   const [description, setDescription] = useState("")
   const [selectedExtraFields, setSelectedExtraFields] = useState<string[]>([])
@@ -75,9 +79,15 @@ export default function EditInventoryItemPage() {
   // Estados de error
   const [initialCostError, setInitialCostError] = useState(false)
   const [quantityError, setQuantityError] = useState(false)
+  const [quantityMinError, setQuantityMinError] = useState(false)
+  const [quantityMaxError, setQuantityMaxError] = useState(false)
   const [bodegaPrincipalError, setBodegaPrincipalError] = useState(false)
   const [basePriceError, setBasePriceError] = useState(false)
   const [totalPriceError, setTotalPriceError] = useState(false)
+  
+  // Estados para tarjetas de error personalizadas
+  const [showErrorToast, setShowErrorToast] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
 
   // Validación con Zod + RHF (controlamos el estado local y sincronizamos con RHF)
   const editSchema = z
@@ -151,6 +161,7 @@ export default function EditInventoryItemPage() {
   
   // Estados para modal de nuevo campo extra
   const [isNewFieldModalOpen, setIsNewFieldModalOpen] = useState(false)
+  const [isExtraFieldsPopoverOpen, setIsExtraFieldsPopoverOpen] = useState(false)
   const [newFieldData, setNewFieldData] = useState({
     name: "",
     type: "texto" as "texto" | "número" | "número decimal" | "fecha" | "si/no",
@@ -184,6 +195,10 @@ export default function EditInventoryItemPage() {
   const lastProcessedBodegasRef = useRef<string>("") // Rastrear último productoBodegas procesado
   const lastSelectedBodegaIdRef = useRef<string | null>(null) // Rastrear último selectedBodegaId establecido
   const isSettingBodegaPrincipalRef = useRef(false) // Flag para prevenir bucles al establecer bodega principal
+  
+  // Refs para prevenir bucles en campos extra
+  const lastProcessedCamposExtraRef = useRef<string>("") // Rastrear último productoCamposExtra procesado
+  const isProcessingExtraFieldsRef = useRef(false) // Flag para prevenir bucles al procesar campos extra
 
   // Obtener producto original del backend para tener categoriaId
   const [productoOriginal, setProductoOriginal] = useState<any>(null)
@@ -204,6 +219,8 @@ export default function EditInventoryItemPage() {
       lastProcessedBodegasRef.current = ""
       isLoadingBodegasRef.current = false
       isSettingBodegaPrincipalRef.current = false
+      lastProcessedCamposExtraRef.current = ""
+      isProcessingExtraFieldsRef.current = false
     }
     
     // Solo cargar si no está ya cargado para este ID
@@ -228,10 +245,15 @@ export default function EditInventoryItemPage() {
     setTotalPrice(String(product.price))
     setBasePrice(String((product as ExtendedProduct).basePrice ?? product.price))
     setTax(String((product as ExtendedProduct).taxPercent ?? 0))
-    setQuantity(String(product.stock))
+    // NO usar product.stock aquí - es el stock total (suma de todas las bodegas)
+    // La cantidad inicial de la bodega principal se establecerá cuando se carguen productoBodegas
+    // setQuantity(String(product.stock)) // ❌ REMOVIDO - esto sumaba todas las bodegas
     setInitialCost(String(product.cost))
     setUnit((product as ExtendedProduct).unit ?? "Unidad")
-    setImagePreview((product as ExtendedProduct).imageUrl ?? null)
+    const productImageUrl = (product as ExtendedProduct).imageUrl ?? null
+    setImagePreview(productImageUrl)
+    setOriginalImageUrl(productImageUrl) // Guardar URL original para comparar después
+    setUploadedImageUrl(productImageUrl) // Inicializar con la URL existente
     
     // Mapear categoriaId a nombre para el select
     const categoriaId = productoOriginal.categoriaId
@@ -294,13 +316,31 @@ export default function EditInventoryItemPage() {
         return
       }
       
-      // Establecer bodega principal y sus cantidades SOLO si es diferente
-      if (bodegaPrincipal && targetBodegaId && targetBodegaId !== currentBodegaId) {
-        lastSelectedBodegaIdRef.current = targetBodegaId
-        setSelectedBodegaId(targetBodegaId)
-        setQuantity(String(bodegaPrincipal.cantidadInicial))
-        setQuantityMin(bodegaPrincipal.cantidadMinima?.toString() || "")
-        setQuantityMax(bodegaPrincipal.cantidadMaxima?.toString() || "")
+      // Establecer bodega principal y sus cantidades
+      // IMPORTANTE: Usar la cantidad inicial de la bodega principal específica, NO el stock total
+      if (bodegaPrincipal && targetBodegaId) {
+        // Si la bodega principal cambió o aún no se ha establecido la cantidad, actualizar
+        if (targetBodegaId !== currentBodegaId || !quantity) {
+          lastSelectedBodegaIdRef.current = targetBodegaId
+          setSelectedBodegaId(targetBodegaId)
+          // Usar cantidadInicial de la bodega principal, NO el stock total
+          setQuantity(String(bodegaPrincipal.cantidadInicial))
+          setQuantityMin(bodegaPrincipal.cantidadMinima?.toString() || "")
+          setQuantityMax(bodegaPrincipal.cantidadMaxima?.toString() || "")
+        } else if (targetBodegaId === currentBodegaId) {
+          // Si es la misma bodega, asegurar que la cantidad esté correcta
+          // Solo actualizar si la cantidad actual no coincide con la de la bodega principal
+          const cantidadActual = quantity ? parseInt(quantity) : null
+          if (cantidadActual !== bodegaPrincipal.cantidadInicial) {
+            setQuantity(String(bodegaPrincipal.cantidadInicial))
+          }
+          if (quantityMin !== (bodegaPrincipal.cantidadMinima?.toString() || "")) {
+            setQuantityMin(bodegaPrincipal.cantidadMinima?.toString() || "")
+          }
+          if (quantityMax !== (bodegaPrincipal.cantidadMaxima?.toString() || "")) {
+            setQuantityMax(bodegaPrincipal.cantidadMaxima?.toString() || "")
+          }
+        }
       } else if (!bodegaPrincipal && bodegaPrincipalIdFromProduct && bodegaPrincipalIdFromProduct !== currentBodegaId) {
         // Si no hay bodega marcada como principal pero tenemos el ID del producto, establecerlo
         lastSelectedBodegaIdRef.current = bodegaPrincipalIdFromProduct
@@ -308,6 +348,7 @@ export default function EditInventoryItemPage() {
         // Buscar la bodega para obtener sus cantidades
         const bodegaConId = productoBodegas.find((b: ProductoBodegaBackend) => b.bodegaId === bodegaPrincipalIdFromProduct)
         if (bodegaConId) {
+          // Usar cantidadInicial de la bodega específica, NO el stock total
           setQuantity(String(bodegaConId.cantidadInicial))
           setQuantityMin(bodegaConId.cantidadMinima?.toString() || "")
           setQuantityMax(bodegaConId.cantidadMaxima?.toString() || "")
@@ -369,39 +410,93 @@ export default function EditInventoryItemPage() {
     if (!productoCamposExtra || !id || !isInitializedRef.current) return
     if (initializedProductIdRef.current !== id) return
     if (!extraFields.length) return // Esperar a que se carguen los campos extra
+    if (isProcessingExtraFieldsRef.current) return // Prevenir ejecución concurrente
     
-    if (productoCamposExtra.length === 0) {
-      setSelectedExtraFields([])
-      setExtraFieldValues({})
-      return
-    }
+    // Crear una firma única de productoCamposExtra para comparar
+    const currentCamposSignature = JSON.stringify(productoCamposExtra.map(ce => ({
+      id: ce.campoExtraId,
+      valor: ce.valor
+    })).sort((a, b) => a.id.localeCompare(b.id)))
     
-    const camposExtraIds = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId)
-    setSelectedExtraFields(camposExtraIds)
+    // Si ya procesamos este mismo conjunto de campos, no hacer nada
+    if (lastProcessedCamposExtraRef.current === currentCamposSignature) return
     
-    // Cargar valores de productoCamposExtra, usando valores por defecto si el valor está vacío o no existe
-    const valores: Record<string, string> = {}
-    productoCamposExtra.forEach((ce: ProductoCampoExtraBackend) => {
-      const campoExtra = extraFields.find(f => f.id === ce.campoExtraId)
-      if (!campoExtra) return
+    isProcessingExtraFieldsRef.current = true
+    
+    try {
+      // Asegurar que los campos requeridos siempre estén incluidos
+      const requiredFieldIds = extraFields
+        .filter(f => f.isRequired && f.isActive)
+        .map(f => f.id)
       
-      // Si el valor del producto está vacío, null o undefined, usar el valor por defecto del campo
-      const valorProducto = ce.valor?.trim() || ""
-      const valorPorDefecto = campoExtra.defaultValue || ""
-      valores[ce.campoExtraId] = valorProducto || valorPorDefecto
-    })
-    
-    // También asegurar que todos los campos seleccionados tengan valores (usar defaults si no tienen)
-    camposExtraIds.forEach((campoId) => {
-      if (!valores[campoId]) {
-        const campoExtra = extraFields.find(f => f.id === campoId)
-        if (campoExtra?.defaultValue) {
-          valores[campoId] = campoExtra.defaultValue
-        }
+      if (productoCamposExtra.length === 0) {
+        // Si no hay campos extra del producto, al menos incluir los campos requeridos
+        setSelectedExtraFields(requiredFieldIds)
+        
+        // Inicializar valores por defecto para campos requeridos
+        const defaultValues: Record<string, string> = {}
+        requiredFieldIds.forEach(fieldId => {
+          const field = extraFields.find(f => f.id === fieldId)
+          if (field?.defaultValue) {
+            defaultValues[fieldId] = field.defaultValue
+          }
+        })
+        setExtraFieldValues(defaultValues)
+        
+        lastProcessedCamposExtraRef.current = currentCamposSignature
+        return
       }
-    })
-    
-    setExtraFieldValues(valores)
+      
+      const camposExtraIds = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId)
+      
+      // Combinar campos del producto con campos requeridos (sin duplicados)
+      const allSelectedFields = Array.from(new Set([...camposExtraIds, ...requiredFieldIds]))
+      
+      setSelectedExtraFields(allSelectedFields)
+      
+      // Cargar valores de productoCamposExtra, pero PRESERVAR valores que el usuario ya ingresó
+      // Usar valores por defecto solo si el valor está vacío y no hay un valor ingresado por el usuario
+      setExtraFieldValues(prev => {
+        const valores: Record<string, string> = { ...prev } // Preservar valores existentes
+        
+        productoCamposExtra.forEach((ce: ProductoCampoExtraBackend) => {
+          const campoExtra = extraFields.find(f => f.id === ce.campoExtraId)
+          if (!campoExtra) return
+          
+          // Si el usuario ya ingresó un valor, preservarlo
+          const valorUsuario = prev[ce.campoExtraId]
+          if (valorUsuario && valorUsuario.trim() !== "") {
+            valores[ce.campoExtraId] = valorUsuario
+            return
+          }
+          
+          // Si no hay valor del usuario, usar el valor del producto o el valor por defecto
+          const valorProducto = ce.valor?.trim() || ""
+          const valorPorDefecto = campoExtra.defaultValue || ""
+          valores[ce.campoExtraId] = valorProducto || valorPorDefecto
+        })
+        
+        // También asegurar que todos los campos seleccionados (incluyendo requeridos) tengan valores (usar defaults si no tienen)
+        allSelectedFields.forEach((campoId) => {
+          // Si ya tiene un valor (del usuario o del backend), no sobrescribirlo
+          if (valores[campoId] && valores[campoId].trim() !== "") {
+            return
+          }
+          
+          const campoExtra = extraFields.find(f => f.id === campoId)
+          if (campoExtra?.defaultValue) {
+            valores[campoId] = campoExtra.defaultValue
+          }
+        })
+        
+        return valores
+      })
+      lastProcessedCamposExtraRef.current = currentCamposSignature
+    } finally {
+      setTimeout(() => {
+        isProcessingExtraFieldsRef.current = false
+      }, 0)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productoCamposExtra, id, extraFields])
 
@@ -409,26 +504,62 @@ export default function EditInventoryItemPage() {
   useEffect(() => {
     if (!extraFields.length || !isInitializedRef.current) return
     if (initializedProductIdRef.current !== id) return
+    if (isProcessingExtraFieldsRef.current) return // Prevenir ejecución concurrente
     
     const requiredFields = extraFields.filter(f => f.isRequired && f.isActive)
     const requiredFieldIds = requiredFields.map(f => f.id)
     
+    console.log("🔵 useEffect campos requeridos: requiredFieldIds=", requiredFieldIds)
+    
+    // Actualizar campos seleccionados para incluir requeridos (siempre asegurar que estén)
     setSelectedExtraFields(prev => {
       const newIds = requiredFieldIds.filter(id => !prev.includes(id))
-      if (newIds.length > 0) {
-        return [...prev, ...newIds]
+      if (newIds.length === 0) {
+        // Aun si no hay nuevos IDs, asegurar que todos los requeridos estén presentes
+        const allRequiredPresent = requiredFieldIds.every(id => prev.includes(id))
+        if (allRequiredPresent) return prev
+        // Si faltan algunos, agregarlos
+        return Array.from(new Set([...prev, ...requiredFieldIds]))
       }
-      return prev
+      console.log("🔵 Agregando campos requeridos a selectedExtraFields:", newIds)
+      return Array.from(new Set([...prev, ...newIds]))
     })
     
-    // Inicializar valores por defecto para TODOS los campos seleccionados (requeridos y opcionales) que no tienen valor
+    // Inicializar valores por defecto para TODOS los campos requeridos que no tienen valor
     setExtraFieldValues(prev => {
       const defaultValues: Record<string, string> = {}
       
-      // Aplicar valores por defecto a todos los campos seleccionados que no tienen valor
+      // Asegurar que los campos requeridos tengan valores por defecto si no los tienen
+      requiredFields.forEach(field => {
+        const currentValue = prev[field.id]
+        // Si no tiene valor o el valor es "undefined" (string), usar el defaultValue
+        if (field.defaultValue && (!currentValue || currentValue === "undefined" || currentValue.trim() === "")) {
+          defaultValues[field.id] = field.defaultValue
+        }
+      })
+      
+      if (Object.keys(defaultValues).length === 0) return prev // No hay cambios
+      console.log("🔵 Aplicando valores por defecto a campos requeridos:", defaultValues)
+      return { ...prev, ...defaultValues }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extraFields.length, id, extraFields])
+  
+  // Efecto separado para aplicar valores por defecto a campos opcionales seleccionados
+  // Este efecto solo se ejecuta cuando cambian los campos seleccionados, pero de forma segura
+  useEffect(() => {
+    if (!extraFields.length || !isInitializedRef.current) return
+    if (initializedProductIdRef.current !== id) return
+    if (isProcessingExtraFieldsRef.current) return
+    if (selectedExtraFields.length === 0) return
+    
+    // Aplicar valores por defecto solo a campos opcionales seleccionados que no tienen valor
+    setExtraFieldValues(prev => {
+      const defaultValues: Record<string, string> = {}
+      
       selectedExtraFields.forEach((campoId) => {
         const field = extraFields.find(f => f.id === campoId)
-        if (!field) return
+        if (!field || field.isRequired) return // Saltar campos requeridos (ya se manejan arriba)
         
         const currentValue = prev[campoId]
         // Si no tiene valor o está vacío, y el campo tiene un valor por defecto, usarlo
@@ -437,18 +568,11 @@ export default function EditInventoryItemPage() {
         }
       })
       
-      // También asegurar que los campos requeridos tengan valores por defecto si no los tienen
-      requiredFields.forEach(field => {
-        const currentValue = prev[field.id]
-        if (field.defaultValue && (!currentValue || currentValue.trim() === "")) {
-          defaultValues[field.id] = field.defaultValue
-        }
-      })
-      
-      return Object.keys(defaultValues).length > 0 ? { ...prev, ...defaultValues } : prev
+      if (Object.keys(defaultValues).length === 0) return prev // No hay cambios
+      return { ...prev, ...defaultValues }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extraFields.length, id, selectedExtraFields])
+  }, [selectedExtraFields.length, id]) // Solo dependemos de la longitud, no del array completo
 
   const resetWarehouseModal = () => {
     setMwWarehouseId("")
@@ -470,7 +594,16 @@ export default function EditInventoryItemPage() {
   }
 
   const saveWarehouseEntry = async () => {
-    if (!id) return
+    console.log("🔵 saveWarehouseEntry llamado")
+    console.log("🔵 id:", id)
+    console.log("🔵 mwWarehouseId:", mwWarehouseId)
+    console.log("🔵 mwQtyInit:", mwQtyInit)
+    console.log("🔵 editingWarehouseId:", editingWarehouseId)
+    
+    if (!id) {
+      console.error("❌ No hay ID de producto")
+      return
+    }
     
     // Validar bodega seleccionada
     if (!mwWarehouseId) {
@@ -504,19 +637,38 @@ export default function EditInventoryItemPage() {
       return
     }
 
-    // Identificar bodega principal usando bodegaPrincipalIdFromProduct como fuente de verdad
-    const bodegaPrincipalId = bodegaPrincipalIdFromProduct || 
-                             productoBodegas.find((b: ProductoBodegaBackend) => b.esPrincipal === true)?.bodegaId || 
-                             selectedBodegaId
+    // Identificar bodega principal: priorizar selectedBodegaId (el valor actual del dropdown)
+    // que es la fuente de verdad más actual, incluso si aún no se ha guardado
+    const bodegaPrincipalActual = productoBodegas.find((b: ProductoBodegaBackend) => b.esPrincipal === true)
+    const bodegaPrincipalId = selectedBodegaId || // Priorizar selectedBodegaId (valor actual del dropdown)
+                             bodegaPrincipalActual?.bodegaId || // Si no hay selectedBodegaId, usar la del backend
+                             bodegaPrincipalIdFromProduct // Fallback al ID del producto
     
-    // Validar que la bodega seleccionada no sea la bodega principal
+    // Validar que la bodega seleccionada no sea la bodega principal actual
     if (bodegaPrincipalId && mwWarehouseId === bodegaPrincipalId) {
       const bodegaPrincipal = bodegas.find(b => b.id === bodegaPrincipalId)
       toast({
-        title: "⚠️ Bodega ya configurada",
-        description: `La bodega "${bodegaPrincipal?.nombre || "seleccionada"}" ya está configurada como bodega principal. Por favor, selecciona una bodega diferente.`,
+        title: "⚠️ Bodega ya configurada como principal",
+        description: `La bodega "${bodegaPrincipal?.nombre || "seleccionada"}" ya está configurada como bodega principal. No puedes agregarla como bodega adicional. Por favor, selecciona una bodega diferente.`,
         variant: "destructive",
       })
+      setMwWarehouseError(true)
+      return
+    }
+    
+    // También validar si la bodega está marcada como principal en productoBodegas
+    // (por si acaso hay algún desfase entre selectedBodegaId y productoBodegas)
+    const bodegaEsPrincipal = productoBodegas.some(
+      (b: ProductoBodegaBackend) => b.bodegaId === mwWarehouseId && b.esPrincipal === true
+    )
+    if (bodegaEsPrincipal) {
+      const bodegaPrincipal = bodegas.find(b => b.id === mwWarehouseId)
+      toast({
+        title: "⚠️ Bodega principal detectada",
+        description: `La bodega "${bodegaPrincipal?.nombre || "seleccionada"}" está marcada como bodega principal en el sistema. No puedes agregarla como bodega adicional. Por favor, selecciona una bodega diferente.`,
+        variant: "destructive",
+      })
+      setMwWarehouseError(true)
       return
     }
 
@@ -620,8 +772,14 @@ export default function EditInventoryItemPage() {
             cantidadMaxima: maxV ?? null,
           },
         })
+        
+        // El hook ya muestra el toast de éxito, pero agregamos uno adicional con más detalles
+        toast({
+          title: "✅ Bodega actualizada",
+          description: `La bodega "${bodega.nombre}" ha sido actualizada exitosamente.`,
+        })
       } else {
-        // Agregar nueva bodega
+        // Agregar nueva bodega - llama al endpoint POST /api/productos/{productId}/bodegas
         await addBodegaMutation.mutateAsync({
           productId: id,
           data: {
@@ -631,15 +789,45 @@ export default function EditInventoryItemPage() {
             cantidadMaxima: maxV ?? null,
           },
         })
+        
+        // El hook ya muestra el toast de éxito, pero agregamos uno adicional con más detalles
+        toast({
+          title: "✅ Bodega agregada exitosamente",
+          description: `La bodega "${bodega.nombre}" ha sido agregada como bodega adicional.`,
+        })
       }
 
       // Invalidar queries para actualizar la UI automáticamente
+      // (El hook ya invalida, pero lo hacemos aquí también para asegurar)
       queryClient.invalidateQueries({ queryKey: productoKeys.bodegas(id) })
 
       setIsWarehouseModalOpen(false)
       resetWarehouseModal()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al guardar bodega:", error)
+      console.error("Error completo:", JSON.stringify(error, null, 2))
+      console.error("Error response:", error?.response)
+      console.error("Error response data:", error?.response?.data)
+      
+      // El hook ya maneja los errores y muestra toasts, pero agregamos uno adicional
+      // para asegurar que el usuario vea el error con más detalles
+      let errorMessage = "Ha ocurrido un error al intentar guardar la bodega. Por favor, intenta nuevamente."
+      
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error?.response?.data?.errors) {
+        // Si hay errores de validación del backend
+        const validationErrors = Object.values(error.response.data.errors).flat().join(", ")
+        errorMessage = `Errores de validación: ${validationErrors}`
+      } else if (error?.message) {
+        errorMessage = error.message
+      }
+      
+      toast({
+        title: "❌ Error al guardar bodega",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setIsSavingBodega(false)
     }
@@ -902,20 +1090,26 @@ export default function EditInventoryItemPage() {
   const handleExtraFieldValueChange = async (fieldId: string, value: string) => {
     if (!id) return
     
-    // Actualizar valor localmente
-    setExtraFieldValues(prev => ({
-      ...prev,
-      [fieldId]: value
-    }))
+    // Actualizar valor localmente - permitir valores vacíos para permitir edición completa
+    setExtraFieldValues(prev => {
+      const newValues = {
+        ...prev,
+        [fieldId]: value // Guardar el valor tal cual (puede estar vacío)
+      }
+      return newValues
+    })
   }
 
   // Función para renderizar inputs de campos adicionales
   const renderExtraFieldInput = (field: any) => {
-    // Usar el valor del campo, o el valor por defecto si no existe o está vacío
+    // Si hay un valor en extraFieldValues, usarlo (incluso si está vacío, para permitir edición)
+    // Si no hay valor pero hay defaultValue, usar defaultValue como valor inicial
     const currentValue = extraFieldValues[field.id]
-    const value = (currentValue && currentValue.trim() !== "") 
-      ? currentValue 
-      : (field.defaultValue || "")
+    const hasValueInState = field.id in extraFieldValues // Verificar si existe la clave, incluso si el valor está vacío
+    
+    // Si ya se ha modificado el campo (existe en extraFieldValues), usar ese valor (puede estar vacío)
+    // Si no se ha modificado, usar el defaultValue como valor inicial
+    const value = hasValueInState ? (currentValue || "") : (field.defaultValue || "")
     
     switch (field.type) {
       case "texto":
@@ -1045,21 +1239,47 @@ export default function EditInventoryItemPage() {
   const priceToShow = useMemo(() => totalPrice || basePrice || "0.00", [totalPrice, basePrice])
 
   const onImageChange = (file: File | null) => {
-    setImageFile(file)
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setImagePreview(url)
-      toast({
-        title: "✅ Imagen cargada",
-        description: "La imagen se ha cargado exitosamente.",
-      })
-    } else {
+    // Si se está eliminando la imagen
+    if (!file) {
+      setImageFile(null)
       setImagePreview(null)
+      setUploadedImageUrl(null) // Marcar que no hay imagen subida
       toast({
         title: "✅ Imagen eliminada",
         description: "La imagen ha sido eliminada exitosamente.",
       })
+      return
     }
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "⚠️ Archivo no válido",
+        description: "Por favor, selecciona un archivo de imagen válido (JPG, PNG, etc.).",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validar tamaño (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      toast({
+        title: "⚠️ Imagen muy grande",
+        description: "La imagen no puede ser mayor a 5MB. Por favor, selecciona una imagen más pequeña.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setImageFile(file)
+    const url = URL.createObjectURL(file)
+    setImagePreview(url)
+    setUploadedImageUrl(null) // Resetear URL subida hasta que se suba nuevamente
+    toast({
+      title: "✅ Imagen cargada",
+      description: "La imagen se ha cargado exitosamente. Se subirá al guardar el producto.",
+    })
   }
 
   const handleImageDragOver = (e: React.DragEvent) => {
@@ -1109,10 +1329,24 @@ export default function EditInventoryItemPage() {
   }
 
   const doSubmit = async (createAnother: boolean = false) => {
-    if (!id || !product || !productoOriginal) return
+    console.log("🔵 doSubmit llamado, createAnother:", createAnother)
+    console.log("🔵 id:", id)
+    console.log("🔵 product:", product)
+    console.log("🔵 productoOriginal:", productoOriginal)
+    
+    if (!id || !product || !productoOriginal) {
+      console.error("❌ Faltan datos requeridos:", { id, product: !!product, productoOriginal: !!productoOriginal })
+      return
+    }
 
+    console.log("🔵 Datos disponibles - name:", name, "unit:", unit, "basePrice:", basePrice, "totalPrice:", totalPrice, "initialCost:", initialCost, "selectedBodegaId:", selectedBodegaId, "quantity:", quantity)
+    console.log("🔵 Validando nombre...")
     // Validar nombre
     if (!name.trim()) {
+      console.error("❌ Validación falló: nombre vacío")
+      setErrorMessage("El nombre del producto es obligatorio.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Campo requerido",
         description: "El nombre del producto es obligatorio.",
@@ -1121,8 +1355,13 @@ export default function EditInventoryItemPage() {
       return
     }
 
+    console.log("🔵 Validando unidad de medida...")
     // Validar unidad de medida
     if (!unit || unit.trim() === "") {
+      console.error("❌ Validación falló: unidad de medida vacía")
+      setErrorMessage("Debes seleccionar una unidad de medida para el producto.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Unidad de medida requerida",
         description: "Debes seleccionar una unidad de medida para el producto.",
@@ -1131,10 +1370,15 @@ export default function EditInventoryItemPage() {
       return
     }
 
+    console.log("🔵 Validando precio base...")
     // Validar precio base
     const basePriceValue = parseFloat(basePrice || "0")
     if (!basePrice || basePrice.trim() === "" || isNaN(basePriceValue) || basePriceValue <= 0) {
+      console.error("❌ Validación falló: precio base inválido", { basePrice, basePriceValue })
       setBasePriceError(true)
+      setErrorMessage("El precio base debe ser un número mayor a 0.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Precio base inválido",
         description: "El precio base debe ser un número mayor a 0.",
@@ -1143,10 +1387,15 @@ export default function EditInventoryItemPage() {
       return
     }
 
+    console.log("🔵 Validando precio total...")
     // Validar precio total
     const totalPriceValue = parseFloat(totalPrice || "0")
     if (!totalPrice || totalPrice.trim() === "" || isNaN(totalPriceValue) || totalPriceValue <= 0) {
+      console.error("❌ Validación falló: precio total inválido", { totalPrice, totalPriceValue })
       setTotalPriceError(true)
+      setErrorMessage("El precio total debe ser un número mayor a 0.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Precio total inválido",
         description: "El precio total debe ser un número mayor a 0.",
@@ -1155,10 +1404,15 @@ export default function EditInventoryItemPage() {
       return
     }
 
+    console.log("🔵 Validando costo inicial...")
     // Validar costo inicial
     const initialCostValue = parseFloat(initialCost || "0")
     if (!initialCost || initialCost.trim() === "" || isNaN(initialCostValue) || initialCostValue < 0) {
+      console.error("❌ Validación falló: costo inicial inválido", { initialCost, initialCostValue })
       setInitialCostError(true)
+      setErrorMessage("El costo inicial es obligatorio y debe ser un número mayor o igual a 0.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Costo inicial inválido",
         description: "El costo inicial es obligatorio y debe ser un número mayor o igual a 0. Por favor, ingresa un valor válido.",
@@ -1167,9 +1421,14 @@ export default function EditInventoryItemPage() {
       return
     }
 
+    console.log("🔵 Validando bodega principal...")
     // Validar bodega principal
     if (!selectedBodegaId || selectedBodegaId.trim() === "") {
+      console.error("❌ Validación falló: bodega principal no seleccionada")
       setBodegaPrincipalError(true)
+      setErrorMessage("Debes seleccionar una bodega principal para el producto.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Bodega principal requerida",
         description: "Debes seleccionar una bodega principal para el producto.",
@@ -1178,9 +1437,14 @@ export default function EditInventoryItemPage() {
       return
     }
 
+    console.log("🔵 Validando cantidad inicial de bodega principal...")
     // Validar cantidad inicial de bodega principal
     if (quantity && (quantity.includes(".") || quantity.includes(","))) {
+      console.error("❌ Validación falló: cantidad tiene decimales", { quantity })
       setQuantityError(true)
+      setErrorMessage("La cantidad inicial debe ser un número entero (sin decimales).")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Cantidad inválida",
         description: "La cantidad inicial debe ser un número entero (sin decimales).",
@@ -1190,7 +1454,11 @@ export default function EditInventoryItemPage() {
     }
     const quantityValue = parseInt(quantity || "0")
     if (!quantity || quantity.trim() === "" || isNaN(quantityValue) || quantityValue < 0) {
+      console.error("❌ Validación falló: cantidad inicial inválida", { quantity, quantityValue })
       setQuantityError(true)
+      setErrorMessage("La cantidad inicial es obligatoria y debe ser un número entero mayor o igual a 0.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Cantidad inicial inválida",
         description: "La cantidad inicial es obligatoria y debe ser un número entero mayor o igual a 0.",
@@ -1198,9 +1466,14 @@ export default function EditInventoryItemPage() {
       })
       return
     }
+    console.log("🔵 Cantidad inicial válida:", quantityValue)
 
     // Validar que cantidad mínima y máxima sean enteros si están definidas
     if (quantityMin && (quantityMin.includes(".") || quantityMin.includes(","))) {
+      setQuantityMinError(true)
+      setErrorMessage("La cantidad mínima debe ser un número entero (sin decimales).")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Cantidad mínima inválida",
         description: "La cantidad mínima debe ser un número entero (sin decimales).",
@@ -1209,6 +1482,10 @@ export default function EditInventoryItemPage() {
       return
     }
     if (quantityMax && (quantityMax.includes(".") || quantityMax.includes(","))) {
+      setQuantityMaxError(true)
+      setErrorMessage("La cantidad máxima debe ser un número entero (sin decimales).")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Cantidad máxima inválida",
         description: "La cantidad máxima debe ser un número entero (sin decimales).",
@@ -1220,30 +1497,43 @@ export default function EditInventoryItemPage() {
     const quantityMinValue = quantityMin ? parseInt(quantityMin) : undefined
     const quantityMaxValue = quantityMax ? parseInt(quantityMax) : undefined
 
-    // Validar que cantidad mínima no sea mayor que máxima
+    // Validar que cantidad mínima y máxima sean números positivos
+    if (quantityMinValue !== undefined && quantityMinValue < 0) {
+      setQuantityMinError(true)
+      setErrorMessage("La cantidad mínima debe ser un número positivo (mayor o igual a 0).")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
+      toast({
+        title: "⚠️ Cantidad mínima inválida",
+        description: "La cantidad mínima debe ser un número positivo (mayor o igual a 0).",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (quantityMaxValue !== undefined && quantityMaxValue < 0) {
+      setQuantityMaxError(true)
+      setErrorMessage("La cantidad máxima debe ser un número positivo (mayor o igual a 0).")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
+      toast({
+        title: "⚠️ Cantidad máxima inválida",
+        description: "La cantidad máxima debe ser un número positivo (mayor o igual a 0).",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validar que cantidad máxima sea mayor a cantidad mínima
     if (quantityMinValue !== undefined && quantityMaxValue !== undefined && quantityMinValue > quantityMaxValue) {
+      setQuantityMinError(true)
+      setQuantityMaxError(true)
+      setErrorMessage("La cantidad máxima debe ser mayor que la cantidad mínima.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Rangos inválidos",
-        description: "La cantidad mínima no puede ser mayor que la cantidad máxima. Por favor, verifica los valores ingresados.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Validar que cantidad inicial esté dentro del rango
-    if (quantityMinValue !== undefined && quantityValue < quantityMinValue) {
-      toast({
-        title: "⚠️ Cantidad fuera de rango",
-        description: `La cantidad inicial (${quantityValue}) no puede ser menor que la cantidad mínima (${quantityMinValue}).`,
-        variant: "destructive",
-      })
-      return
-    }
-
-    if (quantityMaxValue !== undefined && quantityValue > quantityMaxValue) {
-      toast({
-        title: "⚠️ Cantidad fuera de rango",
-        description: `La cantidad inicial (${quantityValue}) no puede ser mayor que la cantidad máxima (${quantityMaxValue}).`,
+        description: "La cantidad máxima debe ser mayor que la cantidad mínima. Por favor, verifica los valores ingresados.",
         variant: "destructive",
       })
       return
@@ -1252,6 +1542,9 @@ export default function EditInventoryItemPage() {
     // Validar que siempre exista una bodega principal
     if (!selectedBodegaId || selectedBodegaId.trim() === "") {
       setBodegaPrincipalError(true)
+      setErrorMessage("Debe existir siempre una bodega principal. Por favor, selecciona una bodega principal antes de guardar.")
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Bodega principal requerida",
         description: "Debe existir siempre una bodega principal. Por favor, selecciona una bodega principal antes de guardar.",
@@ -1260,40 +1553,152 @@ export default function EditInventoryItemPage() {
       return
     }
 
+    console.log("🔵 Validando campos extra requeridos...")
     // Validar campos extra requeridos
     const camposExtraRequeridos = extraFields.filter(field => field.isRequired && field.isActive)
+    console.log("🔵 camposExtraRequeridos:", camposExtraRequeridos.map(f => ({ name: f.name, id: f.id })))
+    console.log("🔵 selectedExtraFields:", selectedExtraFields)
+    console.log("🔵 extraFieldValues:", extraFieldValues)
+    
     const missingRequiredFields: string[] = []
     
     camposExtraRequeridos.forEach((field) => {
-      const hasField = selectedExtraFields.includes(field.id)
-      if (!hasField) {
-        missingRequiredFields.push(field.name)
-        return
-      }
-      
-      const value = extraFieldValues[field.id]?.trim() || ""
+      // Obtener el valor ingresado por el usuario (puede estar vacío)
+      const userValue = extraFieldValues[field.id]?.trim() || ""
+      // Si no hay valor del usuario, usar el defaultValue
       const defaultValue = field.defaultValue || ""
-      const finalValue = value || defaultValue
+      const finalValue = userValue || defaultValue
       
+      console.log(`🔵 Campo requerido "${field.name}" (${field.id}): userValue="${userValue}", defaultValue="${defaultValue}", finalValue="${finalValue}"`)
+      
+      // Validar que el campo tenga un valor final (no vacío)
+      // Si el usuario borró el valor por defecto y no ingresó uno nuevo, debe fallar
+      // Pero si hay defaultValue, lo usamos como fallback
       if (!finalValue || finalValue.trim() === "") {
+        console.log(`❌ Campo requerido "${field.name}" no tiene valor`)
         missingRequiredFields.push(field.name)
       }
     })
+    
+    console.log("🔵 missingRequiredFields:", missingRequiredFields)
 
     if (missingRequiredFields.length > 0) {
+      console.error("❌ Validación falló: campos extra requeridos incompletos", missingRequiredFields)
+      setErrorMessage(`Los campos obligatorios deben tener un valor: ${missingRequiredFields.join(", ")}. Por favor, completa estos campos antes de guardar.`)
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
       toast({
         title: "⚠️ Campos obligatorios incompletos",
-        description: `Debes completar los siguientes campos obligatorios: ${missingRequiredFields.join(", ")}. Por favor, revisa los campos adicionales y completa los valores requeridos.`,
+        description: `Los campos obligatorios deben tener un valor: ${missingRequiredFields.join(", ")}. Por favor, completa estos campos antes de guardar.`,
         variant: "destructive",
       })
       return
     }
 
+    console.log("🔵 Validando campos extra opcionales seleccionados...")
+    // Validar campos extra opcionales seleccionados
+    // Si un campo opcional está seleccionado, también debe tener un valor
+    const camposOpcionalesSeleccionados = extraFields.filter(field => 
+      !field.isRequired && 
+      field.isActive && 
+      selectedExtraFields.includes(field.id)
+    )
+    
+    const missingOptionalFields: string[] = []
+    
+    camposOpcionalesSeleccionados.forEach((field) => {
+      // Obtener el valor ingresado por el usuario (puede estar vacío)
+      const userValue = extraFieldValues[field.id]?.trim() || ""
+      // Si no hay valor del usuario, usar el defaultValue
+      const defaultValue = field.defaultValue || ""
+      const finalValue = userValue || defaultValue
+      
+      console.log(`🔵 Campo opcional "${field.name}" (${field.id}): userValue="${userValue}", defaultValue="${defaultValue}", finalValue="${finalValue}"`)
+      
+      // Si el campo está seleccionado, debe tener un valor (no puede estar vacío)
+      if (!finalValue || finalValue.trim() === "") {
+        console.log(`❌ Campo opcional seleccionado "${field.name}" no tiene valor`)
+        missingOptionalFields.push(field.name)
+      }
+    })
+    
+    console.log("🔵 missingOptionalFields:", missingOptionalFields)
+
+    if (missingOptionalFields.length > 0) {
+      console.error("❌ Validación falló: campos opcionales seleccionados incompletos", missingOptionalFields)
+      setErrorMessage(`Los campos opcionales seleccionados deben tener un valor: ${missingOptionalFields.join(", ")}. Por favor, completa estos campos o deselecciónalos.`)
+      setShowErrorToast(true)
+      setTimeout(() => setShowErrorToast(false), 5000)
+      toast({
+        title: "⚠️ Campos opcionales incompletos",
+        description: `Los campos opcionales seleccionados deben tener un valor: ${missingOptionalFields.join(", ")}. Por favor, completa estos campos o deselecciónalos.`,
+        variant: "destructive",
+      })
+      return
+    }
+    console.log("🔵 Todas las validaciones pasaron, procediendo a actualizar...")
+
     try {
+      console.log("🔵 Iniciando actualización del producto...")
+      
+      // Manejar imagen: subir nueva o eliminar si se quitó
+      let finalImageUrl: string | undefined | null = null
+      
+      if (imageFile) {
+        // Hay una nueva imagen para subir
+        setIsUploadingImage(true)
+        try {
+          console.log("🔵 Subiendo nueva imagen a Supabase...")
+          finalImageUrl = await uploadProductImage(imageFile, id)
+          setUploadedImageUrl(finalImageUrl)
+          
+          // Si había una imagen original diferente, eliminarla
+          if (originalImageUrl && originalImageUrl !== finalImageUrl) {
+            console.log("🔵 Eliminando imagen anterior...")
+            deleteProductImage(originalImageUrl).catch((error) => {
+              console.error("Error al eliminar imagen anterior:", error)
+              // No es crítico, continuar
+            })
+          }
+          
+          toast({
+            title: "✅ Imagen subida",
+            description: "La imagen se ha subido exitosamente.",
+          })
+        } catch (error: any) {
+          console.error("Error al subir imagen:", error)
+          setIsUploadingImage(false)
+          toast({
+            title: "❌ Error al subir imagen",
+            description: error?.message || "No se pudo subir la imagen. Por favor, intenta nuevamente.",
+            variant: "destructive",
+          })
+          return
+        } finally {
+          setIsUploadingImage(false)
+        }
+      } else if (imagePreview === null && originalImageUrl) {
+        // Se eliminó la imagen (imagePreview es null pero había una original)
+        console.log("🔵 Eliminando imagen del producto...")
+        try {
+          await deleteProductImage(originalImageUrl)
+          finalImageUrl = null
+          setUploadedImageUrl(null)
+        } catch (error) {
+          console.error("Error al eliminar imagen:", error)
+          // Continuar aunque falle la eliminación
+        }
+      } else {
+        // No hay cambios en la imagen, usar la URL existente
+        finalImageUrl = uploadedImageUrl || originalImageUrl || undefined
+      }
+      
       // Mapear categoriaId correctamente
       const categoriaId = selectedCategoriaId && selectedCategoriaId !== "none" ? selectedCategoriaId : null
 
       // Mapear a DTO del backend
+      // Incluir bodegaPrincipalId si cambió la bodega principal
+      console.log("🔵 Mapeando datos a DTO...")
       const updateDto = mapProductToUpdateDto({
         name,
         sku: code,
@@ -1304,12 +1709,17 @@ export default function EditInventoryItemPage() {
         taxPercent: tax ? parseFloat(tax) : (product as ExtendedProduct).taxPercent ?? 0,
         price: totalPriceValue,
         cost: initialCostValue,
-        imageUrl: imagePreview === null ? undefined : imagePreview || (product as ExtendedProduct).imageUrl,
+        imageUrl: finalImageUrl === null ? undefined : finalImageUrl || undefined,
+        bodegaPrincipalId: selectedBodegaId, // Incluir la bodega principal seleccionada
       })
+      console.log("🔵 DTO creado:", updateDto)
+      console.log("🔵 Llamando a updateMutation.mutateAsync...")
 
       await updateMutation.mutateAsync({ id, data: updateDto })
+      console.log("✅ Producto actualizado exitosamente")
 
       // Actualizar bodega principal con las cantidades
+      console.log("🔵 Verificando si necesita actualizar bodega principal...")
       const bodegaPrincipalActual = productoBodegas.find((b: ProductoBodegaBackend) => b.esPrincipal === true)
       const bodegaPrincipalIdActual = bodegaPrincipalActual?.bodegaId || bodegaPrincipalIdFromProduct || selectedBodegaId
       
@@ -1321,7 +1731,9 @@ export default function EditInventoryItemPage() {
            bodegaPrincipalActual.cantidadMaxima !== quantityMaxValue)
         : true
 
+      console.log("🔵 bodegaCambio:", bodegaCambio, "cantidadesCambiaron:", cantidadesCambiaron)
       if (bodegaCambio || cantidadesCambiaron) {
+        console.log("🔵 Actualizando bodega principal...")
         // Si la bodega principal cambió, primero actualizar la nueva
         if (bodegaCambio && bodegaPrincipalIdActual && bodegaPrincipalIdActual !== selectedBodegaId) {
           // Si hay una bodega principal anterior, actualizarla primero
@@ -1332,9 +1744,11 @@ export default function EditInventoryItemPage() {
         try {
           // Verificar si la bodega ya existe en productoBodegas
           const bodegaExiste = productoBodegas.some((b: ProductoBodegaBackend) => b.bodegaId === selectedBodegaId)
+          console.log("🔵 bodegaExiste:", bodegaExiste)
           
           if (bodegaExiste) {
             // Actualizar bodega existente
+            console.log("🔵 Actualizando bodega existente...")
             await updateBodegaMutation.mutateAsync({
               productId: id,
               bodegaId: selectedBodegaId,
@@ -1344,8 +1758,10 @@ export default function EditInventoryItemPage() {
                 cantidadMaxima: quantityMaxValue ?? null,
               },
             })
+            console.log("✅ Bodega actualizada exitosamente")
           } else {
             // Agregar nueva bodega principal
+            console.log("🔵 Agregando nueva bodega principal...")
             await addBodegaMutation.mutateAsync({
               productId: id,
               data: {
@@ -1355,18 +1771,93 @@ export default function EditInventoryItemPage() {
                 cantidadMaxima: quantityMaxValue ?? null,
               },
             })
+            console.log("✅ Bodega agregada exitosamente")
           }
         } catch (error) {
-          console.error("Error al actualizar bodega principal:", error)
+          console.error("❌ Error al actualizar bodega principal:", error)
+          console.error("Error completo:", JSON.stringify(error, null, 2))
           // Continuar aunque haya error en la bodega, el producto ya se actualizó
         }
+      } else {
+        console.log("🔵 No es necesario actualizar la bodega principal")
       }
 
+      // Actualizar campos extra del producto
+      console.log("🔵 Actualizando campos extra...")
+      try {
+        // Obtener campos extra actuales del backend
+        const camposExtraActuales = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId)
+        
+        // Campos que deben estar presentes (seleccionados)
+        const camposExtraParaActualizar = selectedExtraFields.map((fieldId) => {
+          const field = extraFields.find(f => f.id === fieldId)
+          if (!field) return null
+          // Usar valor del usuario si existe (incluso si está vacío), sino usar defaultValue
+          const userValue = extraFieldValues[fieldId]?.trim() || ""
+          const defaultValue = field.defaultValue || ""
+          const finalValue = userValue || defaultValue
+          return {
+            campoExtraId: fieldId,
+            valor: finalValue,
+          }
+        }).filter((campo): campo is NonNullable<typeof campo> => campo !== null)
+
+        // Asegurar que todos los campos requeridos estén incluidos
+        camposExtraRequeridos.forEach((field) => {
+          if (!camposExtraParaActualizar.find(c => c.campoExtraId === field.id)) {
+            const userValue = extraFieldValues[field.id]?.trim() || ""
+            const defaultValue = field.defaultValue || ""
+            const finalValue = userValue || defaultValue
+            camposExtraParaActualizar.push({
+              campoExtraId: field.id,
+              valor: finalValue,
+            })
+          }
+        })
+
+        // Eliminar campos que ya no están seleccionados (excepto campos requeridos)
+        const camposParaEliminar = camposExtraActuales.filter(campoId => {
+          // No eliminar campos requeridos
+          const campo = extraFields.find(f => f.id === campoId)
+          if (campo?.isRequired) return false
+          // Eliminar si no está en selectedExtraFields
+          return !selectedExtraFields.includes(campoId)
+        })
+
+        // Eliminar campos extra que ya no están seleccionados
+        for (const campoId of camposParaEliminar) {
+          try {
+            await productosService.deleteProductoCampoExtra(id, campoId)
+            console.log(`🔵 Campo extra eliminado: ${campoId}`)
+          } catch (error) {
+            console.error(`❌ Error al eliminar campo extra ${campoId}:`, error)
+            // Continuar con los demás campos
+          }
+        }
+
+        // Actualizar o agregar cada campo extra usando el endpoint PUT /productos/{productId}/campos-extra/{campoExtraId}
+        for (const campo of camposExtraParaActualizar) {
+          await productosService.setProductoCampoExtra(id, campo.campoExtraId, {
+            valor: campo.valor
+          })
+        }
+
+        // Invalidar query de campos extra para actualizar la UI
+        queryClient.invalidateQueries({ queryKey: productoKeys.camposExtra(id) })
+        console.log("✅ Campos extra actualizados exitosamente")
+      } catch (error) {
+        console.error("❌ Error al actualizar campos extra:", error)
+        // Continuar aunque haya error en los campos extra, el producto ya se actualizó
+      }
+
+      // El toast de éxito ya se muestra en el hook useUpdateProducto
+      // Agregamos un toast adicional personalizado para mayor claridad
       toast({
         title: "✅ Producto actualizado",
         description: `El producto "${name.trim()}" ha sido actualizado exitosamente.`,
       })
 
+      console.log("🔵 Redirigiendo... createAnother:", createAnother)
       if (createAnother) {
         router.push(`/inventory/items/add`)
       } else {
@@ -1374,26 +1865,27 @@ export default function EditInventoryItemPage() {
       }
     } catch (error: any) {
       console.error("Error al actualizar producto:", error)
+      console.error("Error completo:", JSON.stringify(error, null, 2))
+      console.error("Error response:", error?.response)
+      console.error("Error response data:", error?.response?.data)
+      
+      let errorMessage = "Ha ocurrido un error al intentar actualizar el producto. Por favor, verifica los datos e intenta nuevamente."
       
       if (error?.response?.data?.message) {
-      toast({
-          title: "❌ Error al actualizar producto",
-          description: error.response.data.message || "Ha ocurrido un error al intentar actualizar el producto. Por favor, verifica los datos e intenta nuevamente.",
-          variant: "destructive",
-        })
+        errorMessage = error.response.data.message
+      } else if (error?.response?.data?.errors) {
+        // Si hay errores de validación del backend
+        const validationErrors = Object.values(error.response.data.errors).flat().join(", ")
+        errorMessage = `Errores de validación: ${validationErrors}`
       } else if (error?.message) {
-        toast({
-          title: "❌ Error al actualizar producto",
-          description: error.message || "Ha ocurrido un error al intentar actualizar el producto. Por favor, verifica los datos e intenta nuevamente.",
-          variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "❌ Error al actualizar producto",
-          description: "Ha ocurrido un error inesperado al intentar actualizar el producto. Por favor, verifica los datos e intenta nuevamente.",
+        errorMessage = error.message
+      }
+      
+      toast({
+        title: "❌ Error al actualizar producto",
+        description: errorMessage,
         variant: "destructive",
       })
-      }
     }
   }
 
@@ -1472,12 +1964,13 @@ export default function EditInventoryItemPage() {
                   <Label className="text-sm text-gray-700" htmlFor="name">
                     Nombre <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="name"
-                    value={name}
+                    <Input
+                      id="name"
+                      value={name}
                       onChange={(e) => {
                         setName(e.target.value)
                         setValue("name", e.target.value, { shouldValidate: true })
+                        setShowErrorToast(false)
                       }}
                       placeholder="Nombre del producto"
                       className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
@@ -1629,6 +2122,7 @@ export default function EditInventoryItemPage() {
                       onChange={(e) => {
                         handleBaseOrTaxChange(e.target.value, tax)
                         setBasePriceError(false)
+                        setShowErrorToast(false)
                       }}
                         placeholder="0.00"
                       className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
@@ -1663,6 +2157,7 @@ export default function EditInventoryItemPage() {
                       onChange={(e) => {
                         handleTotalChange(e.target.value)
                         setTotalPriceError(false)
+                        setShowErrorToast(false)
                       }}
                         placeholder="0.00"
                       className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
@@ -1772,6 +2267,7 @@ export default function EditInventoryItemPage() {
                         setQuantity(value)
                         setValue("quantity", value, { shouldValidate: true })
                         setQuantityError(false)
+                        setShowErrorToast(false)
                       }}
                       placeholder="0"
                       className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
@@ -1792,9 +2288,53 @@ export default function EditInventoryItemPage() {
                         step="1"
                         min="0"
                         value={quantityMin}
-                        onChange={(e) => setQuantityMin(validateIntegerInput(e.target.value))}
+                        onChange={(e) => {
+                          const value = validateIntegerInput(e.target.value)
+                          setQuantityMin(value)
+                          setQuantityMinError(false)
+                          setShowErrorToast(false)
+                          
+                          // Validación en tiempo real
+                          if (value) {
+                            const numValue = parseInt(value)
+                            const maxValue = quantityMax ? parseInt(quantityMax) : undefined
+                            
+                            if (isNaN(numValue) || numValue < 0) {
+                              setQuantityMinError(true)
+                              setErrorMessage("La cantidad mínima debe ser un número positivo (mayor o igual a 0).")
+                              setShowErrorToast(true)
+                              setTimeout(() => setShowErrorToast(false), 5000)
+                              toast({
+                                title: "⚠️ Cantidad mínima inválida",
+                                description: "La cantidad mínima debe ser un número positivo (mayor o igual a 0).",
+                                variant: "destructive",
+                              })
+                            } else if (maxValue !== undefined && !isNaN(maxValue) && numValue > maxValue) {
+                              setQuantityMinError(true)
+                              setQuantityMaxError(true)
+                              setErrorMessage("La cantidad máxima debe ser mayor que la cantidad mínima.")
+                              setShowErrorToast(true)
+                              setTimeout(() => setShowErrorToast(false), 5000)
+                              toast({
+                                title: "⚠️ Rangos inválidos",
+                                description: "La cantidad máxima debe ser mayor que la cantidad mínima.",
+                                variant: "destructive",
+                              })
+                            } else {
+                              setQuantityMinError(false)
+                              setQuantityMaxError(false)
+                              setShowErrorToast(false)
+                            }
+                          } else {
+                            setQuantityMinError(false)
+                            setQuantityMaxError(false)
+                            setShowErrorToast(false)
+                          }
+                        }}
                         placeholder="Opcional"
-                        className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:border-camouflage-green-500"
+                        className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                          quantityMinError ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                        }`}
                       />
                     </div>
                     <div className="space-y-2">
@@ -1807,9 +2347,53 @@ export default function EditInventoryItemPage() {
                         step="1"
                         min="0"
                         value={quantityMax}
-                        onChange={(e) => setQuantityMax(validateIntegerInput(e.target.value))}
+                        onChange={(e) => {
+                          const value = validateIntegerInput(e.target.value)
+                          setQuantityMax(value)
+                          setQuantityMaxError(false)
+                          setShowErrorToast(false)
+                          
+                          // Validación en tiempo real
+                          if (value) {
+                            const numValue = parseInt(value)
+                            const minValue = quantityMin ? parseInt(quantityMin) : undefined
+                            
+                            if (isNaN(numValue) || numValue < 0) {
+                              setQuantityMaxError(true)
+                              setErrorMessage("La cantidad máxima debe ser un número positivo (mayor o igual a 0).")
+                              setShowErrorToast(true)
+                              setTimeout(() => setShowErrorToast(false), 5000)
+                              toast({
+                                title: "⚠️ Cantidad máxima inválida",
+                                description: "La cantidad máxima debe ser un número positivo (mayor o igual a 0).",
+                                variant: "destructive",
+                              })
+                            } else if (minValue !== undefined && !isNaN(minValue) && numValue < minValue) {
+                              setQuantityMinError(true)
+                              setQuantityMaxError(true)
+                              setErrorMessage("La cantidad máxima debe ser mayor que la cantidad mínima.")
+                              setShowErrorToast(true)
+                              setTimeout(() => setShowErrorToast(false), 5000)
+                              toast({
+                                title: "⚠️ Rangos inválidos",
+                                description: "La cantidad máxima debe ser mayor que la cantidad mínima.",
+                                variant: "destructive",
+                              })
+                            } else {
+                              setQuantityMinError(false)
+                              setQuantityMaxError(false)
+                              setShowErrorToast(false)
+                            }
+                          } else {
+                            setQuantityMinError(false)
+                            setQuantityMaxError(false)
+                            setShowErrorToast(false)
+                          }
+                        }}
                         placeholder="Opcional"
-                        className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none focus:border-camouflage-green-500"
+                        className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                          quantityMaxError ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                        }`}
                       />
                     </div>
                   </div>
@@ -1926,7 +2510,7 @@ export default function EditInventoryItemPage() {
                 {/* Dropdown con campos adicionales */}
                 <div className="space-y-2">
                   <Label className="text-sm text-gray-700">Seleccionar campos adicionales</Label>
-                  <Popover>
+                  <Popover open={isExtraFieldsPopoverOpen} onOpenChange={setIsExtraFieldsPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
@@ -2005,6 +2589,7 @@ export default function EditInventoryItemPage() {
                               variant="ghost"
                               className="w-full justify-start text-camouflage-green-700 font-medium hover:bg-camouflage-green-50"
                               onClick={() => {
+                                setIsExtraFieldsPopoverOpen(false) // Cerrar el popover
                                 setIsNewFieldModalOpen(true)
                               }}
                             >
@@ -2024,6 +2609,7 @@ export default function EditInventoryItemPage() {
                               variant="ghost"
                               className="w-full justify-start text-camouflage-green-700 font-medium hover:bg-camouflage-green-50"
                               onClick={() => {
+                                setIsExtraFieldsPopoverOpen(false) // Cerrar el popover
                                 setIsNewFieldModalOpen(true)
                               }}
                             >
@@ -2134,9 +2720,15 @@ export default function EditInventoryItemPage() {
                     type="number"
                     step="0.01"
                     value={initialCost}
-                    onChange={(e) => setInitialCost(e.target.value)}
+                    onChange={(e) => {
+                      setInitialCost(e.target.value)
+                      setInitialCostError(false)
+                      setShowErrorToast(false)
+                    }}
                     placeholder="0.00"
-                    className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                    className={`h-10 w-full rounded-lg border bg-white px-3 py-2 text-gray-900 placeholder:text-gray-500 focus:outline-none ${
+                      initialCostError ? "border-red-500 focus:border-red-500" : "border-gray-300 focus:border-camouflage-green-500"
+                    }`}
                   />
                 </div>
               </CardContent>
@@ -2166,14 +2758,22 @@ export default function EditInventoryItemPage() {
                           type="file"
                           accept="image/*"
                           onChange={(e) => onImageChange(e.target.files?.[0] || null)}
-                          className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-camouflage-green-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-camouflage-green-800"
+                          disabled={isUploadingImage}
+                          className="block w-full text-sm text-gray-600 file:mr-4 file:rounded-md file:border-0 file:bg-camouflage-green-700 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-camouflage-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
                         />
+                        {isUploadingImage && (
+                          <div className="mt-2 text-sm text-camouflage-green-600 flex items-center gap-2">
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+                            Subiendo imagen...
+                          </div>
+                        )}
                         {imagePreview && (
                           <Button
                             type="button"
                             variant="outline"
                             className="mt-2 w-full border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
                             onClick={() => onImageChange(null)}
+                            disabled={isUploadingImage}
                           >
                             Eliminar imagen
                           </Button>
@@ -2203,21 +2803,33 @@ export default function EditInventoryItemPage() {
                     Cancelar
                   </Button>
                   <Button
+                    type="button"
                     variant="primary"
                     className="w-full"
-                    disabled={updateMutation.isPending}
-                    onClick={() => doSubmit(false)}
+                    disabled={updateMutation.isPending || isUploadingImage}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log("🔵 Botón Guardar clickeado")
+                      doSubmit(false)
+                    }}
                   >
-                    {updateMutation.isPending ? "Guardando..." : "Guardar"}
+                    {updateMutation.isPending || isUploadingImage ? "Guardando..." : "Guardar"}
                   </Button>
                 </div>
                 <Button
+                  type="button"
                   variant="secondary"
                   className="w-full"
-                  disabled={updateMutation.isPending}
-                  onClick={() => doSubmit(true)}
+                  disabled={updateMutation.isPending || isUploadingImage}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    console.log("🔵 Botón Guardar y crear otro clickeado")
+                    doSubmit(true)
+                  }}
                 >
-                  {updateMutation.isPending ? "Guardando..." : "Guardar y crear otro"}
+                  {updateMutation.isPending || isUploadingImage ? "Guardando..." : "Guardar y crear otro"}
                 </Button>
               </div>
             </div>
@@ -2359,8 +2971,14 @@ export default function EditInventoryItemPage() {
             </div>
             <div className="flex justify-end">
               <Button
+                type="button"
                 variant="primary"
-                onClick={saveWarehouseEntry}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  console.log("🔵 Botón Guardar bodega clickeado")
+                  saveWarehouseEntry()
+                }}
                 disabled={isSavingBodega || addBodegaMutation.isPending || updateBodegaMutation.isPending}
               >
                 {isSavingBodega || addBodegaMutation.isPending || updateBodegaMutation.isPending ? "Guardando..." : "Guardar"}
@@ -2537,6 +3155,18 @@ export default function EditInventoryItemPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Toast de error de validación personalizado */}
+      {showErrorToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm font-medium text-red-800">
+              {errorMessage || "Error, verifica los campos marcados en rojo para continuar"}
+            </p>
+          </div>
+        </div>
+      )}
     </MainLayout>
   )
 }
