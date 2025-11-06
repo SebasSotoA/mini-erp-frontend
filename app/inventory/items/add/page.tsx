@@ -23,10 +23,9 @@ import { useToast } from "@/hooks/use-toast"
 import { useCreateProducto } from "@/hooks/api/use-productos"
 import { mapProductToCreateDto } from "@/lib/api/services/productos.service"
 import { uploadProductImage, deleteProductImage, moveImageToProductFolder } from "@/lib/storage/supabase-client"
-import { useCategorias } from "@/hooks/api/use-categorias"
-import { useBodegas, bodegasKeys, useCreateBodega } from "@/hooks/api/use-bodegas"
-import { useCamposExtra, camposExtraKeys, useCreateCampoExtra, mapTipoDatoFrontendToBackend } from "@/hooks/api/use-campos-extra"
-import { useQueryClient } from "@tanstack/react-query"
+import { useCategoriasActive } from "@/hooks/api/use-categorias"
+import { useBodegasActive, useCreateBodega } from "@/hooks/api/use-bodegas"
+import { useCamposExtraActive, useCreateCampoExtra, mapTipoDatoFrontendToBackend } from "@/hooks/api/use-campos-extra"
 
 export default function AddInventoryItemPage() {
   type ItemType = "product"
@@ -35,11 +34,10 @@ export default function AddInventoryItemPage() {
   const searchParams = useSearchParams()
   const createMutation = useCreateProducto()
   const { toast } = useToast()
-  const queryClient = useQueryClient()
-  const { data: categorias = [], isLoading: isLoadingCategorias } = useCategorias(true)
-  const { data: bodegas = [], isLoading: isLoadingBodegas } = useBodegas(true)
+  const { data: categorias = [], isLoading: isLoadingCategorias } = useCategoriasActive(true)
+  const { data: bodegas = [], isLoading: isLoadingBodegas } = useBodegasActive(true)
   const createBodegaMutation = useCreateBodega()
-  const { data: extraFields = [], isLoading: isLoadingCamposExtra } = useCamposExtra(true) // Trae todos los campos activos (requeridos y opcionales)
+  const { data: extraFields = [], isLoading: isLoadingCamposExtra } = useCamposExtraActive(true) // Trae todos los campos activos (requeridos y opcionales)
   const createCampoExtraMutation = useCreateCampoExtra()
   const itemType: ItemType = "product"
   const [name, setName] = useState("")
@@ -521,7 +519,7 @@ export default function AddInventoryItemPage() {
       const response = await createBodegaMutation.mutateAsync({
         nombre: newWarehouseData.name.trim(),
         direccion: newWarehouseData.location.trim() || null,
-        observaciones: newWarehouseData.observations.trim() || null,
+        descripcion: newWarehouseData.observations.trim() || null,
       })
 
       // Seleccionar automáticamente la bodega recién creada si no hay bodega principal

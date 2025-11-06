@@ -47,6 +47,7 @@ export interface ProductoBackend {
   imagenProductoUrl: string | null
   stockActual: number // Stock calculado (suma de todas las bodegas)
   bodegaPrincipalId: string // ID de la bodega principal del producto
+  cantidadEnBodega?: number // Cantidad específica en la bodega (cuando viene de /api/bodegas/{bodegaId}/productos)
 }
 
 export interface ProductoBodegaBackend {
@@ -94,6 +95,7 @@ export interface CategoriaBackend {
   id: string
   nombre: string
   descripcion?: string | null
+  imagenCategoriaUrl?: string | null
   activo: boolean
   fechaCreacion: string
 }
@@ -105,6 +107,7 @@ export interface BodegaBackend {
   id: string
   nombre: string
   direccion?: string | null
+  descripcion?: string | null
   activo: boolean
   fechaCreacion: string
 }
@@ -215,7 +218,28 @@ export interface ProductosQueryParams {
 export interface CreateBodegaDto {
   nombre: string
   direccion?: string | null
-  observaciones?: string | null
+  descripcion?: string | null
+}
+
+export interface UpdateBodegaDto {
+  nombre?: string
+  direccion?: string | null
+  descripcion?: string | null
+}
+
+/**
+ * DTOs para crear/actualizar categorías
+ */
+export interface CreateCategoriaDto {
+  nombre: string
+  descripcion?: string | null
+  imagenCategoriaUrl?: string | null
+}
+
+export interface UpdateCategoriaDto {
+  nombre?: string
+  descripcion?: string | null
+  imagenCategoriaUrl?: string | null
 }
 
 /**
@@ -227,6 +251,14 @@ export interface CreateCampoExtraDto {
   descripcion?: string | null
   valorPorDefecto?: string | null
   esRequerido: boolean
+}
+
+export interface UpdateCampoExtraDto {
+  nombre?: string
+  tipoDato?: string // "Texto", "Número", "NúmeroDecimal", "Fecha", "SiNo"
+  descripcion?: string | null
+  valorPorDefecto?: string | null
+  esRequerido?: boolean
 }
 
 /**

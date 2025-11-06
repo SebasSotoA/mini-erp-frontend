@@ -12,9 +12,11 @@ import {
   Trash2,
   Filter,
   ArrowLeft,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState } from "react"
 
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 import { MainLayout } from "@/components/layout/main-layout"
@@ -31,173 +33,49 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
-import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
-import { DatePicker } from "@/components/ui/date-picker"
-import { ItemFilters, SortConfig, SortField, SortDirection } from "@/lib/types/items"
-import { applyFiltersAndSort } from "@/lib/utils/item-filters"
-import { NewItemForm } from "@/components/forms/new-item-form"
-
-const mockExtraFields = [
-  {
-    id: "1",
-    name: "Color",
-    type: "texto",
-    description: "Color principal del producto",
-    defaultValue: "Blanco",
-    isRequired: true,
-    isActive: true,
-  },
-  {
-    id: "2",
-    name: "Peso",
-    type: "número decimal",
-    description: "Peso del producto en kilogramos",
-    defaultValue: "0.00",
-    isRequired: false,
-    isActive: true,
-  },
-  {
-    id: "3",
-    name: "Fecha de Vencimiento",
-    type: "fecha",
-    description: "Fecha de vencimiento del producto",
-    defaultValue: "",
-    isRequired: false,
-    isActive: true,
-  },
-  {
-    id: "4",
-    name: "Es Importado",
-    type: "si/no",
-    description: "Indica si el producto es importado",
-    defaultValue: "No",
-    isRequired: true,
-    isActive: false,
-  },
-]
+import {
+  useCampoExtra,
+  useUpdateCampoExtra,
+  useActivateCampoExtra,
+  useDeactivateCampoExtra,
+  useDeleteCampoExtra,
+  useCampoExtraProductos,
+  mapTipoDatoBackendToFrontend,
+} from "@/hooks/api/use-campos-extra"
+import { useActivateProducto, useDeactivateProducto, useDeleteProducto } from "@/hooks/api/use-productos"
+import { ItemFilters, SortField, SortDirection } from "@/lib/types/items"
+import type { ProductosQueryParams, CampoExtraBackend } from "@/lib/api/types"
+import { mapFiltersToQueryParams } from "@/lib/api/utils"
+import { EditExtraFieldModal } from "@/components/modals/EditExtraFieldModal"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 
 export default function ExtraFieldDetailsPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
-  const { products, updateProduct, deleteProduct } = useInventory()
-
-  // Función helper para renderizar el input de valor por defecto según el tipo
-  const renderDefaultValueInput = (type: string, value: string, onChange: (value: string) => void) => {
-    switch (type) {
-      case "texto":
-        return (
-          <Input
-            type="text"
-            placeholder="Valor por defecto del campo"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-          />
-        )
-      
-      case "número":
-        return (
-          <Input
-            type="number"
-            placeholder="Valor por defecto del campo"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-          />
-        )
-      
-      case "número decimal":
-        return (
-          <Input
-            type="number"
-            step="0.01"
-            placeholder="Valor por defecto del campo"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-          />
-        )
-      
-      case "fecha":
-        const dateValue = value && value !== "" ? new Date(value) : null
-        // Verificar si la fecha es válida
-        const isValidDate = dateValue && !isNaN(dateValue.getTime())
-        return (
-          <DatePicker
-            value={isValidDate ? dateValue : null}
-            onChange={(date) => onChange(date ? date.toISOString().split('T')[0] : "")}
-            placeholder="Seleccionar fecha por defecto"
-            className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-          />
-        )
-      
-      case "si/no":
-        return (
-          <Select value={value} onValueChange={onChange}>
-            <SelectTrigger className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500">
-              <SelectValue placeholder="Seleccionar valor por defecto" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Sí">Sí</SelectItem>
-              <SelectItem value="No">No</SelectItem>
-            </SelectContent>
-          </Select>
-        )
-      
-      default:
-        return (
-          <Input
-            type="text"
-            placeholder="Valor por defecto del campo"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-          />
-        )
-    }
-  }
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
-  const extraField = mockExtraFields.find((f) => f.id === id)
-  const [isFieldActive, setIsFieldActive] = useState<boolean>(extraField?.isActive ?? true)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false)
-  const [editFieldData, setEditFieldData] = useState({
-    name: extraField?.name || "",
-    type: extraField?.type || "texto",
-    defaultValue: extraField?.defaultValue || "",
-    description: extraField?.description || "",
-    isRequired: extraField?.isRequired || false,
-  })
+  const { data: extraField, isLoading: isLoadingExtraField, error: extraFieldError } = useCampoExtra(id)
+  const updateMutation = useUpdateCampoExtra()
+  const activateMutation = useActivateCampoExtra()
+  const deactivateMutation = useDeactivateCampoExtra()
+  const deleteMutation = useDeleteCampoExtra()
 
-  // Estado local para los productos (para manejar acciones masivas correctamente)
-  const [localFieldProducts, setLocalFieldProducts] = useState(products)
+  // Mutations para productos
+  const activateProductoMutation = useActivateProducto()
+  const deactivateProductoMutation = useDeactivateProducto()
+  const deleteProductoMutation = useDeleteProducto()
 
-  // Sincronizar el estado local con los productos cuando cambien
-  useEffect(() => {
-    setLocalFieldProducts(products)
-  }, [products])
-
-  // Filtrar productos que usan este campo (simulado - en realidad se basaría en los datos del producto)
-  const fieldProducts = useMemo(() => {
-    // Por ahora retornamos todos los productos como ejemplo
-    // En una implementación real, esto se basaría en qué productos tienen este campo
-    return localFieldProducts
-  }, [localFieldProducts])
-
-  // Estado para filtros/orden/paginación (igual que items/page.tsx)
+  // Estado para paginación y filtros
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
-
   const [filters, setFilters] = useState<ItemFilters>({
     name: "",
     sku: "",
@@ -213,6 +91,33 @@ export default function ExtraFieldDetailsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [showFilters, setShowFilters] = useState(false)
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+
+  // Estado para errores de regla de negocio
+  const [businessError, setBusinessError] = useState<{ title: string; message: string } | null>(null)
+
+  // Estado para toast de error personalizado
+  const [showErrorToast, setShowErrorToast] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+
+  // Estado para toast de éxito personalizado
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
+
+  // Construir parámetros para la API de productos del campo extra usando la función de mapeo
+  const productosParams = useMemo<ProductosQueryParams>(() => {
+    return mapFiltersToQueryParams(
+      filters,
+      { page: currentPage, pageSize: itemsPerPage },
+      sortField ? { field: sortField, direction: sortDirection } : undefined,
+    )
+  }, [currentPage, itemsPerPage, filters, sortField, sortDirection])
+
+  // Obtener productos del campo extra usando el endpoint específico
+  const { data: productosData, isLoading: isLoadingProductos } = useCampoExtraProductos(id, productosParams)
+
+  const extraFieldProducts = productosData?.items || []
+
   const selectedIdsState = useState<Set<string>>(new Set())
   const [selectedIds, setSelectedIds] = selectedIdsState
   const selectedCount = selectedIds.size
@@ -227,22 +132,28 @@ export default function ExtraFieldDetailsPage() {
   }
   const clearSelection = () => setSelectedIds(new Set())
 
+  // Lógica para determinar el estado de los botones de acciones masivas
+  const selectedProducts = extraFieldProducts.filter((p) => selectedIds.has(p.id))
+  const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p) => p.isActive ?? true)
+  const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p) => !(p.isActive ?? true))
+
   const handleSort = (field: SortField) => {
-    if (sortField === field) setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    else {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
       setSortField(field)
       setSortDirection("asc")
     }
-    // Limpiar selección al cambiar ordenamiento
     clearSelection()
+    setCurrentPage(1)
   }
 
   const handleFilterChange = (field: keyof ItemFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }))
     setCurrentPage(1)
-    // Limpiar selección al cambiar filtros
     clearSelection()
   }
+
   const clearFilters = () => {
     setFilters({
       name: "",
@@ -256,115 +167,183 @@ export default function ExtraFieldDetailsPage() {
       status: "",
     })
     setCurrentPage(1)
-    // Limpiar selección al limpiar filtros
     clearSelection()
   }
 
-  const sortConfig: SortConfig = { field: sortField, direction: sortDirection }
-  const filteredSortedProducts = applyFiltersAndSort(fieldProducts, filters, sortConfig)
+  const totalItems = productosData?.totalCount || 0
+  const totalPages = productosData?.totalPages || 0
+  const currentProducts = extraFieldProducts // Products already paginated and filtered by backend
 
-  const totalItems = filteredSortedProducts.length
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const currentProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredSortedProducts.slice(startIndex, endIndex)
-  }, [filteredSortedProducts, currentPage, itemsPerPage])
-  const allCurrentSelected = useMemo(
-    () => currentProducts.length > 0 && currentProducts.every((p) => selectedIds.has(p.id)),
-    [currentProducts, selectedIds],
-  )
+  // Lógica para selección de productos en la página actual
+  const allCurrentSelected = currentProducts.length > 0 && currentProducts.every((p) => selectedIds.has(p.id))
   const toggleSelectAllCurrent = () => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (allCurrentSelected) {
+    if (allCurrentSelected) {
+      // Deseleccionar todos los productos de la página actual
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
         currentProducts.forEach((p) => next.delete(p.id))
-      } else {
+        return next
+      })
+    } else {
+      // Seleccionar todos los productos de la página actual
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
         currentProducts.forEach((p) => next.add(p.id))
-      }
-      return next
-    })
+        return next
+      })
+    }
   }
 
-  const bulkSetActive = (isActive: boolean) => {
+  // Acciones masivas
+  const bulkSetActive = async (isActive: boolean) => {
     if (selectedIds.size === 0) return
-    setLocalFieldProducts(prevProducts =>
-      prevProducts.map(product =>
-        selectedIds.has(product.id) ? { ...product, isActive } : product
-      )
-    )
-    toast({
-      title: isActive ? "Ítems activados" : "Ítems desactivados",
-      description: `${selectedIds.size} ítem(s) actualizados.`,
+
+    const promises = Array.from(selectedIds).map((id) => {
+      return isActive ? activateProductoMutation.mutateAsync(id) : deactivateProductoMutation.mutateAsync(id)
     })
-    clearSelection()
-  }
-  const bulkDelete = () => {
-    if (selectedIds.size === 0) return
-    setLocalFieldProducts(prevProducts =>
-      prevProducts.filter(product => !selectedIds.has(product.id))
-    )
-    toast({ title: "Ítems eliminados", description: `${selectedIds.size} ítem(s) eliminados.` })
-    clearSelection()
+
+    try {
+      await Promise.all(promises)
+      clearSelection()
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
-  // Lógica para determinar el estado de los botones de acciones masivas
-  const selectedProducts = fieldProducts.filter((p) => selectedIds.has(p.id))
-  const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p) => p.isActive)
-  const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p) => !p.isActive)
-  const hasMixedStates = selectedProducts.length > 0 && !allSelectedActive && !allSelectedInactive
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return
+
+    const promises = Array.from(selectedIds).map((id) => deleteProductoMutation.mutateAsync(id))
+
+    try {
+      await Promise.all(promises)
+      clearSelection()
+      setSuccessMessage(`${selectedIds.size} item(s) eliminado(s) exitosamente.`)
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
+  }
 
   // Funciones para el modal de edición
-  const handleEditFieldInputChange = (field: keyof typeof editFieldData, value: string | boolean) => {
-    setEditFieldData((prev) => ({ ...prev, [field]: value }))
+  const handleEditField = (field: CampoExtraBackend | undefined) => {
+    if (!field) return
+    setIsEditModalOpen(true)
   }
 
-  const handleSaveEditField = () => {
-    if (!editFieldData.name.trim()) {
-      toast({ title: "Error", description: "El nombre es obligatorio", variant: "destructive" })
-      return
-    }
+  const handleSaveEditField = async (data: { nombre: string; tipoDato: string; descripcion: string | null; valorPorDefecto: string | null; esRequerido: boolean }) => {
+    if (!extraField) return
 
-    toast({
-      title: "Campo actualizado",
-      description: `"${editFieldData.name}" fue actualizado exitosamente.`,
-    })
-    setIsEditModalOpen(false)
+    try {
+      const updateData = {
+        nombre: data.nombre,
+        tipoDato: data.tipoDato,
+        descripcion: data.descripcion,
+        valorPorDefecto: data.valorPorDefecto,
+        esRequerido: data.esRequerido,
+      }
+
+      await updateMutation.mutateAsync({ id: extraField.id, data: updateData })
+      setIsEditModalOpen(false)
+      setSuccessMessage("Campo actualizado exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
   const handleCancelEditField = () => {
-    // Restaurar datos originales
-    setEditFieldData({
-      name: extraField?.name || "",
-      type: extraField?.type || "texto",
-      defaultValue: extraField?.defaultValue || "",
-      description: extraField?.description || "",
-      isRequired: extraField?.isRequired || false,
-    })
     setIsEditModalOpen(false)
   }
 
-  if (!extraField) {
+  const handleActivate = async () => {
+    if (!extraField) return
+    try {
+      await activateMutation.mutateAsync(extraField.id)
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
+  }
+
+  const handleDeactivate = async () => {
+    if (!extraField) return
+    try {
+      await deactivateMutation.mutateAsync(extraField.id)
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio
+      if (error?.message && error.message.includes("productos")) {
+        setBusinessError({
+          title: "No se puede desactivar el campo",
+          message: error.message || "No se puede desactivar el campo porque está siendo usado en productos.",
+        })
+      }
+      // Los demás errores se manejan en los hooks
+    }
+  }
+
+  const handleDeleteField = async () => {
+    if (!extraField) return
+    try {
+      await deleteMutation.mutateAsync(extraField.id)
+      setSuccessMessage("Campo eliminado exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 2000)
+      setTimeout(() => {
+        router.push("/inventory/extra-fields")
+      }, 2000)
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio
+      if (error?.message && error.message.includes("productos")) {
+        setErrorMessage(error.message)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 5000)
+      }
+      // Los demás errores se manejan en los hooks
+    }
+  }
+
+  // Manejar cambio de página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    clearSelection()
+  }
+
+  // Manejar cambio de items por página
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1)
+    clearSelection()
+  }
+
+  if (isLoadingExtraField) {
     return (
       <MainLayout>
-        <div className="space-y-6">
-          <Card className="border-camouflage-green-200">
-            <CardHeader>
-              <CardTitle className="text-camouflage-green-900">Campo no encontrado</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <p className="text-camouflage-green-700">El campo solicitado no existe o fue eliminado.</p>
-                <Button
-                  variant="outline"
-                  onClick={() => router.push("/inventory/extra-fields")}
-                  className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-                >
-                  Volver a Campos Extra
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+            <p className="text-sm text-camouflage-green-600">Cargando campo...</p>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (extraFieldError || !extraField) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center py-12">
+          <Layers className="h-16 w-16 text-camouflage-green-300" />
+          <h2 className="mt-4 text-xl font-semibold text-camouflage-green-900">Campo no encontrado</h2>
+          <p className="mt-2 text-camouflage-green-600">El campo solicitado no existe o fue eliminado.</p>
+          <Button
+            variant="outline"
+            onClick={() => router.push("/inventory/extra-fields")}
+            className="mt-4 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+          >
+            Volver a Campos Extra
+          </Button>
         </div>
       </MainLayout>
     )
@@ -378,7 +357,7 @@ export default function ExtraFieldDetailsPage() {
           <div>
             <h1 className="flex items-center text-3xl font-bold text-camouflage-green-900">
               <Layers className="mr-3 h-8 w-8 text-camouflage-green-700" />
-              {extraField.name}
+              {extraField.nombre}
             </h1>
           </div>
           <Button
@@ -393,26 +372,43 @@ export default function ExtraFieldDetailsPage() {
           </Button>
         </div>
 
+        {/* Tarjeta de error de regla de negocio */}
+        {businessError && (
+          <Alert variant="destructive" className="relative border-red-300 bg-red-50">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <div className="flex-1">
+              <AlertTitle className="text-red-900 font-semibold">{businessError.title}</AlertTitle>
+              <AlertDescription className="text-red-800 mt-2">
+                {businessError.message}
+              </AlertDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setBusinessError(null)}
+              className="absolute right-2 top-2 h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </Alert>
+        )}
+
         {/* Acciones sobre el campo */}
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Button
-              variant={isFieldActive ? "primary" : "outline"}
-              className={isFieldActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
-              onClick={() => {
-                setIsFieldActive(true)
-                toast({ title: "Campo activado", description: `"${extraField.name}" está activo.` })
-              }}
+              variant={extraField.activo ? "outline" : "primary"}
+              className={extraField.activo ? "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50" : ""}
+              onClick={handleActivate}
+              disabled={activateMutation.isPending || deactivateMutation.isPending || extraField.activo}
             >
               Activar
             </Button>
             <Button
-              variant={!isFieldActive ? "primary" : "outline"}
-              className={!isFieldActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
-              onClick={() => {
-                setIsFieldActive(false)
-                toast({ title: "Campo desactivado", description: `"${extraField.name}" está inactivo.` })
-              }}
+              variant={!extraField.activo ? "outline" : "primary"}
+              className={!extraField.activo ? "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50" : ""}
+              onClick={handleDeactivate}
+              disabled={activateMutation.isPending || deactivateMutation.isPending || !extraField.activo}
             >
               Desactivar
             </Button>
@@ -420,7 +416,7 @@ export default function ExtraFieldDetailsPage() {
           <Button
             variant="outline"
             className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-            onClick={() => setIsEditModalOpen(true)}
+            onClick={() => handleEditField(extraField)}
           >
             <Edit className="mr-2 h-4 w-4" />
             Editar
@@ -439,19 +435,17 @@ export default function ExtraFieldDetailsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Eliminar campo</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Se eliminará "{extraField.name}".
+                  Esta acción no se puede deshacer. Se eliminará "{extraField.nombre}".
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-red-600 hover:bg-red-700"
-                  onClick={() => {
-                    toast({ title: "Campo eliminado", description: `"${extraField.name}" fue eliminado.` })
-                    router.push("/inventory/extra-fields")
-                  }}
+                  onClick={handleDeleteField}
+                  disabled={deleteMutation.isPending}
                 >
-                  Eliminar
+                  {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -464,34 +458,42 @@ export default function ExtraFieldDetailsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1">
                 <div className="text-base text-camouflage-green-600">Nombre</div>
-                <div className="font-medium text-camouflage-green-900">{extraField.name}</div>
+                <div className="font-medium text-camouflage-green-900">{extraField.nombre}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-base text-camouflage-green-600">Tipo</div>
-                <div className="font-medium text-camouflage-green-900 capitalize">{extraField.type}</div>
+                <div className="font-medium text-camouflage-green-900 capitalize">{mapTipoDatoBackendToFrontend(extraField.tipoDato)}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-base text-camouflage-green-600">Valor por Defecto</div>
-                <div className="font-medium text-camouflage-green-900">{extraField.defaultValue || "Sin valor"}</div>
+                <div className="font-medium text-camouflage-green-900">{extraField.valorPorDefecto || "Sin valor"}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-base text-camouflage-green-600">Estado</div>
-                <div className="font-medium text-camouflage-green-900">{extraField.isRequired ? "Requerido" : "Opcional"}</div>
+                <div className="font-medium text-camouflage-green-900">
+                  {extraField.activo ? "Activo" : "Inactivo"} {extraField.esRequerido ? "• Requerido" : "• Opcional"}
+                </div>
               </div>
             </div>
-            <div className="mt-4 space-y-1">
-              <div className="text-base text-camouflage-green-600">Descripción</div>
-              <div className="font-medium text-camouflage-green-900">{extraField.description}</div>
-            </div>
+            {extraField.descripcion && (
+              <div className="mt-4 space-y-1">
+                <div className="text-base text-camouflage-green-600">Descripción</div>
+                <div className="font-medium text-camouflage-green-900">{extraField.descripcion}</div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Tabla de ítems que usan este campo */}
+        {/* Tabla de ítems asociados al campo extra */}
         <Card className="border-camouflage-green-200">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-camouflage-green-900">
-                Items Asociados ({totalItems.toLocaleString()})
+                {isLoadingProductos ? (
+                  "Cargando productos..."
+                ) : (
+                  `Items Asociados (${totalItems.toLocaleString()})`
+                )}
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Button
@@ -510,7 +512,7 @@ export default function ExtraFieldDetailsPage() {
                       size="sm"
                       variant="outline"
                       className="h-6 w-6 p-0 text-camouflage-green-600 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                      onClick={() => setSelectedIds(new Set())}
+                      onClick={clearSelection}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -529,9 +531,7 @@ export default function ExtraFieldDetailsPage() {
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Activar ítems seleccionados</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Se activarán {selectedCount} ítem(s).
-                            </AlertDialogDescription>
+                            <AlertDialogDescription>Se activarán {selectedCount} ítem(s).</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -554,9 +554,7 @@ export default function ExtraFieldDetailsPage() {
                         <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>Desactivar ítems seleccionados</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Se desactivarán {selectedCount} ítem(s).
-                            </AlertDialogDescription>
+                            <AlertDialogDescription>Se desactivarán {selectedCount} ítem(s).</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -602,30 +600,32 @@ export default function ExtraFieldDetailsPage() {
                 {/* Fila de filtros */}
                 {showFilters && (
                   <TableRow className="animate-in slide-in-from-top-2 border-camouflage-green-200 bg-camouflage-green-50/30 duration-300 hover:bg-transparent">
-                    <TableHead className="w-[36px]" />
-                    <TableHead className="w-[200px]">
-                      <div className=" py-3">
+                    <TableHead className="w-[40px]">
+                      <div className="pl-3">{/* Columna vacía para alinear con checkbox */}</div>
+                    </TableHead>
+                    <TableHead className="w-[220px] pl-0">
+                      <div className="py-3">
                         <input
                           type="text"
                           placeholder="Nombre"
                           value={filters.name}
                           onChange={(e) => handleFilterChange("name", e.target.value)}
-                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[120px]">
-                      <div className=" py-3">
+                    <TableHead className="w-[140px] pl-0">
+                      <div className="py-3">
                         <input
                           type="text"
-                          placeholder="Referencia"
+                          placeholder="Código SKU"
                           value={filters.sku}
                           onChange={(e) => handleFilterChange("sku", e.target.value)}
-                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[100px]">
+                    <TableHead className="w-[160px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
@@ -636,7 +636,7 @@ export default function ExtraFieldDetailsPage() {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[250px]">
+                    <TableHead className="w-[240px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
@@ -647,12 +647,13 @@ export default function ExtraFieldDetailsPage() {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[120px]">
-                      <div className="flex items-center gap-1 py-3">
+                    <TableHead className="w-[140px] pl-0">
+                      <div className="flex items-center justify-start gap-1 py-3">
                         <Select
                           value={filters.stockOperator}
                           onValueChange={(value) => {
                             handleFilterChange("stockOperator", value)
+                            // Limpiar valores cuando se cambia el operador
                             if (value !== "between") {
                               handleFilterChange("stockMinValue", "")
                               handleFilterChange("stockMaxValue", "")
@@ -706,13 +707,24 @@ export default function ExtraFieldDetailsPage() {
                         )}
                       </div>
                     </TableHead>
-                    <TableHead className="w-[160px]">
+                    <TableHead className="w-[180px] pl-0">
+                      <div className="py-3">
+                        <input
+                          type="text"
+                          placeholder="Valor Campo"
+                          value=""
+                          disabled
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-gray-100 px-3 py-2 text-sm text-camouflage-green-500 placeholder-camouflage-green-400 cursor-not-allowed"
+                        />
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-[180px] pl-0">
                       <div className="flex items-center gap-1 py-3">
                         <Select
-                          value={filters.status}
-                          onValueChange={(value) => handleFilterChange("status", value)}
+                          value={filters.status || "all"}
+                          onValueChange={(value) => handleFilterChange("status", value === "all" ? "" : value)}
                         >
-                          <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-4 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Filtrar por estado">
+                          <SelectTrigger className="w-28 rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Filtrar por estado">
                             <SelectValue placeholder="Todos" />
                           </SelectTrigger>
                           <SelectContent className="rounded-3xl">
@@ -725,7 +737,7 @@ export default function ExtraFieldDetailsPage() {
                           onClick={clearFilters}
                           size="sm"
                           variant="outline"
-                          className="ml-2 h-9 w-14 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                          className="ml-2 h-9 w-9 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
                           title="Limpiar filtros"
                         >
                           <X className="h-3 w-3" />
@@ -737,7 +749,7 @@ export default function ExtraFieldDetailsPage() {
 
                 {/* Headers de columnas */}
                 <TableRow className="border-camouflage-green-200 hover:bg-transparent">
-                  <TableHead className="w-[36px]">
+                  <TableHead className="w-[40px]">
                     <div className="pl-3">
                       <Checkbox
                         checked={allCurrentSelected}
@@ -746,7 +758,7 @@ export default function ExtraFieldDetailsPage() {
                       />
                     </div>
                   </TableHead>
-                  <TableHead className="w-[200px] font-semibold text-camouflage-green-700 pl-4">
+                  <TableHead className="w-[220px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("name")}
@@ -764,7 +776,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] font-semibold text-camouflage-green-700 pl-4">
+                  <TableHead className="w-[140px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("sku")}
@@ -782,7 +794,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[100px] font-semibold text-camouflage-green-700 pl-4">
+                  <TableHead className="w-[160px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("price")}
@@ -800,7 +812,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[250px] font-semibold text-camouflage-green-700 pl-4">
+                  <TableHead className="w-[240px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("description")}
@@ -818,7 +830,7 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[120px] text-center font-semibold text-camouflage-green-700 pl-4">
+                  <TableHead className="w-[140px] font-semibold text-camouflage-green-700 pl-4">
                     <div>
                       <button
                         onClick={() => handleSort("stock")}
@@ -836,17 +848,27 @@ export default function ExtraFieldDetailsPage() {
                       </button>
                     </div>
                   </TableHead>
-                  <TableHead className="w-[160px] font-semibold text-camouflage-green-700 pl-4">Acciones</TableHead>
+                  <TableHead className="w-[180px] font-semibold text-camouflage-green-700 pl-4">Valor Campo</TableHead>
+                  <TableHead className="w-[180px] font-semibold text-camouflage-green-700 pl-4">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentProducts.length > 0 ? (
+                {isLoadingProductos ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="py-12 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+                        <p className="text-sm text-camouflage-green-600">Cargando productos...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : currentProducts.length > 0 ? (
                   currentProducts.map((product) => (
                     <TableRow
                       key={product.id}
                       className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
                     >
-                      <TableCell className="w-[36px]">
+                      <TableCell className="w-[40px]">
                         <div className="pl-3">
                           <Checkbox
                             checked={isSelected(product.id)}
@@ -855,7 +877,7 @@ export default function ExtraFieldDetailsPage() {
                           />
                         </div>
                       </TableCell>
-                      <TableCell className="w-[200px] pl-4">
+                      <TableCell className="w-[220px] pl-4">
                         <button
                           onClick={() => router.push(`/inventory/items/${product.id}`)}
                           className="text-left font-medium text-camouflage-green-900 transition-colors hover:text-camouflage-green-700 hover:underline"
@@ -863,25 +885,27 @@ export default function ExtraFieldDetailsPage() {
                           {product.name}
                         </button>
                       </TableCell>
-                      <TableCell className="w-[120px] pl-4">
+                      <TableCell className="w-[140px] pl-4">
                         <div className="font-mono text-sm text-camouflage-green-600">{product.sku}</div>
                       </TableCell>
-                      <TableCell className="w-[100px] pl-4">
-                        <div className="font-semibold text-camouflage-green-700">${product.price}</div>
-                      </TableCell>
-                      <TableCell className="w-[250px] pl-4">
-                        <div
-                          className="max-w-[230px] truncate text-sm text-camouflage-green-600"
-                          title={product.description}
-                        >
-                          {product.description}
+                      <TableCell className="w-[160px] pl-4">
+                        <div className="font-semibold text-camouflage-green-700 whitespace-nowrap">
+                          {new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP" }).format(product.price)}
                         </div>
                       </TableCell>
-                      <TableCell className="w-[120px] pl-4">
-                        <div className="">
+                      <TableCell className="w-[240px] pl-4">
+                        <div
+                          className="max-w-[220px] truncate text-sm text-camouflage-green-600"
+                          title={product.description}
+                        >
+                          {product.description || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="w-[140px] pl-4">
+                        <div className="text-left">
                           <span
-                            className={`min-w-[50px] rounded-full px-4 py-2 text-center text-sm font-semibold ${
-                              product.stock > product.minStock
+                            className={`min-w-[50px] rounded-full px-4 py-2 text-left text-sm font-semibold ${
+                              product.stock > (product.minStock || 0)
                                 ? "bg-camouflage-green-100 text-camouflage-green-800"
                                 : "bg-red-100 text-red-800"
                             }`}
@@ -890,7 +914,12 @@ export default function ExtraFieldDetailsPage() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell className="w-[160px] pl-4">
+                      <TableCell className="w-[180px] pl-4">
+                        <div className="text-sm text-camouflage-green-700">
+                          {(product as any).valorCampoExtra || "-"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="w-[180px] pl-4">
                         <div className="flex items-center justify-start gap-1">
                           <Button
                             size="sm"
@@ -906,7 +935,7 @@ export default function ExtraFieldDetailsPage() {
                             variant="outline"
                             className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                             title="Editar"
-                            onClick={() => setIsProductEditModalOpen(true)}
+                            onClick={() => router.push(`/inventory/items/${product.id}/edit`)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -916,12 +945,11 @@ export default function ExtraFieldDetailsPage() {
                             className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                             title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
                             onClick={() => {
-                              const current = product.isActive ?? true
-                              setLocalFieldProducts(prevProducts =>
-                                prevProducts.map(p =>
-                                  p.id === product.id ? { ...p, isActive: !current } : p
-                                )
-                              )
+                              if (product.isActive ?? true) {
+                                deactivateProductoMutation.mutate(product.id)
+                              } else {
+                                activateProductoMutation.mutate(product.id)
+                              }
                             }}
                           >
                             {(product.isActive ?? true) ? (
@@ -953,14 +981,12 @@ export default function ExtraFieldDetailsPage() {
                                 <AlertDialogAction
                                   className="bg-red-600 hover:bg-red-700"
                                   onClick={() => {
-                                    setLocalFieldProducts(prevProducts =>
-                                      prevProducts.filter(p => p.id !== product.id)
-                                    )
-                                    toast({ title: "Ítem eliminado", description: `Se eliminó "${product.name}".` })
-                                    setSelectedIds((prev) => {
-                                      const next = new Set(prev)
-                                      next.delete(product.id)
-                                      return next
+                                    deleteProductoMutation.mutate(product.id, {
+                                      onSuccess: () => {
+                                        setSuccessMessage("Item eliminado exitosamente.")
+                                        setShowSuccessToast(true)
+                                        setTimeout(() => setShowSuccessToast(false), 5000)
+                                      },
                                     })
                                   }}
                                 >
@@ -975,7 +1001,7 @@ export default function ExtraFieldDetailsPage() {
                   ))
                 ) : (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={7} className="py-12 text-center">
+                    <TableCell colSpan={9} className="py-12 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <Layers className="h-12 w-12 text-camouflage-green-300" />
                         <div>
@@ -993,131 +1019,74 @@ export default function ExtraFieldDetailsPage() {
               </TableBody>
             </Table>
           </CardContent>
-
           {/* Paginación */}
-          <PaginationControls
-            pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={(n) => {
-              setItemsPerPage(n)
-              setCurrentPage(1)
-            }}
-          />
+          {totalPages > 0 && (
+            <PaginationControls
+              pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          )}
         </Card>
       </div>
 
       {/* Modal para editar campo */}
-      <Modal isOpen={isEditModalOpen} onClose={handleCancelEditField} title="Editar Campo">
-        <div className="space-y-4">
-          <div className="space-y-1 pt-2.5">
-            <Label htmlFor="edit-field-name" className="font-medium text-camouflage-green-700">
-              Nombre <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="edit-field-name"
-              type="text"
-              placeholder="Ej: Color, Peso, Fecha de Vencimiento..."
-              value={editFieldData.name}
-              onChange={(e) => handleEditFieldInputChange("name", e.target.value)}
-              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-            />
-          </div>
+      {extraField && (
+        <EditExtraFieldModal
+          isOpen={isEditModalOpen}
+          onClose={handleCancelEditField}
+          field={{
+            id: extraField.id,
+            name: extraField.nombre,
+            type: extraField.tipoDato,
+            description: extraField.descripcion || "",
+            defaultValue: extraField.valorPorDefecto || "",
+            isRequired: extraField.esRequerido,
+          }}
+          onSave={handleSaveEditField}
+          isLoading={updateMutation.isPending}
+        />
+      )}
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-field-type" className="font-medium text-camouflage-green-700">
-              Tipo de Campo <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={editFieldData.type}
-              onValueChange={(value) => handleEditFieldInputChange("type", value)}
-            >
-              <SelectTrigger className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="texto">Texto</SelectItem>
-                <SelectItem value="número">Número</SelectItem>
-                <SelectItem value="número decimal">Número Decimal</SelectItem>
-                <SelectItem value="fecha">Fecha</SelectItem>
-                <SelectItem value="si/no">Si/No</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-field-default" className="font-medium text-camouflage-green-700">
-              Valor por Defecto
-            </Label>
-            {renderDefaultValueInput(
-              editFieldData.type,
-              editFieldData.defaultValue,
-              (value) => handleEditFieldInputChange("defaultValue", value)
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-field-description" className="font-medium text-camouflage-green-700">
-              Descripción
-            </Label>
-            <Textarea
-              id="edit-field-description"
-              placeholder="Descripción del campo adicional"
-              value={editFieldData.description}
-              onChange={(e) => handleEditFieldInputChange("description", e.target.value)}
-              className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-              style={{
-                outline: "none",
-                boxShadow: "none",
-              }}
-              onFocus={(e) => {
-                e.target.style.outline = "none"
-                e.target.style.boxShadow = "none"
-              }}
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="edit-field-required"
-              checked={editFieldData.isRequired}
-              onCheckedChange={(checked) => handleEditFieldInputChange("isRequired", checked as boolean)}
-            />
-            <Label htmlFor="edit-field-required" className="text-sm font-medium text-camouflage-green-700">
-              Campo requerido
-            </Label>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-4">
+      {/* Toast de error personalizado */}
+      {showErrorToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm font-medium text-red-800">
+              {errorMessage || "No se puede eliminar el campo porque está siendo usado en productos."}
+            </p>
             <Button
-              variant="outline"
-              onClick={handleCancelEditField}
-              className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowErrorToast(false)}
+              className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
             >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSaveEditField}
-              variant="primary"
-            >
-              Guardar cambios
+              <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
-      </Modal>
+      )}
 
-      {/* Modal para editar producto */}
-      <Modal isOpen={isProductEditModalOpen} onClose={() => setIsProductEditModalOpen(false)} title="Editar Producto" size="xl">
-        <NewItemForm 
-          onClose={() => setIsProductEditModalOpen(false)}
-          onSuccess={() => {
-            setIsProductEditModalOpen(false)
-            toast({
-              title: "Producto actualizado",
-              description: "El producto fue actualizado exitosamente.",
-            })
-          }}
-        />
-      </Modal>
+      {/* Toast de éxito personalizado */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-sm font-medium text-green-800">
+              {successMessage || "Operación completada exitosamente."}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSuccessToast(false)}
+              className="h-6 w-6 p-0 text-green-600 hover:bg-green-100 hover:text-green-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </MainLayout>
   )
 }

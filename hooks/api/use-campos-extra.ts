@@ -4,9 +4,11 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { camposExtraService } from "@/lib/api/services/campos-extra.service"
-import type { CampoExtraBackend, CreateCampoExtraDto } from "@/lib/api/types"
+import type { CampoExtraBackend, CreateCampoExtraDto, UpdateCampoExtraDto, ProductosQueryParams } from "@/lib/api/types"
 import { useToast } from "@/hooks/use-toast"
 import { NetworkError, ApiError } from "@/lib/api/errors"
+import { mapProductoToProduct } from "@/lib/api/services/productos.service"
+import type { Product } from "@/contexts/inventory-context"
 
 /**
  * Query key factory para campos extra
@@ -14,13 +16,16 @@ import { NetworkError, ApiError } from "@/lib/api/errors"
 export const camposExtraKeys = {
   all: ["campos-extra"] as const,
   lists: () => [...camposExtraKeys.all, "list"] as const,
-  list: (params?: { activos?: boolean; requeridos?: boolean }) => [...camposExtraKeys.lists(), params] as const,
+  list: (params?: { page?: number; pageSize?: number; nombre?: string; tipoDato?: string; esRequerido?: boolean; activo?: boolean; orderBy?: string; orderDesc?: boolean }) => [...camposExtraKeys.lists(), params] as const,
+  details: () => [...camposExtraKeys.all, "detail"] as const,
+  detail: (id: string) => [...camposExtraKeys.details(), id] as const,
+  productos: (campoExtraId: string, params?: ProductosQueryParams) => [...camposExtraKeys.detail(campoExtraId), "productos", params] as const,
 }
 
 /**
  * Mapea el tipo de dato del backend al tipo del frontend
  */
-function mapTipoDatoBackendToFrontend(tipoDato: string): "texto" | "número" | "número decimal" | "fecha" | "si/no" {
+export function mapTipoDatoBackendToFrontend(tipoDato: string): "texto" | "número" | "número decimal" | "fecha" | "si/no" {
   switch (tipoDato) {
     case "Texto":
       return "texto"
@@ -90,11 +95,41 @@ export function useCamposExtraRequeridos() {
 }
 
 /**
- * Hook para obtener todos los campos extra activos (para formularios avanzados)
+ * Hook para obtener campos extra con filtros y paginación
  */
-export function useCamposExtra(onlyActive: boolean = true) {
+export function useCamposExtra(params?: {
+  page?: number
+  pageSize?: number
+  nombre?: string
+  tipoDato?: string
+  esRequerido?: boolean
+  activo?: boolean
+  orderBy?: string
+  orderDesc?: boolean
+}) {
   return useQuery({
-    queryKey: camposExtraKeys.list({ activos: onlyActive }),
+    queryKey: camposExtraKeys.list(params),
+    queryFn: async () => {
+      const response = await camposExtraService.getCamposExtra(params)
+      return {
+        items: response.data.items,
+        page: response.data.page,
+        pageSize: response.data.pageSize,
+        totalCount: response.data.totalCount,
+        totalPages: response.data.totalPages,
+        hasPreviousPage: response.data.hasPreviousPage,
+        hasNextPage: response.data.hasNextPage,
+      }
+    },
+  })
+}
+
+/**
+ * Hook para obtener campos extra activos (para formularios)
+ */
+export function useCamposExtraActive(onlyActive: boolean = true) {
+  return useQuery({
+    queryKey: camposExtraKeys.list({ activo: onlyActive ? true : undefined, pageSize: 100 }),
     queryFn: async () => {
       const response = await camposExtraService.getCamposExtra({
         activo: onlyActive ? true : undefined,
@@ -102,6 +137,21 @@ export function useCamposExtra(onlyActive: boolean = true) {
       })
       return response.data.items.map(mapCampoExtraToFrontend)
     },
+  })
+}
+
+/**
+ * Hook para obtener un campo extra por ID
+ */
+export function useCampoExtra(id: string | undefined) {
+  return useQuery({
+    queryKey: camposExtraKeys.detail(id || ""),
+    queryFn: async () => {
+      if (!id) throw new Error("ID is required")
+      const response = await camposExtraService.getCampoExtraById(id)
+      return response.data
+    },
+    enabled: !!id,
   })
 }
 
@@ -118,6 +168,7 @@ export function useCreateCampoExtra() {
     },
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: camposExtraKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.all })
       
       toast({
         title: "Campo creado",
@@ -143,6 +194,210 @@ export function useCreateCampoExtra() {
         variant: "destructive",
       })
     },
+  })
+}
+
+/**
+ * Hook para actualizar campo extra
+ */
+export function useUpdateCampoExtra() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateCampoExtraDto }) => {
+      return await camposExtraService.updateCampoExtra(id, data)
+    },
+    onSuccess: (response, variables) => {
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.detail(variables.id) })
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.all })
+      
+      toast({
+        title: "Campo actualizado",
+        description: response.message || "Campo extra actualizado exitosamente.",
+      })
+    },
+    onError: (error: Error) => {
+      let errorMessage = "Ocurrió un error al actualizar el campo extra."
+      let errorTitle = "Error al actualizar campo"
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor. Por favor, verifica que la API esté en ejecución e intenta nuevamente."
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMessage
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMessage
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+/**
+ * Hook para activar campo extra
+ */
+export function useActivateCampoExtra() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return await camposExtraService.activateCampoExtra(id)
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.all })
+      
+      toast({
+        title: "Campo activado",
+        description: response.message || "Campo extra activado exitosamente.",
+      })
+    },
+    onError: (error: Error) => {
+      let errorMessage = "Ocurrió un error al activar el campo extra."
+      let errorTitle = "Error al activar campo"
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor."
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMessage
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMessage
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+/**
+ * Hook para desactivar campo extra
+ */
+export function useDeactivateCampoExtra() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return await camposExtraService.deactivateCampoExtra(id)
+    },
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.all })
+      
+      toast({
+        title: "Campo desactivado",
+        description: response.message || "Campo extra desactivado exitosamente.",
+      })
+    },
+    onError: (error: Error) => {
+      let errorMessage = "Ocurrió un error al desactivar el campo extra."
+      let errorTitle = "Error al desactivar campo"
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor."
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMessage
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMessage
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+/**
+ * Hook para eliminar campo extra permanentemente
+ */
+export function useDeleteCampoExtra() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      return await camposExtraService.deleteCampoExtra(id)
+    },
+    onSuccess: (response, id) => {
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: camposExtraKeys.all })
+      queryClient.removeQueries({ queryKey: camposExtraKeys.detail(id) })
+      
+      toast({
+        title: "Campo eliminado",
+        description: response.message || "Campo extra eliminado exitosamente.",
+      })
+    },
+    onError: (error: Error) => {
+      let errorMessage = "Ocurrió un error al eliminar el campo extra."
+      let errorTitle = "Error al eliminar campo"
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor."
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMessage
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMessage
+      }
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: "destructive",
+      })
+    },
+  })
+}
+
+/**
+ * Hook para obtener productos asociados a un campo extra
+ */
+export function useCampoExtraProductos(campoExtraId: string | undefined, params?: ProductosQueryParams) {
+  return useQuery({
+    queryKey: camposExtraKeys.productos(campoExtraId || "", params),
+    queryFn: async () => {
+      if (!campoExtraId) throw new Error("Campo Extra ID is required")
+      const response = await camposExtraService.getCampoExtraProductos(campoExtraId, params)
+      return {
+        items: response.data.items.map((producto) => {
+          const mapped = mapProductoToProduct(producto)
+          // Si viene cantidadEnCampo, usarla (aunque siempre es igual a stockActual para campos extra)
+          if ((producto as any).cantidadEnCampo !== undefined) {
+            mapped.stock = (producto as any).cantidadEnCampo
+          }
+          // Agregar valorCampoExtra si está disponible
+          if ((producto as any).valorCampoExtra !== undefined) {
+            (mapped as any).valorCampoExtra = (producto as any).valorCampoExtra
+          }
+          return mapped
+        }),
+        page: response.data.page,
+        pageSize: response.data.pageSize,
+        totalCount: response.data.totalCount,
+        totalPages: response.data.totalPages,
+        hasPreviousPage: response.data.hasPreviousPage,
+        hasNextPage: response.data.hasNextPage,
+      }
+    },
+    enabled: !!campoExtraId,
   })
 }
 

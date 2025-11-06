@@ -10,8 +10,8 @@ import { PaginationControls } from "@/components/inventory-value/pagination-cont
 import { MainLayout } from "@/components/layout/main-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useInventarioResumen } from "@/hooks/api/use-inventario"
-import { useBodegas } from "@/hooks/api/use-bodegas"
-import { useCategorias } from "@/hooks/api/use-categorias"
+import { useBodegasActive } from "@/hooks/api/use-bodegas"
+import { useCategoriasActive } from "@/hooks/api/use-categorias"
 import { InventoryValueFilters, InventoryMetrics, PaginationConfig } from "@/lib/types/inventory-value"
 import { inventarioService } from "@/lib/api/services/inventario.service"
 import type { InventarioFilterDto } from "@/lib/api/types"
@@ -35,8 +35,8 @@ export default function InventoryValue() {
   const [itemsPerPage, setItemsPerPage] = useState(20)
 
   // Obtener bodegas y categorías para los filtros
-  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useBodegas(true)
-  const { data: categories = [], isLoading: isLoadingCategories } = useCategorias(true)
+  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useBodegasActive(true)
+  const { data: categories = [], isLoading: isLoadingCategories } = useCategoriasActive(true)
 
   // Construir parámetros para la API
   const apiParams: InventarioFilterDto = useMemo(() => {

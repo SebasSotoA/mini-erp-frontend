@@ -18,7 +18,7 @@ import {
   Ruler,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 
 import { MainLayout } from "@/components/layout/main-layout"
 import {
@@ -43,52 +43,40 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { DatePicker } from "@/components/ui/date-picker"
-
-const initialExtraFields = [
-  {
-    id: "1",
-    name: "Color",
-    type: "texto",
-    description: "Color principal del producto",
-    defaultValue: "Blanco",
-    isRequired: true,
-    isActive: true,
-  },
-  {
-    id: "2",
-    name: "Peso",
-    type: "número decimal",
-    description: "Peso del producto en kilogramos",
-    defaultValue: "0.00",
-    isRequired: false,
-    isActive: true,
-  },
-  {
-    id: "3",
-    name: "Fecha de Vencimiento",
-    type: "fecha",
-    description: "Fecha de vencimiento del producto",
-    defaultValue: "",
-    isRequired: false,
-    isActive: true,
-  },
-  {
-    id: "4",
-    name: "Es Importado",
-    type: "si/no",
-    description: "Indica si el producto es importado",
-    defaultValue: "No",
-    isRequired: true,
-    isActive: false,
-  },
-]
+import { PaginationControls } from "@/components/inventory-value/pagination-controls"
+import {
+  useCamposExtra,
+  useCreateCampoExtra,
+  useUpdateCampoExtra,
+  useActivateCampoExtra,
+  useDeactivateCampoExtra,
+  useDeleteCampoExtra,
+  mapTipoDatoFrontendToBackend,
+  mapTipoDatoBackendToFrontend,
+} from "@/hooks/api/use-campos-extra"
+import type { CampoExtraBackend, CreateCampoExtraDto, UpdateCampoExtraDto } from "@/lib/api/types"
+import { PaginationConfig } from "@/lib/types/inventory-value"
+import { EditExtraFieldModal } from "@/components/modals/EditExtraFieldModal"
+import { AlertCircle, CheckCircle } from "lucide-react"
 
 export default function ExtraFields() {
   const router = useRouter()
   const { toast } = useToast()
 
-  // Función helper para renderizar el input de valor por defecto según el tipo
-  const renderDefaultValueInput = (type: string, value: string, onChange: (value: string) => void) => {
+  // Estado para búsqueda - separar el valor del input del término de búsqueda
+  const [inputValue, setInputValue] = useState("")
+  const [searchTerm, setSearchTerm] = useState("")
+  // Ref para mantener el foco en el input de búsqueda
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  // Estado para paginación
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(20)
+  // Estado para ordenamiento
+  const [sortField, setSortField] = useState<"nombre" | null>(null)
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+
+  // Función helper para renderizar el input de valor por defecto según el tipo (solo para el modal de creación)
+  const renderDefaultValueInput = (type: string, value: string, onChange: (value: string) => void, disabled?: boolean) => {
     switch (type) {
       case "texto":
         return (
@@ -98,6 +86,7 @@ export default function ExtraFields() {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+            disabled={disabled}
           />
         )
       
@@ -109,6 +98,7 @@ export default function ExtraFields() {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+            disabled={disabled}
           />
         )
       
@@ -121,6 +111,7 @@ export default function ExtraFields() {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+            disabled={disabled}
           />
         )
       
@@ -134,12 +125,13 @@ export default function ExtraFields() {
             onChange={(date) => onChange(date ? date.toISOString().split('T')[0] : "")}
             placeholder="Seleccionar fecha por defecto"
             className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+            disabled={disabled}
           />
         )
       
       case "si/no":
         return (
-          <Select value={value} onValueChange={onChange}>
+          <Select value={value} onValueChange={onChange} disabled={disabled}>
             <SelectTrigger className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500">
               <SelectValue placeholder="Seleccionar valor por defecto" />
             </SelectTrigger>
@@ -158,17 +150,21 @@ export default function ExtraFields() {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+            disabled={disabled}
           />
         )
     }
   }
 
-  // Estado para los campos adicionales
-  const [extraFields, setExtraFields] = useState(initialExtraFields)
-
   // Estado para el modal de nuevo campo
   const [isNewFieldModalOpen, setIsNewFieldModalOpen] = useState(false)
-  const [newFieldData, setNewFieldData] = useState({
+  const [newFieldData, setNewFieldData] = useState<{
+    name: string
+    type: string
+    defaultValue: string
+    description: string
+    isRequired: boolean
+  }>({
     name: "",
     type: "texto",
     defaultValue: "",
@@ -178,27 +174,84 @@ export default function ExtraFields() {
 
   // Estado para el modal de edición
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editingField, setEditingField] = useState<(typeof extraFields)[0] | null>(null)
-  const [editFieldData, setEditFieldData] = useState({
-    name: "",
-    type: "texto",
-    defaultValue: "",
-    description: "",
-    isRequired: false,
-  })
-
-  // Estado para búsqueda
-  const [searchTerm, setSearchTerm] = useState("")
+  const [editingField, setEditingField] = useState<CampoExtraBackend | null>(null)
 
   // Estado para selección múltiple
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const selectedCount = selectedIds.size
+
+  // Estado para toast de error personalizado
+  const [showErrorToast, setShowErrorToast] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+
+  // Estado para toast de éxito personalizado
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
+
+  // Construir parámetros para la API
+  const apiParams = useMemo(() => {
+    const params: {
+      page: number
+      pageSize: number
+      nombre?: string
+      orderBy?: string
+      orderDesc?: boolean
+    } = {
+      page: currentPage,
+      pageSize: itemsPerPage,
+    }
+
+    if (searchTerm.trim()) {
+      params.nombre = searchTerm.trim()
+    }
+
+    if (sortField) {
+      params.orderBy = "nombre"
+      params.orderDesc = sortDirection === "desc"
+    }
+
+    return params
+  }, [currentPage, itemsPerPage, searchTerm, sortField, sortDirection])
+
+  // Obtener campos extra del backend
+  const { data: camposExtraData, isLoading, error } = useCamposExtra(apiParams)
+
+  // Mutaciones
+  const createMutation = useCreateCampoExtra()
+  const updateMutation = useUpdateCampoExtra()
+  const activateMutation = useActivateCampoExtra()
+  const deactivateMutation = useDeactivateCampoExtra()
+  const deleteMutation = useDeleteCampoExtra()
+
+  // Datos procesados
+  const extraFields = camposExtraData?.items || []
+  const pagination: PaginationConfig = useMemo(() => {
+    if (!camposExtraData) {
+      return {
+        currentPage: 1,
+        itemsPerPage: 20,
+        totalItems: 0,
+        totalPages: 0,
+      }
+    }
+    return {
+      currentPage: camposExtraData.page,
+      itemsPerPage: camposExtraData.pageSize,
+      totalItems: camposExtraData.totalCount,
+      totalPages: camposExtraData.totalPages,
+    }
+  }, [camposExtraData])
+
+  // Funciones de selección
   const isSelected = (id: string) => selectedIds.has(id)
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
       return next
     })
   }
@@ -206,98 +259,109 @@ export default function ExtraFields() {
 
   // Lógica para determinar el estado de los botones de acciones masivas
   const selectedFields = extraFields.filter((f) => selectedIds.has(f.id))
-  const allSelectedActive = selectedFields.length > 0 && selectedFields.every((f) => f.isActive)
-  const allSelectedInactive = selectedFields.length > 0 && selectedFields.every((f) => !f.isActive)
-  const hasMixedStates = selectedFields.length > 0 && !allSelectedActive && !allSelectedInactive
+  const allSelectedActive = selectedFields.length > 0 && selectedFields.every((f) => f.activo)
+  const allSelectedInactive = selectedFields.length > 0 && selectedFields.every((f) => !f.activo)
 
-  // Estado para ordenamiento
-  const [sortField, setSortField] = useState<"name" | null>(null)
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-
-  const handleSort = (field: "name") => {
+  // Manejar ordenamiento
+  const handleSort = (field: "nombre") => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc")
     } else {
       setSortField(field)
       setSortDirection("asc")
     }
-    // Limpiar selección al cambiar ordenamiento
     clearSelection()
+    setCurrentPage(1) // Reset a la primera página al cambiar ordenamiento
   }
-
-  // Función para filtrar y ordenar los campos adicionales
-  const filteredAndSortedFields = useMemo(() => {
-    let filtered = extraFields
-
-    // Aplicar filtro de búsqueda por nombre
-    if (searchTerm.trim()) {
-      filtered = extraFields.filter((field) => field.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    }
-
-    // Aplicar ordenamiento
-    if (!sortField) return filtered
-
-    return [...filtered].sort((a, b) => {
-      const aValue = a[sortField].toLowerCase()
-      const bValue = b[sortField].toLowerCase()
-
-      if (sortDirection === "asc") {
-        return aValue.localeCompare(bValue)
-      } else {
-        return bValue.localeCompare(aValue)
-      }
-    })
-  }, [extraFields, sortField, sortDirection, searchTerm])
 
   // Acciones masivas
-  const bulkSetActive = (isActive: boolean) => {
+  const bulkSetActive = async (isActive: boolean) => {
     if (selectedIds.size === 0) return
-    setExtraFields((prevFields) =>
-      prevFields.map((field) => (selectedIds.has(field.id) ? { ...field, isActive } : field)),
-    )
-    toast({
-      title: isActive ? "Campos activados" : "Campos desactivados",
-      description: `${selectedIds.size} campo(s) actualizado(s).`,
+
+    const promises = Array.from(selectedIds).map((id) => {
+      return isActive ? activateMutation.mutateAsync(id) : deactivateMutation.mutateAsync(id)
     })
-    clearSelection()
+
+    try {
+      await Promise.all(promises)
+      clearSelection()
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio solo al desactivar
+      if (!isActive && error?.message && error.message.includes("productos")) {
+        setErrorMessage(error.message)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 5000)
+      }
+      // Los demás errores se manejan en los hooks
+    }
   }
 
-  const bulkDelete = () => {
+  const bulkDelete = async () => {
     if (selectedIds.size === 0) return
-    setExtraFields((prevFields) => prevFields.filter((field) => !selectedIds.has(field.id)))
-    toast({
-      title: "Campos eliminados",
-      description: `${selectedIds.size} campo(s) eliminado(s).`,
-    })
-    clearSelection()
+
+    const promises = Array.from(selectedIds).map((id) => deleteMutation.mutateAsync(id))
+
+    try {
+      await Promise.all(promises)
+      clearSelection()
+      setSuccessMessage(`${selectedIds.size} campo(s) eliminado(s) exitosamente.`)
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio para eliminación
+      if (error?.message && error.message.includes("productos")) {
+        setErrorMessage(error.message)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 5000)
+      }
+      // Los demás errores se manejan en los hooks
+    }
   }
 
   // Función para cambiar estado de un campo
-  const toggleFieldStatus = (id: string) => {
-    setExtraFields((prevFields) =>
-      prevFields.map((field) => {
-        if (field.id === id) {
-          const updatedField = { ...field, isActive: !field.isActive }
-          toast({
-            title: updatedField.isActive ? "Campo activado" : "Campo desactivado",
-            description: `"${field.name}" ha sido ${updatedField.isActive ? "activado" : "desactivado"}.`,
-          })
-          return updatedField
-        }
-        return field
-      }),
-    )
+  const toggleFieldStatus = async (id: string) => {
+    const field = extraFields.find((f) => f.id === id)
+    if (!field) return
+
+    try {
+      if (field.activo) {
+        // Solo desactivar - aquí puede ocurrir el error de productos asignados
+        await deactivateMutation.mutateAsync(id)
+      } else {
+        // Solo activar - no debería mostrar error de productos asignados
+        await activateMutation.mutateAsync(id)
+      }
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio solo al desactivar
+      if (field.activo && error?.message && error.message.includes("productos")) {
+        setErrorMessage(error.message)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 5000)
+      }
+      // Los demás errores se manejan en los hooks
+    }
   }
 
   // Función para eliminar un campo
-  const deleteField = (id: string) => {
-    const field = extraFields.find((f) => f.id === id)
-    if (field) {
-      setExtraFields((prevFields) => prevFields.filter((f) => f.id !== id))
-      toast({
-        title: "Campo eliminado",
-        description: `"${field.name}" ha sido eliminado.`,
+  const deleteField = async (id: string) => {
+    try {
+      await deleteMutation.mutateAsync(id)
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
       })
+      setSuccessMessage("Campo eliminado exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio para eliminación
+      if (error?.message && error.message.includes("productos")) {
+        setErrorMessage(error.message)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 5000)
+      }
+      // Los demás errores se manejan en los hooks
     }
   }
 
@@ -306,7 +370,7 @@ export default function ExtraFields() {
     setNewFieldData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSaveNewField = () => {
+  const handleSaveNewField = async () => {
     if (!newFieldData.name.trim()) {
       toast({
         title: "Campo obligatorio",
@@ -316,14 +380,26 @@ export default function ExtraFields() {
       return
     }
 
-    toast({
-      title: "Campo creado",
-      description: `"${newFieldData.name}" ha sido creado exitosamente.`,
-    })
+    try {
+      const createData: CreateCampoExtraDto = {
+        nombre: newFieldData.name.trim(),
+        tipoDato: mapTipoDatoFrontendToBackend(newFieldData.type),
+        descripcion: newFieldData.description.trim() || null,
+        valorPorDefecto: newFieldData.defaultValue.trim() || null,
+        esRequerido: newFieldData.isRequired,
+      }
 
-    // Limpiar el formulario y cerrar el modal
-    setNewFieldData({ name: "", type: "texto", defaultValue: "", description: "", isRequired: false })
-    setIsNewFieldModalOpen(false)
+      await createMutation.mutateAsync(createData)
+
+      // Limpiar el formulario y cerrar el modal
+      setNewFieldData({ name: "", type: "texto", defaultValue: "", description: "", isRequired: false })
+      setIsNewFieldModalOpen(false)
+      setSuccessMessage("Campo creado exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
   const handleCancelNewField = () => {
@@ -332,49 +408,91 @@ export default function ExtraFields() {
   }
 
   // Funciones para el modal de edición
-  const handleEditField = (field: (typeof extraFields)[0]) => {
+  const handleEditField = (field: CampoExtraBackend) => {
     setEditingField(field)
-    setEditFieldData({
-      name: field.name,
-      type: field.type,
-      defaultValue: field.defaultValue,
-      description: field.description,
-      isRequired: field.isRequired,
-    })
     setIsEditModalOpen(true)
   }
 
-  const handleEditFieldInputChange = (field: keyof typeof editFieldData, value: string | boolean) => {
-    setEditFieldData((prev) => ({ ...prev, [field]: value }))
-  }
+  const handleSaveEditField = async (data: { nombre: string; tipoDato: string; descripcion: string | null; valorPorDefecto: string | null; esRequerido: boolean }) => {
+    if (!editingField) return
 
-  const handleSaveEditField = () => {
-    if (!editFieldData.name.trim()) {
-      toast({ title: "Error", description: "El nombre es obligatorio", variant: "destructive" })
-      return
+    try {
+      const updateData: UpdateCampoExtraDto = {
+        nombre: data.nombre,
+        tipoDato: data.tipoDato,
+        descripcion: data.descripcion,
+        valorPorDefecto: data.valorPorDefecto,
+        esRequerido: data.esRequerido,
+      }
+
+      await updateMutation.mutateAsync({ id: editingField.id, data: updateData })
+      setIsEditModalOpen(false)
+      setEditingField(null)
+      setSuccessMessage("Campo actualizado exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
     }
-
-    toast({
-      title: "Campo actualizado",
-      description: `"${editFieldData.name}" fue actualizado exitosamente.`,
-    })
-    setIsEditModalOpen(false)
-    setEditingField(null)
   }
 
   const handleCancelEditField = () => {
-    if (editingField) {
-      setEditFieldData({
-        name: editingField.name,
-        type: editingField.type,
-        defaultValue: editingField.defaultValue,
-        description: editingField.description,
-        isRequired: editingField.isRequired,
-      })
-    }
     setIsEditModalOpen(false)
     setEditingField(null)
   }
+
+  // Manejar cambio de página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    clearSelection()
+  }
+
+  // Manejar cambio de items por página
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage)
+    setCurrentPage(1)
+    clearSelection()
+  }
+
+  // Debounce para la búsqueda - actualizar searchTerm después de que el usuario deje de escribir
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Verificar si el input tiene el foco antes de actualizar
+      const hadFocus = document.activeElement === searchInputRef.current
+      const cursorPosition = searchInputRef.current?.selectionStart || 0
+
+      setSearchTerm(inputValue)
+      setCurrentPage(1)
+      clearSelection()
+
+      // Restaurar el foco y la posición del cursor si lo tenía antes del re-render
+      if (hadFocus && searchInputRef.current) {
+        // Usar requestAnimationFrame para asegurar que el foco se restaure después del re-render
+        requestAnimationFrame(() => {
+          if (searchInputRef.current) {
+            searchInputRef.current.focus()
+            // Restaurar la posición del cursor
+            searchInputRef.current.setSelectionRange(cursorPosition, cursorPosition)
+          }
+        })
+      }
+    }, 500) // Esperar 500ms después de que el usuario deje de escribir
+
+    return () => clearTimeout(timer)
+  }, [inputValue])
+
+  // Manejar cambio en el input de búsqueda
+  const handleSearchChange = (value: string) => {
+    setInputValue(value)
+  }
+
+  const isLoadingData =
+    isLoading ||
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    activateMutation.isPending ||
+    deactivateMutation.isPending ||
+    deleteMutation.isPending
 
   return (
     <MainLayout>
@@ -391,28 +509,28 @@ export default function ExtraFields() {
           </div>
           <div className="flex items-center gap-3">
             {/* Barra de búsqueda compacta */}
-            <div className="flex h-10 items-center gap-2 rounded-lg border border-camouflage-green-300 bg-white px-3 shadow-sm">
-              <Search className="h-4 w-4 text-camouflage-green-600" />
+            <div className="flex h-10 items-center gap-2 rounded-lg border border-camouflage-green-300 bg-white px-3 shadow-sm min-w-[280px] max-w-[280px]">
+              <Search className="h-4 w-4 shrink-0 text-camouflage-green-600" />
               <Input
+                ref={searchInputRef}
                 placeholder="Buscar por nombre..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value)
-                  // Limpiar selección al filtrar
-                  clearSelection()
-                }}
-                className="h-full w-64 border-0 bg-transparent text-sm placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                value={inputValue}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="h-full flex-1 min-w-0 border-0 bg-transparent text-sm placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                disabled={isLoadingData}
               />
-              {searchTerm && (
+              {inputValue && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
+                    setInputValue("")
                     setSearchTerm("")
-                    // Limpiar selección al limpiar filtro
+                    setCurrentPage(1)
                     clearSelection()
                   }}
-                  className="h-4 w-4 p-0 text-camouflage-green-600 hover:bg-transparent hover:text-camouflage-green-800"
+                  className="h-4 w-4 shrink-0 p-0 text-camouflage-green-600 hover:bg-transparent hover:text-camouflage-green-800"
+                  disabled={isLoadingData}
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -423,6 +541,7 @@ export default function ExtraFields() {
               variant="primary"
               className="pl-4 pr-4"
               onClick={() => setIsNewFieldModalOpen(true)}
+              disabled={isLoadingData}
             >
             <Plus className="mr-2 h-4 w-4" />
               Nuevo Campo
@@ -435,22 +554,29 @@ export default function ExtraFields() {
               <CardHeader>
                 <div className="flex items-center justify-between">
               <CardTitle className="text-camouflage-green-900">
-                Campos Registrados ({filteredAndSortedFields.length.toLocaleString()})
-                {searchTerm && extraFields.length !== filteredAndSortedFields.length && (
-                  <span className="ml-2 text-sm font-normal text-camouflage-green-600">
-                    de {extraFields.length.toLocaleString()} total
-                  </span>
+                {isLoading ? (
+                  "Cargando campos..."
+                ) : (
+                  <>
+                    Campos Registrados ({pagination.totalItems.toLocaleString()})
+                    {searchTerm && extraFields.length !== pagination.totalItems && (
+                      <span className="ml-2 text-sm font-normal text-camouflage-green-600">
+                        de {pagination.totalItems.toLocaleString()} total
+                      </span>
+                    )}
+                  </>
                 )}
-                  </CardTitle>
+              </CardTitle>
               <div className="flex items-center gap-2">
                 {selectedCount > 0 && (
                   <div className="flex items-center gap-2 rounded-lg border border-camouflage-green-200 bg-camouflage-green-50/60 px-2 py-1 text-sm text-camouflage-green-800">
                     <span>{selectedCount} seleccionado(s)</span>
-                    <Button
+                      <Button
                       size="sm"
                       variant="outline"
                       className="h-6 w-6 p-0 text-camouflage-green-600 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                      onClick={() => setSelectedIds(new Set())}
+                      onClick={clearSelection}
+                      disabled={isLoadingData}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -461,7 +587,7 @@ export default function ExtraFields() {
                             size="sm"
                             variant="outline"
                             className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
-                            disabled={allSelectedActive}
+                            disabled={allSelectedActive || isLoadingData}
                           >
                             Activar
                           </Button>
@@ -484,7 +610,7 @@ export default function ExtraFields() {
                             size="sm"
                             variant="outline"
                             className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
-                            disabled={allSelectedInactive}
+                            disabled={allSelectedInactive || isLoadingData}
                           >
                             Desactivar
                           </Button>
@@ -509,6 +635,7 @@ export default function ExtraFields() {
                             size="sm"
                             variant="outline"
                             className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
+                            disabled={isLoadingData}
                           >
                             Eliminar
                     </Button>
@@ -535,7 +662,20 @@ export default function ExtraFields() {
                 </div>
               </CardHeader>
           <CardContent className="p-0">
-            <Table>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+                  <p className="text-sm text-camouflage-green-600">Cargando campos...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="py-8 text-center text-red-600">
+                <p>Error al cargar los campos. Por favor, intenta nuevamente.</p>
+              </div>
+            ) : (
+              <>
+                <Table>
               <TableHeader>
                 <TableRow className="border-camouflage-green-200 hover:bg-transparent">
                   <TableHead className="w-[36px]">
@@ -546,26 +686,28 @@ export default function ExtraFields() {
                           if (checked) {
                             setSelectedIds(new Set(extraFields.map((f) => f.id)))
                           } else {
-                            setSelectedIds(new Set())
+                            clearSelection()
                           }
                         }}
                         aria-label="Seleccionar todos"
+                        disabled={isLoadingData}
                       />
                     </div>
                   </TableHead>
                   <TableHead className="w-[200px] font-semibold text-camouflage-green-700">
                     <div>
                       <button
-                        onClick={() => handleSort("name")}
+                        onClick={() => handleSort("nombre")}
                         className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
+                        disabled={isLoadingData}
                       >
                         Nombre
                         <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
                           <ChevronUp
-                            className={`h-3 w-3 ${sortField === "name" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}
+                            className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}
                           />
                           <ChevronDown
-                            className={`h-3 w-3 ${sortField === "name" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
+                            className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
                           />
                         </div>
                       </button>
@@ -577,7 +719,16 @@ export default function ExtraFields() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedFields.map((field) => (
+                {extraFields.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-camouflage-green-600">
+                      {searchTerm
+                        ? "No se encontraron campos que coincidan con la búsqueda."
+                        : "No hay campos registrados."}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  extraFields.map((field) => (
                   <TableRow
                     key={field.id}
                     className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
@@ -587,7 +738,8 @@ export default function ExtraFields() {
                         <Checkbox
                           checked={isSelected(field.id)}
                           onCheckedChange={() => toggleSelect(field.id)}
-                          aria-label={`Seleccionar ${field.name}`}
+                          aria-label={`Seleccionar ${field.nombre}`}
+                          disabled={isLoadingData}
                         />
                       </div>
                     </TableCell>
@@ -595,21 +747,22 @@ export default function ExtraFields() {
                       <button
                         onClick={() => router.push(`/inventory/extra-fields/${field.id}`)}
                         className="text-left font-medium text-camouflage-green-900 transition-colors hover:text-camouflage-green-700 hover:underline"
+                        disabled={isLoadingData}
                       >
-                        {field.name}
+                        {field.nombre}
                       </button>
                     </TableCell>
                     <TableCell className="w-[300px]">
                       <div
                         className="max-w-[280px] truncate text-sm text-camouflage-green-600"
-                        title={field.description}
+                        title={field.descripcion || ""}
                       >
-                        {field.description}
-                </div>
+                        {field.descripcion || "-"}
+                      </div>
                     </TableCell>
                     <TableCell className="w-[150px]">
                       <span className="rounded-full bg-camouflage-green-100 px-2 py-1 text-sm font-medium text-camouflage-green-800 capitalize">
-                        {field.type}
+                        {mapTipoDatoBackendToFrontend(field.tipoDato)}
                       </span>
                     </TableCell>
                     <TableCell className="w-[160px]">
@@ -620,6 +773,7 @@ export default function ExtraFields() {
                           className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                           title="Ver detalles"
                           onClick={() => router.push(`/inventory/extra-fields/${field.id}`)}
+                          disabled={isLoadingData}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -629,6 +783,7 @@ export default function ExtraFields() {
                           className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                           title="Editar"
                           onClick={() => handleEditField(field)}
+                          disabled={isLoadingData}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -636,10 +791,11 @@ export default function ExtraFields() {
                           size="sm"
                           variant="outline"
                           className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                          title={field.isActive ? "Desactivar" : "Activar"}
+                          title={field.activo ? "Desactivar" : "Activar"}
                           onClick={() => toggleFieldStatus(field.id)}
+                          disabled={isLoadingData}
                         >
-                          {field.isActive ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
+                          {field.activo ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -648,29 +804,23 @@ export default function ExtraFields() {
                               variant="outline"
                               className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                               title="Eliminar"
+                              disabled={isLoadingData}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Eliminar campo</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción no se puede deshacer. Se eliminará "{field.name}".
-                              </AlertDialogDescription>
+                            <AlertDialogTitle>Eliminar campo</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. Se eliminará "{field.nombre}".
+                            </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
                               <AlertDialogAction
                                 className="bg-red-600 hover:bg-red-700"
-                                onClick={() => {
-                                  deleteField(field.id)
-                                  setSelectedIds((prev) => {
-                                    const next = new Set(prev)
-                                    next.delete(field.id)
-                                    return next
-                                  })
-                                }}
+                                onClick={() => deleteField(field.id)}
                               >
                                 Eliminar
                               </AlertDialogAction>
@@ -680,28 +830,20 @@ export default function ExtraFields() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
-                {filteredAndSortedFields.length === 0 && (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={5} className="py-12 text-center">
-                      <div className="flex flex-col items-center gap-3">
-                        <Layers className="h-12 w-12 text-camouflage-green-300" />
-                        <div>
-                          <p className="font-medium text-camouflage-green-600">
-                            {searchTerm ? "No se encontraron campos" : "No hay campos registrados"}
-                          </p>
-                          <p className="mt-1 text-sm text-camouflage-green-500">
-                            {searchTerm
-                              ? `No se encontraron campos que coincidan con "${searchTerm}"`
-                              : "Comienza agregando tu primer campo adicional"}
-                          </p>
-                  </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
+            {/* Paginación */}
+            {pagination.totalPages > 0 && (
+              <PaginationControls
+                pagination={pagination}
+                onPageChange={handlePageChange}
+                onItemsPerPageChange={handleItemsPerPageChange}
+              />
+            )}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -720,6 +862,7 @@ export default function ExtraFields() {
               value={newFieldData.name}
               onChange={(e) => handleNewFieldInputChange("name", e.target.value)}
               className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              disabled={createMutation.isPending}
             />
           </div>
 
@@ -730,6 +873,7 @@ export default function ExtraFields() {
             <Select
               value={newFieldData.type}
               onValueChange={(value) => handleNewFieldInputChange("type", value)}
+              disabled={createMutation.isPending}
             >
               <SelectTrigger className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500">
                 <SelectValue />
@@ -751,7 +895,8 @@ export default function ExtraFields() {
             {renderDefaultValueInput(
               newFieldData.type,
               newFieldData.defaultValue,
-              (value) => handleNewFieldInputChange("defaultValue", value)
+              (value) => handleNewFieldInputChange("defaultValue", value),
+              createMutation.isPending
             )}
           </div>
 
@@ -773,6 +918,7 @@ export default function ExtraFields() {
                 e.target.style.outline = "none"
                 e.target.style.boxShadow = "none"
               }}
+              disabled={createMutation.isPending}
             />
                 </div>
 
@@ -781,6 +927,7 @@ export default function ExtraFields() {
               id="field-required"
               checked={newFieldData.isRequired}
               onCheckedChange={(checked) => handleNewFieldInputChange("isRequired", checked as boolean)}
+              disabled={createMutation.isPending}
             />
             <Label htmlFor="field-required" className="text-sm font-medium text-camouflage-green-700">
               Campo requerido
@@ -792,117 +939,78 @@ export default function ExtraFields() {
               variant="outline"
               onClick={handleCancelNewField}
               className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+              disabled={createMutation.isPending}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSaveNewField}
               variant="primary"
+              disabled={createMutation.isPending}
             >
-              Guardar
-                </Button>
+              {createMutation.isPending ? "Guardando..." : "Guardar"}
+            </Button>
           </div>
         </div>
       </Modal>
 
       {/* Modal para editar campo */}
-      <Modal isOpen={isEditModalOpen} onClose={handleCancelEditField} title="Editar Campo">
-        <div className="space-y-4">
-          <div className="space-y-1 pt-2.5">
-            <Label htmlFor="edit-field-name" className="font-medium text-camouflage-green-700">
-              Nombre <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              id="edit-field-name"
-                type="text"
-              placeholder="Ej: Color, Peso, Fecha de Vencimiento..."
-              value={editFieldData.name}
-              onChange={(e) => handleEditFieldInputChange("name", e.target.value)}
-              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-              />
-            </div>
+      {editingField && (
+        <EditExtraFieldModal
+          isOpen={isEditModalOpen}
+          onClose={handleCancelEditField}
+          field={{
+            id: editingField.id,
+            name: editingField.nombre,
+            type: editingField.tipoDato,
+            description: editingField.descripcion || "",
+            defaultValue: editingField.valorPorDefecto || "",
+            isRequired: editingField.esRequerido,
+          }}
+          onSave={handleSaveEditField}
+          isLoading={updateMutation.isPending}
+        />
+      )}
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-field-type" className="font-medium text-camouflage-green-700">
-              Tipo de Campo <span className="text-red-500">*</span>
-            </Label>
-            <Select
-              value={editFieldData.type}
-              onValueChange={(value) => handleEditFieldInputChange("type", value)}
-            >
-              <SelectTrigger className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="texto">Texto</SelectItem>
-                <SelectItem value="número">Número</SelectItem>
-                <SelectItem value="número decimal">Número Decimal</SelectItem>
-                <SelectItem value="fecha">Fecha</SelectItem>
-                <SelectItem value="si/no">Si/No</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-field-default" className="font-medium text-camouflage-green-700">
-              Valor por Defecto
-            </Label>
-            {renderDefaultValueInput(
-              editFieldData.type,
-              editFieldData.defaultValue,
-              (value) => handleEditFieldInputChange("defaultValue", value)
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-field-description" className="font-medium text-camouflage-green-700">
-              Descripción
-            </Label>
-            <Textarea
-              id="edit-field-description"
-              placeholder="Descripción del campo adicional"
-              value={editFieldData.description}
-              onChange={(e) => handleEditFieldInputChange("description", e.target.value)}
-              className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-              style={{
-                outline: "none",
-                boxShadow: "none",
-              }}
-              onFocus={(e) => {
-                e.target.style.outline = "none"
-                e.target.style.boxShadow = "none"
-              }}
-            />
-            </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="edit-field-required"
-              checked={editFieldData.isRequired}
-              onCheckedChange={(checked) => handleEditFieldInputChange("isRequired", checked as boolean)}
-            />
-            <Label htmlFor="edit-field-required" className="text-sm font-medium text-camouflage-green-700">
-              Campo requerido
-            </Label>
-            </div>
-
-          <div className="flex justify-end gap-3 pt-4">
+      {/* Toast de error personalizado */}
+      {showErrorToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm font-medium text-red-800">
+              {errorMessage || "No se puede desactivar/eliminar el campo porque está siendo usado en productos."}
+            </p>
             <Button
-              variant="outline"
-              onClick={handleCancelEditField}
-              className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowErrorToast(false)}
+              className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
             >
-                Cancelar
-              </Button>
-            <Button
-              onClick={handleSaveEditField}
-              variant="primary"
-            >
-              Guardar cambios
+              <X className="h-4 w-4" />
             </Button>
           </div>
-            </div>
-        </Modal>
+        </div>
+      )}
+
+      {/* Toast de éxito personalizado */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-sm font-medium text-green-800">
+              {successMessage || "Operación completada exitosamente."}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSuccessToast(false)}
+              className="h-6 w-6 p-0 text-green-600 hover:bg-green-100 hover:text-green-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </MainLayout>
   )
 }

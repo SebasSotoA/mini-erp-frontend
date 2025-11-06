@@ -240,6 +240,10 @@ export function useUpdateProducto() {
       // Invalidar la lista y el detalle del producto para sincronizar con datos reales
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(variables.id) })
+      // Invalidar productos de bodegas para actualizar listas en páginas de bodegas
+      queryClient.invalidateQueries({ queryKey: ["bodegas", "detail"] })
+      // Invalidar productos de categorías para actualizar listas en páginas de categorías
+      queryClient.invalidateQueries({ queryKey: ["categorias", "detail"] })
       
       toast({
         title: "✅ Producto actualizado",
@@ -315,6 +319,10 @@ export function useActivateProducto() {
     onSuccess: (response, id) => {
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(id) })
+      // Invalidar productos de bodegas para actualizar listas en páginas de bodegas
+      queryClient.invalidateQueries({ queryKey: ["bodegas", "detail"] })
+      // Invalidar productos de categorías para actualizar listas en páginas de categorías
+      queryClient.invalidateQueries({ queryKey: ["categorias", "detail"] })
       
       toast({
         title: "Producto activado",
@@ -385,6 +393,10 @@ export function useDeactivateProducto() {
     onSuccess: (response, id) => {
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       queryClient.invalidateQueries({ queryKey: productoKeys.detail(id) })
+      // Invalidar productos de bodegas para actualizar listas en páginas de bodegas
+      queryClient.invalidateQueries({ queryKey: ["bodegas", "detail"] })
+      // Invalidar productos de categorías para actualizar listas en páginas de categorías
+      queryClient.invalidateQueries({ queryKey: ["categorias", "detail"] })
       
       toast({
         title: "Producto desactivado",
@@ -446,6 +458,10 @@ export function useDeleteProducto() {
       queryClient.invalidateQueries({ queryKey: productoKeys.lists() })
       // Remover el producto específico de la caché
       queryClient.removeQueries({ queryKey: productoKeys.detail(id) })
+      // Invalidar productos de bodegas para actualizar listas en páginas de bodegas
+      queryClient.invalidateQueries({ queryKey: ["bodegas", "detail"] })
+      // Invalidar productos de categorías para actualizar listas en páginas de categorías
+      queryClient.invalidateQueries({ queryKey: ["categorias", "detail"] })
       
       toast({
         title: "Producto eliminado",

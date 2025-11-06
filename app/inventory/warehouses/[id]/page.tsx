@@ -15,9 +15,11 @@ import {
   Trash2,
   Plus,
   ArrowLeft,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState } from "react"
 
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 import { MainLayout } from "@/components/layout/main-layout"
@@ -34,52 +36,40 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
 import { EditWarehouseModal } from "@/components/modals/EditWarehouseModal"
 import { NewItemForm } from "@/components/forms/new-item-form"
 import { Modal } from "@/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
-import { ItemFilters, SortConfig, SortField, SortDirection } from "@/lib/types/items"
-import { applyFiltersAndSort } from "@/lib/utils/item-filters"
+import { useBodega, useUpdateBodega, useActivateBodega, useDeactivateBodega, useDeleteBodega, useBodegaProductos } from "@/hooks/api/use-bodegas"
+import { useActivateProducto, useDeactivateProducto, useDeleteProducto } from "@/hooks/api/use-productos"
+import { ItemFilters, SortField, SortDirection } from "@/lib/types/items"
+import type { ProductosQueryParams } from "@/lib/api/types"
+import { mapFiltersToQueryParams } from "@/lib/api/utils"
 
 export default function WarehouseDetailsPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
-  const { warehouses, products, productStocks, updateProduct, deleteProduct } = useInventory()
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
-  const warehouse = warehouses.find((w) => w.id === id)
-  const [isWarehouseActive, setIsWarehouseActive] = useState<boolean>(warehouse?.isActive ?? true)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false)
-  const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false)
+  const { data: warehouse, isLoading: isLoadingWarehouse, error: warehouseError } = useBodega(id)
+  const updateMutation = useUpdateBodega()
+  const activateMutation = useActivateBodega()
+  const deactivateMutation = useDeactivateBodega()
+  const deleteMutation = useDeleteBodega()
 
-  // Construir el conjunto de productos asociados a la bodega vía productStocks
-  const associatedProductIds = useMemo(
-    () => new Set(productStocks.filter((ps) => ps.warehouseId === id).map((ps) => ps.productId)),
-    [productStocks, id],
-  )
-  const warehouseProducts = useMemo(
-    () => products.filter((p) => associatedProductIds.has(p.id)),
-    [products, associatedProductIds],
-  )
+  // Mutations para productos
+  const activateProductoMutation = useActivateProducto()
+  const deactivateProductoMutation = useDeactivateProducto()
+  const deleteProductoMutation = useDeleteProducto()
 
-  // Estado local para los productos de la bodega (similar a items/page.tsx)
-  const [localWarehouseProducts, setLocalWarehouseProducts] = useState(warehouseProducts)
-
-  // Sincronizar el estado local con los productos de la bodega cuando cambien
-  useEffect(() => {
-    setLocalWarehouseProducts(warehouseProducts)
-  }, [warehouseProducts])
-
-  // Estado para filtros/orden/paginación (igual que items/page.tsx)
+  // Estado para paginación y filtros
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
-
   const [filters, setFilters] = useState<ItemFilters>({
     name: "",
     sku: "",
@@ -94,6 +84,34 @@ export default function WarehouseDetailsPage() {
   const [sortField, setSortField] = useState<SortField | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [showFilters, setShowFilters] = useState(false)
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false)
+
+  // Estado para errores de regla de negocio
+  const [businessError, setBusinessError] = useState<{ title: string; message: string } | null>(null)
+
+  // Estado para toast de error personalizado
+  const [showErrorToast, setShowErrorToast] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+
+  // Estado para toast de éxito personalizado
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
+
+  // Construir parámetros para la API de productos de bodega usando la función de mapeo
+  const productosParams = useMemo<ProductosQueryParams>(() => {
+    return mapFiltersToQueryParams(
+      filters,
+      { page: currentPage, pageSize: itemsPerPage },
+      sortField ? { field: sortField, direction: sortDirection } : undefined,
+    )
+  }, [currentPage, itemsPerPage, filters, sortField, sortDirection])
+
+  // Obtener productos de la bodega usando el endpoint específico
+  const { data: productosData, isLoading: isLoadingProductos } = useBodegaProductos(id, productosParams)
+
+  const warehouseProducts = productosData?.items || []
 
   const selectedIdsState = useState<Set<string>>(new Set())
   const [selectedIds, setSelectedIds] = selectedIdsState
@@ -110,23 +128,26 @@ export default function WarehouseDetailsPage() {
   const clearSelection = () => setSelectedIds(new Set())
 
   // Lógica para determinar el estado de los botones de acciones masivas
-  const selectedProducts = localWarehouseProducts.filter((p) => selectedIds.has(p.id))
+  const selectedProducts = warehouseProducts.filter((p) => selectedIds.has(p.id))
   const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p) => p.isActive ?? true)
   const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p) => !(p.isActive ?? true))
-  const hasMixedStates = selectedProducts.length > 0 && !allSelectedActive && !allSelectedInactive
 
   const handleSort = (field: SortField) => {
-    if (sortField === field) setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    else {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
       setSortField(field)
       setSortDirection("asc")
     }
+    setCurrentPage(1) // Reset a la primera página al cambiar ordenamiento
   }
 
   const handleFilterChange = (field: keyof ItemFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }))
-    setCurrentPage(1)
+    setCurrentPage(1) // Reset a la primera página al cambiar filtros
+    clearSelection()
   }
+
   const clearFilters = () => {
     setFilters({
       name: "",
@@ -140,18 +161,13 @@ export default function WarehouseDetailsPage() {
       status: "",
     })
     setCurrentPage(1)
+    clearSelection()
   }
 
-  const sortConfig: SortConfig = { field: sortField, direction: sortDirection }
-  const filteredSortedProducts = applyFiltersAndSort(localWarehouseProducts, filters, sortConfig)
-
-  const totalItems = filteredSortedProducts.length
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const currentProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredSortedProducts.slice(startIndex, endIndex)
-  }, [filteredSortedProducts, currentPage, itemsPerPage])
+  // Los productos ya vienen filtrados y ordenados del backend
+  const totalItems = productosData?.totalCount || 0
+  const totalPages = productosData?.totalPages || 0
+  const currentProducts = warehouseProducts
   const allCurrentSelected = useMemo(
     () => currentProducts.length > 0 && currentProducts.every((p) => selectedIds.has(p.id)),
     [currentProducts, selectedIds],
@@ -169,10 +185,7 @@ export default function WarehouseDetailsPage() {
   }
 
   const bulkSetActive = (isActive: boolean) => {
-    if (selectedIds.size === 0) return
-    setLocalWarehouseProducts((prevProducts) =>
-      prevProducts.map((product) => (selectedIds.has(product.id) ? { ...product, isActive } : product)),
-    )
+    // TODO: Implementar acciones masivas usando los hooks de productos
     toast({
       title: isActive ? "Ítems activados" : "Ítems desactivados",
       description: `${selectedIds.size} ítem(s) actualizados.`,
@@ -180,25 +193,106 @@ export default function WarehouseDetailsPage() {
     clearSelection()
   }
   const bulkDelete = () => {
-    if (selectedIds.size === 0) return
-    setLocalWarehouseProducts((prevProducts) => prevProducts.filter((product) => !selectedIds.has(product.id)))
+    // TODO: Implementar acciones masivas usando los hooks de productos
     toast({ title: "Ítems eliminados", description: `${selectedIds.size} ítem(s) eliminados.` })
     clearSelection()
   }
 
   // Funciones para el modal de edición
 
-  const handleSaveEditWarehouse = (data: { name: string; location: string; observations: string }) => {
-    // Aquí iría la lógica para actualizar la bodega en el contexto
-    toast({ title: "Bodega actualizada", description: `"${data.name}" fue actualizada exitosamente.` })
-    setIsEditModalOpen(false)
+  const handleSaveEditWarehouse = async (data: { name: string; location: string; observations: string }) => {
+    if (!warehouse) return
+
+    const updateData = {
+      nombre: data.name,
+      direccion: data.location || null,
+      descripcion: data.observations || null,
+    }
+
+    try {
+      await updateMutation.mutateAsync({ id: warehouse.id, data: updateData })
+      setIsEditModalOpen(false)
+      setSuccessMessage("Bodega actualizada exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
   const handleCancelEditWarehouse = () => {
     setIsEditModalOpen(false)
   }
 
-  if (!warehouse) {
+  const handleActivate = async () => {
+    if (!warehouse) return
+
+    // Limpiar error previo
+    setBusinessError(null)
+
+    try {
+      await activateMutation.mutateAsync(warehouse.id)
+    } catch (error: any) {
+      // Los errores se manejan en los hooks
+    }
+  }
+
+  const handleDeactivate = async () => {
+    if (!warehouse) return
+
+    // Limpiar error previo
+    setBusinessError(null)
+
+    try {
+      await deactivateMutation.mutateAsync(warehouse.id)
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio solo al desactivar
+      if (error?.message && error.message.includes("productos asignados")) {
+        setBusinessError({
+          title: "No se puede desactivar la bodega",
+          message: error.message,
+        })
+      }
+      // Los demás errores se manejan en los hooks
+    }
+  }
+
+  const handleDeleteWarehouse = async () => {
+    if (!warehouse) return
+
+    try {
+      await deleteMutation.mutateAsync(warehouse.id)
+      setSuccessMessage("Bodega eliminada exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => {
+        setShowSuccessToast(false)
+        router.push("/inventory/warehouses")
+      }, 1500) // Esperar 1.5 segundos para mostrar el toast antes de navegar
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio para eliminación
+      if (error?.message && error.message.includes("productos asignados")) {
+        setErrorMessage(error.message)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 5000)
+      }
+      // Los demás errores se manejan en los hooks
+    }
+  }
+
+  if (isLoadingWarehouse) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+            <p className="text-sm text-camouflage-green-600">Cargando bodega...</p>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (warehouseError || !warehouse) {
     return (
       <MainLayout>
         <div className="space-y-6">
@@ -232,7 +326,7 @@ export default function WarehouseDetailsPage() {
           <div>
             <h1 className="flex items-center text-3xl font-bold text-camouflage-green-900">
               <WarehouseIcon className="mr-3 h-8 w-8 text-camouflage-green-700" />
-              {warehouse.name}
+              {warehouse.nombre}
             </h1>
           </div>
           <Button
@@ -247,26 +341,43 @@ export default function WarehouseDetailsPage() {
           </Button>
         </div>
 
+        {/* Tarjeta de error de regla de negocio */}
+        {businessError && (
+          <Alert variant="destructive" className="relative border-red-300 bg-red-50">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <div className="flex-1">
+              <AlertTitle className="text-red-900 font-semibold">{businessError.title}</AlertTitle>
+              <AlertDescription className="text-red-800 mt-2">
+                {businessError.message}
+              </AlertDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setBusinessError(null)}
+              className="absolute right-2 top-2 h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </Alert>
+        )}
+
         {/* Acciones sobre la bodega */}
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Button
-              variant={isWarehouseActive ? "primary" : "outline"}
-              className={isWarehouseActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
-              onClick={() => {
-                setIsWarehouseActive(true)
-                toast({ title: "Bodega activada", description: `"${warehouse.name}" está activa.` })
-              }}
+              variant={warehouse.activo ? "outline" : "primary"}
+              className={warehouse.activo ? "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50" : ""}
+              onClick={handleActivate}
+              disabled={activateMutation.isPending || deactivateMutation.isPending || warehouse.activo}
             >
               Activar
             </Button>
             <Button
-              variant={!isWarehouseActive ? "primary" : "outline"}
-              className={!isWarehouseActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
-              onClick={() => {
-                setIsWarehouseActive(false)
-                toast({ title: "Bodega desactivada", description: `"${warehouse.name}" está inactiva.` })
-              }}
+              variant={!warehouse.activo ? "outline" : "primary"}
+              className={!warehouse.activo ? "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50" : ""}
+              onClick={handleDeactivate}
+              disabled={activateMutation.isPending || deactivateMutation.isPending || !warehouse.activo}
             >
               Desactivar
             </Button>
@@ -293,19 +404,17 @@ export default function WarehouseDetailsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Eliminar bodega</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Se eliminará "{warehouse.name}".
+                  Esta acción no se puede deshacer. Se eliminará "{warehouse.nombre}".
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-red-600 hover:bg-red-700"
-                  onClick={() => {
-                    toast({ title: "Bodega eliminada", description: `"${warehouse.name}" fue eliminada.` })
-                    router.push("/inventory/warehouses")
-                  }}
+                  onClick={handleDeleteWarehouse}
+                  disabled={deleteMutation.isPending}
                 >
-                  Eliminar
+                  {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -318,18 +427,24 @@ export default function WarehouseDetailsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-1">
                 <div className="text-base text-camouflage-green-600">Nombre</div>
-                <div className="font-medium text-camouflage-green-900">{warehouse.name}</div>
+                <div className="font-medium text-camouflage-green-900">{warehouse.nombre}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-base text-camouflage-green-600">Ubicación</div>
-                <div className="font-medium text-camouflage-green-900">{warehouse.location}</div>
+                <div className="font-medium text-camouflage-green-900">{warehouse.direccion || "-"}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-base text-camouflage-green-600">Estado</div>
                 <div className="font-medium text-camouflage-green-900">
-                  {warehouse.isActive ? "Activa" : "Inactiva"}
+                  {warehouse.activo ? "Activa" : "Inactiva"}
                 </div>
               </div>
+              {warehouse.descripcion && (
+                <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+                  <div className="text-base text-camouflage-green-600">Observaciones</div>
+                  <div className="font-medium text-camouflage-green-900">{warehouse.descripcion}</div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -339,7 +454,11 @@ export default function WarehouseDetailsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-camouflage-green-900">
-                Items Asociados ({totalItems.toLocaleString()})
+                {isLoadingProductos ? (
+                  "Cargando productos..."
+                ) : (
+                  `Items Asociados (${totalItems.toLocaleString()})`
+                )}
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Button
@@ -443,33 +562,35 @@ export default function WarehouseDetailsPage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                {/* Fila de filtros */}
+                {/* Fila de filtros con transición suave - SOLO cuando showFilters es true */}
                 {showFilters && (
                   <TableRow className="animate-in slide-in-from-top-2 border-camouflage-green-200 bg-camouflage-green-50/30 duration-300 hover:bg-transparent">
-                    <TableHead className="w-[36px]" />
-                    <TableHead className="w-[200px]">
-                      <div className=" py-3">
+                    <TableHead className="w-[36px]">
+                      <div className="pl-3">{/* Columna vacía para alinear con checkbox */}</div>
+                    </TableHead>
+                    <TableHead className="w-[200px] pl-0">
+                      <div className="py-3">
                         <input
                           type="text"
                           placeholder="Nombre"
                           value={filters.name}
                           onChange={(e) => handleFilterChange("name", e.target.value)}
-                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[120px]">
-                      <div className=" py-3">
+                    <TableHead className="w-[120px] pl-0">
+                      <div className="py-3">
                         <input
                           type="text"
-                          placeholder="Referencia"
+                          placeholder="Código SKU"
                           value={filters.sku}
                           onChange={(e) => handleFilterChange("sku", e.target.value)}
-                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[100px]">
+                    <TableHead className="w-[100px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
@@ -480,7 +601,7 @@ export default function WarehouseDetailsPage() {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[250px]">
+                    <TableHead className="w-[250px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
@@ -491,12 +612,13 @@ export default function WarehouseDetailsPage() {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[120px]">
-                      <div className="flex items-center gap-1 py-3">
+                    <TableHead className="w-[120px] text-center">
+                      <div className="flex items-center justify-center gap-1 py-3">
                         <Select
                           value={filters.stockOperator}
                           onValueChange={(value) => {
                             handleFilterChange("stockOperator", value)
+                            // Limpiar valores cuando se cambia el operador
                             if (value !== "between") {
                               handleFilterChange("stockMinValue", "")
                               handleFilterChange("stockMaxValue", "")
@@ -553,10 +675,10 @@ export default function WarehouseDetailsPage() {
                     <TableHead className="w-[160px]">
                       <div className="flex items-center gap-1 py-3">
                         <Select
-                          value={filters.status}
-                          onValueChange={(value) => handleFilterChange("status", value)}
+                          value={filters.status || "all"}
+                          onValueChange={(value) => handleFilterChange("status", value === "all" ? "" : value)}
                         >
-                          <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-4 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Filtrar por estado">
+                          <SelectTrigger className="w-28 rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Filtrar por estado">
                             <SelectValue placeholder="Todos" />
                           </SelectTrigger>
                           <SelectContent className="rounded-3xl">
@@ -569,7 +691,7 @@ export default function WarehouseDetailsPage() {
                           onClick={clearFilters}
                           size="sm"
                           variant="outline"
-                          className="ml-2 h-9 w-14 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                          className="ml-2 h-9 w-9 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
                           title="Limpiar filtros"
                         >
                           <X className="h-3 w-3" />
@@ -684,7 +806,16 @@ export default function WarehouseDetailsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentProducts.length > 0 ? (
+                {isLoadingProductos ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-12 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+                        <p className="text-sm text-camouflage-green-600">Cargando productos...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : currentProducts.length > 0 ? (
                   currentProducts.map((product) => (
                     <TableRow
                       key={product.id}
@@ -711,7 +842,14 @@ export default function WarehouseDetailsPage() {
                         <div className="font-mono text-sm text-camouflage-green-600">{product.sku}</div>
                       </TableCell>
                       <TableCell className="w-[100px] pl-4">
-                        <div className="font-semibold text-camouflage-green-700">${product.price}</div>
+                        <div className="font-semibold text-camouflage-green-700">
+                          {new Intl.NumberFormat("es-CO", {
+                            style: "currency",
+                            currency: "COP",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }).format(product.price)}
+                        </div>
                       </TableCell>
                       <TableCell className="w-[250px] pl-4">
                         <div
@@ -746,7 +884,9 @@ export default function WarehouseDetailsPage() {
                             variant="outline"
                             className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                             title="Editar"
-                            onClick={() => setIsProductEditModalOpen(true)}
+                            onClick={() => {
+                              router.push(`/inventory/items/${product.id}/edit`)
+                            }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -757,10 +897,13 @@ export default function WarehouseDetailsPage() {
                             title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
                             onClick={() => {
                               const current = product.isActive ?? true
-                              setLocalWarehouseProducts((prevProducts) =>
-                                prevProducts.map((p) => (p.id === product.id ? { ...p, isActive: !current } : p)),
-                              )
+                              if (current) {
+                                deactivateProductoMutation.mutate(product.id)
+                              } else {
+                                activateProductoMutation.mutate(product.id)
+                              }
                             }}
+                            disabled={activateProductoMutation.isPending || deactivateProductoMutation.isPending}
                           >
                             {(product.isActive ?? true) ? (
                               <Power className="h-4 w-4" />
@@ -783,7 +926,7 @@ export default function WarehouseDetailsPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Eliminar ítem</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Esta acción no se puede deshacer. Se eliminará "{product.name}".
+                                  Esta acción no se puede deshacer. Se eliminará permanentemente "{product.name}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -791,16 +934,22 @@ export default function WarehouseDetailsPage() {
                                 <AlertDialogAction
                                   className="bg-red-600 hover:bg-red-700"
                                   onClick={() => {
-                                    setLocalWarehouseProducts((prevProducts) => prevProducts.filter((p) => p.id !== product.id))
-                                    toast({ title: "Ítem eliminado", description: `Se eliminó "${product.name}".` })
-                                    setSelectedIds((prev) => {
-                                      const next = new Set(prev)
-                                      next.delete(product.id)
-                                      return next
+                                    deleteProductoMutation.mutate(product.id, {
+                                      onSuccess: () => {
+                                        setSelectedIds((prev) => {
+                                          const next = new Set(prev)
+                                          next.delete(product.id)
+                                          return next
+                                        })
+                                        setSuccessMessage("Item eliminado exitosamente.")
+                                        setShowSuccessToast(true)
+                                        setTimeout(() => setShowSuccessToast(false), 5000)
+                                      },
                                     })
                                   }}
+                                  disabled={deleteProductoMutation.isPending}
                                 >
-                                  Eliminar
+                                  {deleteProductoMutation.isPending ? "Eliminando..." : "Eliminar"}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -836,14 +985,20 @@ export default function WarehouseDetailsPage() {
           </CardContent>
 
           {/* Paginación */}
-          <PaginationControls
-            pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={(n) => {
-              setItemsPerPage(n)
-              setCurrentPage(1)
-            }}
-          />
+          {totalPages > 0 && (
+            <PaginationControls
+              pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
+              onPageChange={(page) => {
+                setCurrentPage(page)
+                clearSelection()
+              }}
+              onItemsPerPageChange={(n) => {
+                setItemsPerPage(n)
+                setCurrentPage(1)
+                clearSelection()
+              }}
+            />
+          )}
         </Card>
       </div>
 
@@ -852,8 +1007,14 @@ export default function WarehouseDetailsPage() {
         <EditWarehouseModal
           isOpen={isEditModalOpen}
           onClose={handleCancelEditWarehouse}
-          warehouse={warehouse}
+          warehouse={{
+            id: warehouse.id,
+            name: warehouse.nombre,
+            location: warehouse.direccion || "",
+            observations: warehouse.descripcion || "",
+          }}
           onSave={handleSaveEditWarehouse}
+          isLoading={updateMutation.isPending}
         />
       )}
 
@@ -872,19 +1033,47 @@ export default function WarehouseDetailsPage() {
         />
       </Modal>
 
-      {/* Modal para editar producto */}
-      <Modal isOpen={isProductEditModalOpen} onClose={() => setIsProductEditModalOpen(false)} title="Editar Producto" size="xl">
-        <NewItemForm 
-          onClose={() => setIsProductEditModalOpen(false)}
-          onSuccess={() => {
-            setIsProductEditModalOpen(false)
-            toast({
-              title: "Producto actualizado",
-              description: "El producto fue actualizado exitosamente.",
-            })
-          }}
-        />
-      </Modal>
+      {/* Toast de error personalizado */}
+      {showErrorToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm font-medium text-red-800">
+              {errorMessage || "No se puede eliminar la bodega porque tiene productos asignados."}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowErrorToast(false)}
+              className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de éxito personalizado */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-sm font-medium text-green-800">
+              {successMessage || "Operación completada exitosamente."}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSuccessToast(false)}
+              className="h-6 w-6 p-0 text-green-600 hover:bg-green-100 hover:text-green-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
     </MainLayout>
   )
 }
+

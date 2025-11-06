@@ -653,7 +653,14 @@ export default function SalesItems() {
                       <div className="font-mono text-sm text-camouflage-green-600">{product.sku}</div>
                     </TableCell>
                     <TableCell className="w-[100px]">
-                      <div className="font-semibold text-camouflage-green-700">${product.price}</div>
+                      <div className="font-semibold text-camouflage-green-700">
+                        {new Intl.NumberFormat("es-CO", {
+                          style: "currency",
+                          currency: "COP",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        }).format(product.price)}
+                      </div>
                     </TableCell>
                     <TableCell className="w-[250px]">
                       <div

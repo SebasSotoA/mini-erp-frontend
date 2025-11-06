@@ -24,9 +24,9 @@ import { ExtendedProduct } from "@/lib/types/items"
 import { useProducto, useUpdateProducto, useProductoBodegas, useProductoCamposExtra, useAddProductoBodega, useUpdateProductoBodega, useDeleteProductoBodega, productoKeys } from "@/hooks/api/use-productos"
 import { mapProductToUpdateDto, productosService } from "@/lib/api/services/productos.service"
 import { uploadProductImage, deleteProductImage } from "@/lib/storage/supabase-client"
-import { useCategorias } from "@/hooks/api/use-categorias"
-import { useBodegas, bodegasKeys, useCreateBodega } from "@/hooks/api/use-bodegas"
-import { useCamposExtra, camposExtraKeys, mapCampoExtraToFrontend, useCreateCampoExtra, mapTipoDatoFrontendToBackend } from "@/hooks/api/use-campos-extra"
+import { useCategoriasActive } from "@/hooks/api/use-categorias"
+import { useBodegasActive, useCreateBodega } from "@/hooks/api/use-bodegas"
+import { useCamposExtraActive, useCreateCampoExtra, mapTipoDatoFrontendToBackend } from "@/hooks/api/use-campos-extra"
 import { useQueryClient } from "@tanstack/react-query"
 import type { ProductoBodegaBackend, ProductoCampoExtraBackend } from "@/lib/api/types"
 
@@ -39,10 +39,10 @@ export default function EditInventoryItemPage() {
   
   // Hooks para datos del backend
   const { data: product, isLoading, error } = useProducto(id)
-  const { data: categorias = [], isLoading: isLoadingCategorias } = useCategorias(true)
-  const { data: bodegas = [], isLoading: isLoadingBodegas } = useBodegas(true)
+  const { data: categorias = [], isLoading: isLoadingCategorias } = useCategoriasActive(true)
+  const { data: bodegas = [], isLoading: isLoadingBodegas } = useBodegasActive(true)
   const createBodegaMutation = useCreateBodega()
-  const { data: extraFields = [], isLoading: isLoadingCamposExtra } = useCamposExtra(true)
+  const { data: extraFields = [], isLoading: isLoadingCamposExtra } = useCamposExtraActive(true)
   const createCampoExtraMutation = useCreateCampoExtra()
   const { data: productoBodegas = [], isLoading: isLoadingProductoBodegas, error: errorProductoBodegas } = useProductoBodegas(id)
   const { data: productoCamposExtra = [], isLoading: isLoadingProductoCamposExtra, error: errorProductoCamposExtra } = useProductoCamposExtra(id)
@@ -923,7 +923,7 @@ export default function EditInventoryItemPage() {
       const response = await createBodegaMutation.mutateAsync({
         nombre: newWarehouseData.name.trim(),
         direccion: newWarehouseData.location.trim() || null,
-        observaciones: newWarehouseData.observations.trim() || null,
+        descripcion: newWarehouseData.observations.trim() || null,
       })
 
       // Seleccionar automáticamente la bodega recién creada si no hay bodega principal

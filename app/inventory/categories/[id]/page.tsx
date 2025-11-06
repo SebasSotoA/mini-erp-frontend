@@ -11,10 +11,11 @@ import {
   PowerOff,
   Trash2,
   Filter,
-  Image as ImageIcon,
-  CloudUpload,
   ArrowLeft,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react"
+import Image from "next/image"
 import { useParams, useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
 
@@ -33,83 +34,43 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Textarea } from "@/components/ui/textarea"
-import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
-import { ItemFilters, SortConfig, SortField, SortDirection } from "@/lib/types/items"
-import { applyFiltersAndSort } from "@/lib/utils/item-filters"
-
-const mockCategories = [
-  {
-    id: "1",
-    name: "Electrónicos",
-    description: "Dispositivos electrónicos, computadoras, móviles y accesorios",
-    isActive: true,
-    image: null,
-  },
-  {
-    id: "2",
-    name: "Ropa y Accesorios",
-    description: "Vestimenta, calzado y complementos de moda",
-    isActive: true,
-    image: null,
-  },
-  {
-    id: "3",
-    name: "Hogar y Jardín",
-    description: "Artículos para el hogar, decoración y herramientas de jardín",
-    isActive: true,
-    image: null,
-  },
-  {
-    id: "4",
-    name: "Deportes",
-    description: "Equipos deportivos, ropa deportiva y accesorios de fitness",
-    isActive: false,
-    image: null,
-  },
-  {
-    id: "5",
-    name: "Libros y Medios",
-    description: "Libros, revistas, música y películas",
-    isActive: true,
-    image: null,
-  },
-]
+import { useCategoria, useUpdateCategoria, useActivateCategoria, useDeactivateCategoria, useDeleteCategoria, useCategoriaProductos } from "@/hooks/api/use-categorias"
+import { useActivateProducto, useDeactivateProducto, useDeleteProducto } from "@/hooks/api/use-productos"
+import { ItemFilters, SortField, SortDirection } from "@/lib/types/items"
+import type { ProductosQueryParams, CategoriaBackend } from "@/lib/api/types"
+import { mapFiltersToQueryParams } from "@/lib/api/utils"
+import { uploadCategoryImage, deleteCategoryImage, moveImageToCategoryFolder } from "@/lib/storage/supabase-client"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { CloudUpload, Image as ImageIcon } from "lucide-react"
 
 export default function CategoryDetailsPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const { toast } = useToast()
-  const { products, updateProduct, deleteProduct } = useInventory()
 
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id
-  const category = mockCategories.find((c) => c.id === id)
-  const [isCategoryActive, setIsCategoryActive] = useState<boolean>(category?.isActive ?? true)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [isImageDragOver, setIsImageDragOver] = useState(false)
-  const [currentCategoryImage, setCurrentCategoryImage] = useState<string | null>(category?.image || null)
-  const [editCategoryData, setEditCategoryData] = useState({
-    name: category?.name || "",
-    description: category?.description || "",
-    image: null as File | null,
-  })
+  const { data: category, isLoading: isLoadingCategory, error: categoryError } = useCategoria(id)
+  const updateMutation = useUpdateCategoria()
+  const activateMutation = useActivateCategoria()
+  const deactivateMutation = useDeactivateCategoria()
+  const deleteMutation = useDeleteCategoria()
 
-  // Filtrar productos por categoría
-  const categoryProducts = useMemo(() => {
-    return products.filter((p) => p.category === category?.name)
-  }, [products, category?.name])
+  // Mutations para productos
+  const activateProductoMutation = useActivateProducto()
+  const deactivateProductoMutation = useDeactivateProducto()
+  const deleteProductoMutation = useDeleteProducto()
 
-  // Estado para filtros/orden/paginación (igual que items/page.tsx)
+  // Estado para paginación y filtros
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(20)
-
   const [filters, setFilters] = useState<ItemFilters>({
     name: "",
     sku: "",
@@ -125,6 +86,43 @@ export default function CategoryDetailsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
   const [showFilters, setShowFilters] = useState(false)
 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editCategoryData, setEditCategoryData] = useState<{ name: string; description: string; image: File | null; currentImageUrl: string | null }>({
+    name: "",
+    description: "",
+    image: null,
+    currentImageUrl: null,
+  })
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null)
+  const [isEditImageDragOver, setIsEditImageDragOver] = useState(false)
+  const [isUploadingEditImage, setIsUploadingEditImage] = useState(false)
+  const [uploadedEditImageUrl, setUploadedEditImageUrl] = useState<string | null>(null)
+
+  // Estado para errores de regla de negocio
+  const [businessError, setBusinessError] = useState<{ title: string; message: string } | null>(null)
+
+  // Estado para toast de error personalizado
+  const [showErrorToast, setShowErrorToast] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
+
+  // Estado para toast de éxito personalizado
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
+
+  // Construir parámetros para la API de productos de categoría usando la función de mapeo
+  const productosParams = useMemo<ProductosQueryParams>(() => {
+    return mapFiltersToQueryParams(
+      filters,
+      { page: currentPage, pageSize: itemsPerPage },
+      sortField ? { field: sortField, direction: sortDirection } : undefined,
+    )
+  }, [currentPage, itemsPerPage, filters, sortField, sortDirection])
+
+  // Obtener productos de la categoría usando el endpoint específico
+  const { data: productosData, isLoading: isLoadingProductos } = useCategoriaProductos(id, productosParams)
+
+  const categoryProducts = productosData?.items || []
+
   const selectedIdsState = useState<Set<string>>(new Set())
   const [selectedIds, setSelectedIds] = selectedIdsState
   const selectedCount = selectedIds.size
@@ -139,22 +137,27 @@ export default function CategoryDetailsPage() {
   }
   const clearSelection = () => setSelectedIds(new Set())
 
+  // Lógica para determinar el estado de los botones de acciones masivas
+  const selectedProducts = categoryProducts.filter((p) => selectedIds.has(p.id))
+  const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p) => p.isActive ?? true)
+  const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p) => !(p.isActive ?? true))
+
   const handleSort = (field: SortField) => {
-    if (sortField === field) setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    else {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
+    } else {
       setSortField(field)
       setSortDirection("asc")
     }
-    // Limpiar selección al cambiar ordenamiento
-    clearSelection()
+    setCurrentPage(1) // Reset a la primera página al cambiar ordenamiento
   }
 
   const handleFilterChange = (field: keyof ItemFilters, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }))
-    setCurrentPage(1)
-    // Limpiar selección al cambiar filtros
+    setCurrentPage(1) // Reset a la primera página al cambiar filtros
     clearSelection()
   }
+
   const clearFilters = () => {
     setFilters({
       name: "",
@@ -168,20 +171,13 @@ export default function CategoryDetailsPage() {
       status: "",
     })
     setCurrentPage(1)
-    // Limpiar selección al limpiar filtros
     clearSelection()
   }
 
-  const sortConfig: SortConfig = { field: sortField, direction: sortDirection }
-  const filteredSortedProducts = applyFiltersAndSort(categoryProducts, filters, sortConfig)
-
-  const totalItems = filteredSortedProducts.length
-  const totalPages = Math.ceil(totalItems / itemsPerPage)
-  const currentProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredSortedProducts.slice(startIndex, endIndex)
-  }, [filteredSortedProducts, currentPage, itemsPerPage])
+  // Los productos ya vienen filtrados y ordenados del backend
+  const totalItems = productosData?.totalCount || 0
+  const totalPages = productosData?.totalPages || 0
+  const currentProducts = categoryProducts
   const allCurrentSelected = useMemo(
     () => currentProducts.length > 0 && currentProducts.every((p) => selectedIds.has(p.id)),
     [currentProducts, selectedIds],
@@ -199,42 +195,55 @@ export default function CategoryDetailsPage() {
   }
 
   const bulkSetActive = (isActive: boolean) => {
-    if (selectedIds.size === 0) return
-    selectedIds.forEach((id) => updateProduct(id, { isActive }))
+    // TODO: Implementar acciones masivas usando los hooks de productos
     toast({
       title: isActive ? "Ítems activados" : "Ítems desactivados",
       description: `${selectedIds.size} ítem(s) actualizados.`,
     })
+    clearSelection()
   }
   const bulkDelete = () => {
-    if (selectedIds.size === 0) return
-    selectedIds.forEach((id) => deleteProduct(id))
+    // TODO: Implementar acciones masivas usando los hooks de productos
     toast({ title: "Ítems eliminados", description: `${selectedIds.size} ítem(s) eliminados.` })
     clearSelection()
   }
 
   // Funciones para el modal de edición
-  const handleEditCategoryInputChange = (field: keyof typeof editCategoryData, value: string) => {
+  const handleEditCategory = (category: CategoriaBackend | undefined) => {
+    if (!category) return
+    setEditCategoryData({
+      name: category.nombre,
+      description: category.descripcion || "",
+      image: null,
+      currentImageUrl: category.imagenCategoriaUrl || null,
+    })
+    setEditImagePreview(null)
+    setUploadedEditImageUrl(null)
+    setIsEditModalOpen(true)
+  }
+
+  const handleEditCategoryInputChange = (field: "name" | "description", value: string) => {
     setEditCategoryData((prev) => ({ ...prev, [field]: value }))
   }
 
   // Funciones para manejar imagen en edición
   const handleEditImageDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-    setIsImageDragOver(true)
+    setIsEditImageDragOver(true)
   }
 
   const handleEditImageDragLeave = (e: React.DragEvent) => {
     e.preventDefault()
-    setIsImageDragOver(false)
+    setIsEditImageDragOver(false)
   }
 
   const handleEditImageDrop = (e: React.DragEvent) => {
     e.preventDefault()
-    setIsImageDragOver(false)
+    setIsEditImageDragOver(false)
     const file = e.dataTransfer.files[0]
     if (file && file.type.startsWith("image/")) {
       setEditCategoryData((prev) => ({ ...prev, image: file }))
+      setEditImagePreview(URL.createObjectURL(file))
     } else {
       toast({
         title: "Formato no válido",
@@ -252,47 +261,190 @@ export default function CategoryDetailsPage() {
       const file = (e.target as HTMLInputElement).files?.[0]
       if (file) {
         setEditCategoryData((prev) => ({ ...prev, image: file }))
+        setEditImagePreview(URL.createObjectURL(file))
       }
     }
     input.click()
   }
 
   const removeEditImage = () => {
-    setEditCategoryData((prev) => ({ ...prev, image: null }))
+    if (uploadedEditImageUrl) {
+      deleteCategoryImage(uploadedEditImageUrl).catch((error) => {
+        console.error("Error al eliminar imagen de Supabase:", error)
+      })
+    }
+    setEditCategoryData((prev) => ({ ...prev, image: null, currentImageUrl: null }))
+    setEditImagePreview(null)
+    setUploadedEditImageUrl(null)
   }
 
-  const handleSaveEditCategory = () => {
+  const handleSaveEditCategory = async () => {
+    if (!category) return
+
     if (!editCategoryData.name.trim()) {
-      toast({ title: "Error", description: "El nombre es obligatorio", variant: "destructive" })
+      toast({
+        title: "Campo obligatorio",
+        description: "El nombre de la categoría es obligatorio.",
+        variant: "destructive",
+      })
       return
     }
 
-    // Si hay una nueva imagen, actualizar la imagen actual
-    if (editCategoryData.image) {
-      const imageUrl = URL.createObjectURL(editCategoryData.image)
-      setCurrentCategoryImage(imageUrl)
-    }
+    try {
+      let finalImageUrl: string | null = editCategoryData.currentImageUrl || null
 
-    toast({
-      title: "Categoría actualizada",
-      description: `"${editCategoryData.name}" fue actualizada exitosamente.`,
-    })
-    setIsEditModalOpen(false)
+      // Si hay una nueva imagen, subirla
+      if (editCategoryData.image) {
+        try {
+          setIsUploadingEditImage(true)
+          // Subir a carpeta temporal primero
+          const tempImageUrl = await uploadCategoryImage(editCategoryData.image)
+          setUploadedEditImageUrl(tempImageUrl)
+
+          // Mover a la carpeta de la categoría
+          finalImageUrl = await moveImageToCategoryFolder(tempImageUrl, category.id)
+
+          // Eliminar imagen anterior si existe y es diferente
+          if (editCategoryData.currentImageUrl && editCategoryData.currentImageUrl !== finalImageUrl) {
+            deleteCategoryImage(editCategoryData.currentImageUrl).catch((error) => {
+              console.error("Error al eliminar imagen anterior:", error)
+            })
+          }
+        } catch (error: any) {
+          toast({
+            title: "Error al subir imagen",
+            description: error.message || "No se pudo subir la imagen. Intenta nuevamente.",
+            variant: "destructive",
+          })
+          setIsUploadingEditImage(false)
+          return
+        } finally {
+          setIsUploadingEditImage(false)
+        }
+      } else if (!editCategoryData.currentImageUrl && editCategoryData.image === null) {
+        // Si se eliminó la imagen (currentImageUrl es null y no hay nueva imagen)
+        finalImageUrl = null
+        // Eliminar imagen anterior si existe
+        if (editCategoryData.currentImageUrl) {
+          deleteCategoryImage(editCategoryData.currentImageUrl).catch((error) => {
+            console.error("Error al eliminar imagen anterior:", error)
+          })
+        }
+      }
+
+      const updateData = {
+        nombre: editCategoryData.name.trim(),
+        descripcion: editCategoryData.description.trim() || null,
+        imagenCategoriaUrl: finalImageUrl,
+      }
+
+      await updateMutation.mutateAsync({ id: category.id, data: updateData })
+      setIsEditModalOpen(false)
+      setEditCategoryData({ name: "", description: "", image: null, currentImageUrl: null })
+      setEditImagePreview(null)
+      setUploadedEditImageUrl(null)
+      setSuccessMessage("Categoría actualizada exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => setShowSuccessToast(false), 5000)
+    } catch (error) {
+      // Si hubo un error y se subió una imagen nueva, eliminarla
+      if (uploadedEditImageUrl) {
+        deleteCategoryImage(uploadedEditImageUrl).catch((error) => {
+          console.error("Error al eliminar imagen de Supabase:", error)
+        })
+      }
+      // Los errores ya se manejan en los hooks
+    }
   }
 
   const handleCancelEditCategory = () => {
-    // Restaurar datos originales
-    setEditCategoryData({
-      name: category?.name || "",
-      description: category?.description || "",
-      image: null,
-    })
-    // Restaurar imagen original
-    setCurrentCategoryImage(category?.image || null)
+    if (uploadedEditImageUrl) {
+      deleteCategoryImage(uploadedEditImageUrl).catch((error) => {
+        console.error("Error al eliminar imagen de Supabase:", error)
+      })
+    }
     setIsEditModalOpen(false)
+    setEditCategoryData({ name: "", description: "", image: null, currentImageUrl: null })
+    setEditImagePreview(null)
+    setUploadedEditImageUrl(null)
   }
 
-  if (!category) {
+  const handleActivate = async () => {
+    if (!category) return
+
+    // Limpiar error previo
+    setBusinessError(null)
+
+    try {
+      await activateMutation.mutateAsync(category.id)
+    } catch (error: any) {
+      // Los errores se manejan en los hooks
+    }
+  }
+
+  const handleDeactivate = async () => {
+    if (!category) return
+
+    // Limpiar error previo
+    setBusinessError(null)
+
+    try {
+      await deactivateMutation.mutateAsync(category.id)
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio solo al desactivar
+      if (error?.message && error.message.includes("productos asignados")) {
+        setBusinessError({
+          title: "No se puede desactivar la categoría",
+          message: error.message,
+        })
+      }
+      // Los demás errores se manejan en los hooks
+    }
+  }
+
+  const handleDeleteCategory = async () => {
+    if (!category) return
+
+    try {
+      // Eliminar imagen de Supabase si existe
+      if (category.imagenCategoriaUrl) {
+        await deleteCategoryImage(category.imagenCategoriaUrl).catch((error) => {
+          console.error("Error al eliminar imagen de Supabase:", error)
+        })
+      }
+
+      await deleteMutation.mutateAsync(category.id)
+      setSuccessMessage("Categoría eliminada exitosamente.")
+      setShowSuccessToast(true)
+      setTimeout(() => {
+        setShowSuccessToast(false)
+        router.push("/inventory/categories")
+      }, 1500) // Esperar 1.5 segundos para mostrar el toast antes de navegar
+    } catch (error: any) {
+      // Detectar error específico de regla de negocio para eliminación
+      if (error?.message && error.message.includes("productos asignados")) {
+        setErrorMessage(error.message)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 5000)
+      }
+      // Los demás errores se manejan en los hooks
+    }
+  }
+
+  if (isLoadingCategory) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+            <p className="text-sm text-camouflage-green-600">Cargando categoría...</p>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
+  if (categoryError || !category) {
     return (
       <MainLayout>
         <div className="space-y-6">
@@ -326,7 +478,7 @@ export default function CategoryDetailsPage() {
           <div>
             <h1 className="flex items-center text-3xl font-bold text-camouflage-green-900">
               <Tags className="mr-3 h-8 w-8 text-camouflage-green-700" />
-              {category.name}
+              {category.nombre}
             </h1>
           </div>
           <Button
@@ -341,26 +493,43 @@ export default function CategoryDetailsPage() {
           </Button>
         </div>
 
+        {/* Tarjeta de error de regla de negocio */}
+        {businessError && (
+          <Alert variant="destructive" className="relative border-red-300 bg-red-50">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <div className="flex-1">
+              <AlertTitle className="text-red-900 font-semibold">{businessError.title}</AlertTitle>
+              <AlertDescription className="text-red-800 mt-2">
+                {businessError.message}
+              </AlertDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setBusinessError(null)}
+              className="absolute right-2 top-2 h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </Alert>
+        )}
+
         {/* Acciones sobre la categoría */}
         <div className="flex flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Button
-              variant={isCategoryActive ? "primary" : "outline"}
-              className={isCategoryActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
-              onClick={() => {
-                setIsCategoryActive(true)
-                toast({ title: "Categoría activada", description: `"${category.name}" está activa.` })
-              }}
+              variant={category.activo ? "outline" : "primary"}
+              className={category.activo ? "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50" : ""}
+              onClick={handleActivate}
+              disabled={activateMutation.isPending || deactivateMutation.isPending || category.activo}
             >
               Activar
             </Button>
             <Button
-              variant={!isCategoryActive ? "primary" : "outline"}
-              className={!isCategoryActive ? "" : "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"}
-              onClick={() => {
-                setIsCategoryActive(false)
-                toast({ title: "Categoría desactivada", description: `"${category.name}" está inactiva.` })
-              }}
+              variant={!category.activo ? "outline" : "primary"}
+              className={!category.activo ? "border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50" : ""}
+              onClick={handleDeactivate}
+              disabled={activateMutation.isPending || deactivateMutation.isPending || !category.activo}
             >
               Desactivar
             </Button>
@@ -368,7 +537,7 @@ export default function CategoryDetailsPage() {
           <Button
             variant="outline"
             className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-            onClick={() => setIsEditModalOpen(true)}
+            onClick={() => handleEditCategory(category)}
           >
             <Edit className="mr-2 h-4 w-4" />
             Editar
@@ -387,19 +556,17 @@ export default function CategoryDetailsPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Eliminar categoría</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción no se puede deshacer. Se eliminará "{category.name}".
+                  Esta acción no se puede deshacer. Se eliminará "{category.nombre}".
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-red-600 hover:bg-red-700"
-                  onClick={() => {
-                    toast({ title: "Categoría eliminada", description: `"${category.name}" fue eliminada.` })
-                    router.push("/inventory/categories")
-                  }}
+                  onClick={handleDeleteCategory}
+                  disabled={deleteMutation.isPending}
                 >
-                  Eliminar
+                  {deleteMutation.isPending ? "Eliminando..." : "Eliminar"}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -412,34 +579,39 @@ export default function CategoryDetailsPage() {
             <div className="flex flex-col gap-6 lg:flex-row">
               {/* Imagen de la categoría */}
               <div className="flex justify-center lg:justify-start">
-                <div className="flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg border-2 border-camouflage-green-200 bg-camouflage-green-50">
-                  {currentCategoryImage ? (
-                    <img
-                      src={currentCategoryImage}
-                      alt={`Imagen de ${category.name}`}
-                      className="max-h-full max-w-full object-contain"
+                <div className="relative flex h-48 w-48 items-center justify-center overflow-hidden rounded-lg border-2 border-camouflage-green-200 bg-camouflage-green-50">
+                  {category.imagenCategoriaUrl ? (
+                    <Image
+                      src={category.imagenCategoriaUrl}
+                      alt={`Imagen de ${category.nombre}`}
+                      fill
+                      className="object-cover"
                     />
                   ) : (
                     <Tags className="h-20 w-20 text-camouflage-green-400" />
                   )}
                 </div>
               </div>
-              
+
               {/* Información de la categoría */}
               <div className="flex-1">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <div className="text-base text-camouflage-green-600">Nombre</div>
-                    <div className="font-medium text-camouflage-green-900">{category.name}</div>
+                    <div className="font-medium text-camouflage-green-900">{category.nombre}</div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-base text-camouflage-green-600">Estado</div>
-                    <div className="font-medium text-camouflage-green-900">{category.isActive ? "Activa" : "Inactiva"}</div>
+                    <div className="font-medium text-camouflage-green-900">
+                      {category.activo ? "Activa" : "Inactiva"}
+                    </div>
                   </div>
-                  <div className="space-y-1 sm:col-span-2">
-                    <div className="text-base text-camouflage-green-600">Descripción</div>
-                    <div className="font-medium text-camouflage-green-900">{category.description}</div>
-                  </div>
+                  {category.descripcion && (
+                    <div className="space-y-1 sm:col-span-2">
+                      <div className="text-base text-camouflage-green-600">Descripción</div>
+                      <div className="font-medium text-camouflage-green-900">{category.descripcion}</div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -451,7 +623,11 @@ export default function CategoryDetailsPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-camouflage-green-900">
-                Items Asociados ({totalItems.toLocaleString()})
+                {isLoadingProductos ? (
+                  "Cargando productos..."
+                ) : (
+                  `Items Asociados (${totalItems.toLocaleString()})`
+                )}
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Button
@@ -475,30 +651,77 @@ export default function CategoryDetailsPage() {
                       <X className="h-4 w-4" />
                     </Button>
                     <div className="flex items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
-                        onClick={() => bulkSetActive(true)}
-                      >
-                        Activar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
-                        onClick={() => bulkSetActive(false)}
-                      >
-                        Desactivar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
-                        onClick={bulkDelete}
-                      >
-                        Eliminar
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedActive}
+                          >
+                            Activar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Activar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>Se activarán {selectedCount} ítem(s).</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => bulkSetActive(true)}>Confirmar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                            disabled={allSelectedInactive}
+                          >
+                            Desactivar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Desactivar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>Se desactivarán {selectedCount} ítem(s).</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => bulkSetActive(false)}>Confirmar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
+                          >
+                            Eliminar
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminar ítems seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no se puede deshacer. Se eliminarán {selectedCount} ítem(s).
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={bulkDelete}>
+                              Eliminar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 )}
@@ -508,33 +731,35 @@ export default function CategoryDetailsPage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                {/* Fila de filtros */}
+                {/* Fila de filtros con transición suave - SOLO cuando showFilters es true */}
                 {showFilters && (
                   <TableRow className="animate-in slide-in-from-top-2 border-camouflage-green-200 bg-camouflage-green-50/30 duration-300 hover:bg-transparent">
-                    <TableHead className="w-[36px]" />
-                    <TableHead className="w-[200px]">
-                      <div className=" py-3">
+                    <TableHead className="w-[36px]">
+                      <div className="pl-3">{/* Columna vacía para alinear con checkbox */}</div>
+                    </TableHead>
+                    <TableHead className="w-[200px] pl-0">
+                      <div className="py-3">
                         <input
                           type="text"
                           placeholder="Nombre"
                           value={filters.name}
                           onChange={(e) => handleFilterChange("name", e.target.value)}
-                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[120px]">
+                    <TableHead className="w-[120px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
-                          placeholder="Referencia"
+                          placeholder="Código SKU"
                           value={filters.sku}
                           onChange={(e) => handleFilterChange("sku", e.target.value)}
-                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[100px]">
+                    <TableHead className="w-[100px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
@@ -545,7 +770,7 @@ export default function CategoryDetailsPage() {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[250px]">
+                    <TableHead className="w-[250px] pl-0">
                       <div className="py-3">
                         <input
                           type="text"
@@ -556,12 +781,13 @@ export default function CategoryDetailsPage() {
                         />
                       </div>
                     </TableHead>
-                    <TableHead className="w-[120px]">
-                      <div className="flex items-center gap-1 py-3">
+                    <TableHead className="w-[120px] text-center">
+                      <div className="flex items-center justify-center gap-1 py-3">
                         <Select
                           value={filters.stockOperator}
                           onValueChange={(value) => {
                             handleFilterChange("stockOperator", value)
+                            // Limpiar valores cuando se cambia el operador
                             if (value !== "between") {
                               handleFilterChange("stockMinValue", "")
                               handleFilterChange("stockMaxValue", "")
@@ -618,10 +844,10 @@ export default function CategoryDetailsPage() {
                     <TableHead className="w-[160px]">
                       <div className="flex items-center gap-1 py-3">
                         <Select
-                          value={filters.status}
-                          onValueChange={(value) => handleFilterChange("status", value)}
+                          value={filters.status || "all"}
+                          onValueChange={(value) => handleFilterChange("status", value === "all" ? "" : value)}
                         >
-                          <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white px-4 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Filtrar por estado">
+                          <SelectTrigger className="w-28 rounded-3xl border border-camouflage-green-300 bg-white px-2 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500" title="Filtrar por estado">
                             <SelectValue placeholder="Todos" />
                           </SelectTrigger>
                           <SelectContent className="rounded-3xl">
@@ -634,7 +860,7 @@ export default function CategoryDetailsPage() {
                           onClick={clearFilters}
                           size="sm"
                           variant="outline"
-                          className="ml-2 h-9 w-14 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                          className="ml-2 h-9 w-9 border-camouflage-green-300 p-0 text-camouflage-green-700 hover:bg-camouflage-green-100"
                           title="Limpiar filtros"
                         >
                           <X className="h-3 w-3" />
@@ -749,7 +975,16 @@ export default function CategoryDetailsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentProducts.length > 0 ? (
+                {isLoadingProductos ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="py-12 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
+                        <p className="text-sm text-camouflage-green-600">Cargando productos...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : currentProducts.length > 0 ? (
                   currentProducts.map((product) => (
                     <TableRow
                       key={product.id}
@@ -776,7 +1011,14 @@ export default function CategoryDetailsPage() {
                         <div className="font-mono text-sm text-camouflage-green-600">{product.sku}</div>
                       </TableCell>
                       <TableCell className="w-[100px] pl-4">
-                        <div className="font-semibold text-camouflage-green-700">${product.price}</div>
+                        <div className="font-semibold text-camouflage-green-700">
+                          {new Intl.NumberFormat("es-CO", {
+                            style: "currency",
+                            currency: "COP",
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }).format(product.price)}
+                        </div>
                       </TableCell>
                       <TableCell className="w-[250px] pl-4">
                         <div
@@ -806,6 +1048,38 @@ export default function CategoryDetailsPage() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                            title="Editar"
+                            onClick={() => {
+                              router.push(`/inventory/items/${product.id}/edit`)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                            title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
+                            onClick={() => {
+                              const current = product.isActive ?? true
+                              if (current) {
+                                deactivateProductoMutation.mutate(product.id)
+                              } else {
+                                activateProductoMutation.mutate(product.id)
+                              }
+                            }}
+                            disabled={activateProductoMutation.isPending || deactivateProductoMutation.isPending}
+                          >
+                            {(product.isActive ?? true) ? (
+                              <Power className="h-4 w-4" />
+                            ) : (
+                              <PowerOff className="h-4 w-4" />
+                            )}
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button
@@ -821,7 +1095,7 @@ export default function CategoryDetailsPage() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Eliminar ítem</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Esta acción no se puede deshacer. Se eliminará "{product.name}".
+                                  Esta acción no se puede deshacer. Se eliminará permanentemente "{product.name}".
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -829,45 +1103,26 @@ export default function CategoryDetailsPage() {
                                 <AlertDialogAction
                                   className="bg-red-600 hover:bg-red-700"
                                   onClick={() => {
-                                    deleteProduct(product.id)
-                                    toast({ title: "Ítem eliminado", description: `Se eliminó "${product.name}".` })
-                                    setSelectedIds((prev) => {
-                                      const next = new Set(prev)
-                                      next.delete(product.id)
-                                      return next
+                                    deleteProductoMutation.mutate(product.id, {
+                                      onSuccess: () => {
+                                        setSelectedIds((prev) => {
+                                          const next = new Set(prev)
+                                          next.delete(product.id)
+                                          return next
+                                        })
+                                        setSuccessMessage("Item eliminado exitosamente.")
+                                        setShowSuccessToast(true)
+                                        setTimeout(() => setShowSuccessToast(false), 5000)
+                                      },
                                     })
                                   }}
+                                  disabled={deleteProductoMutation.isPending}
                                 >
-                                  Eliminar
+                                  {deleteProductoMutation.isPending ? "Eliminando..." : "Eliminar"}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                            title="Editar"
-                            onClick={() => router.push(`/inventory/items/${product.id}/edit`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                            title={(product.isActive ?? true) ? "Desactivar" : "Activar"}
-                            onClick={() => {
-                              const current = product.isActive ?? true
-                              updateProduct(product.id, { isActive: !current })
-                            }}
-                          >
-                            {(product.isActive ?? true) ? (
-                              <Power className="h-4 w-4" />
-                            ) : (
-                              <PowerOff className="h-4 w-4" />
-                            )}
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -878,9 +1133,7 @@ export default function CategoryDetailsPage() {
                       <div className="flex flex-col items-center gap-3">
                         <Tags className="h-12 w-12 text-camouflage-green-300" />
                         <div>
-                          <p className="font-medium text-camouflage-green-600">
-                            No hay ítems asociados a esta categoría
-                          </p>
+                          <p className="font-medium text-camouflage-green-600">No hay ítems asociados a esta categoría</p>
                           <p className="mt-1 text-sm text-camouflage-green-500">
                             Asigna productos a la categoría para verlos aquí.
                           </p>
@@ -894,19 +1147,25 @@ export default function CategoryDetailsPage() {
           </CardContent>
 
           {/* Paginación */}
-          <PaginationControls
-            pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={(n) => {
-              setItemsPerPage(n)
-              setCurrentPage(1)
-            }}
-          />
+          {totalPages > 0 && (
+            <PaginationControls
+              pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
+              onPageChange={(page) => {
+                setCurrentPage(page)
+                clearSelection()
+              }}
+              onItemsPerPageChange={(n) => {
+                setItemsPerPage(n)
+                setCurrentPage(1)
+                clearSelection()
+              }}
+            />
+          )}
         </Card>
       </div>
 
       {/* Modal para editar categoría */}
-      <Modal isOpen={isEditModalOpen} onClose={handleCancelEditCategory} title="Editar Categoría">
+      <Modal isOpen={isEditModalOpen} onClose={handleCancelEditCategory} title="Editar Categoría" size="lg">
         <div className="space-y-4">
           <div className="space-y-1 pt-2.5">
             <Label htmlFor="edit-category-name" className="font-medium text-camouflage-green-700">
@@ -919,6 +1178,7 @@ export default function CategoryDetailsPage() {
               value={editCategoryData.name}
               onChange={(e) => handleEditCategoryInputChange("name", e.target.value)}
               className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              disabled={updateMutation.isPending || isUploadingEditImage}
             />
           </div>
 
@@ -940,6 +1200,7 @@ export default function CategoryDetailsPage() {
                 e.target.style.outline = "none"
                 e.target.style.boxShadow = "none"
               }}
+              disabled={updateMutation.isPending || isUploadingEditImage}
             />
           </div>
 
@@ -947,7 +1208,7 @@ export default function CategoryDetailsPage() {
             <Label className="font-medium text-camouflage-green-700">Imagen de la categoría</Label>
             <div
               className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                isImageDragOver
+                isEditImageDragOver
                   ? "border-camouflage-green-500 bg-camouflage-green-50"
                   : "hover:bg-camouflage-green-25 border-camouflage-green-300 hover:border-camouflage-green-400"
               }`}
@@ -956,19 +1217,24 @@ export default function CategoryDetailsPage() {
               onDragLeave={handleEditImageDragLeave}
               onDrop={handleEditImageDrop}
             >
-              {editCategoryData.image ? (
+              {editImagePreview || editCategoryData.currentImageUrl ? (
                 <div className="space-y-3">
                   <div className="flex justify-center">
-                    <img
-                      src={URL.createObjectURL(editCategoryData.image)}
-                      alt="Vista previa"
-                      className="h-20 w-20 rounded-lg object-cover"
-                    />
+                    <div className="relative h-32 w-32 overflow-hidden rounded-lg">
+                      <Image
+                        src={editImagePreview || editCategoryData.currentImageUrl || ""}
+                        alt="Vista previa"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
-                    <ImageIcon className="h-4 w-4" />
-                    <span className="text-sm font-medium">{editCategoryData.image.name}</span>
-                  </div>
+                  {editCategoryData.image && (
+                    <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
+                      <ImageIcon className="h-4 w-4" />
+                      <span className="text-sm font-medium">{editCategoryData.image.name}</span>
+                    </div>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -977,6 +1243,7 @@ export default function CategoryDetailsPage() {
                       removeEditImage()
                     }}
                     className="border-red-300 text-red-600 hover:bg-red-50"
+                    disabled={updateMutation.isPending || isUploadingEditImage}
                   >
                     <Trash2 className="mr-1 h-4 w-4" />
                     Eliminar imagen
@@ -1001,18 +1268,60 @@ export default function CategoryDetailsPage() {
               variant="outline"
               onClick={handleCancelEditCategory}
               className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+              disabled={updateMutation.isPending || isUploadingEditImage}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSaveEditCategory}
               variant="primary"
+              disabled={updateMutation.isPending || isUploadingEditImage}
             >
-              Guardar cambios
+              {updateMutation.isPending || isUploadingEditImage ? "Guardando..." : "Guardar cambios"}
             </Button>
           </div>
         </div>
       </Modal>
+
+      {/* Toast de error personalizado */}
+      {showErrorToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-sm font-medium text-red-800">
+              {errorMessage || "No se puede eliminar la categoría porque tiene productos asignados."}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowErrorToast(false)}
+              className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Toast de éxito personalizado */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-sm font-medium text-green-800">
+              {successMessage || "Operación completada exitosamente."}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSuccessToast(false)}
+              className="h-6 w-6 p-0 text-green-600 hover:bg-green-100 hover:text-green-800"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </MainLayout>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Modal } from "@/components/ui/modal"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,9 +24,10 @@ interface EditWarehouseModalProps {
     observations?: string
   }
   onSave: (data: WarehouseData) => void
+  isLoading?: boolean
 }
 
-export function EditWarehouseModal({ isOpen, onClose, warehouse, onSave }: EditWarehouseModalProps) {
+export function EditWarehouseModal({ isOpen, onClose, warehouse, onSave, isLoading = false }: EditWarehouseModalProps) {
   const { toast } = useToast()
   const [editData, setEditData] = useState<WarehouseData>({
     name: "",
@@ -72,6 +73,15 @@ export function EditWarehouseModal({ isOpen, onClose, warehouse, onSave }: EditW
     onClose()
   }
 
+  // Verificar si hay cambios en los datos de edición
+  const hasChanges = useMemo(() => {
+    const nameChanged = editData.name.trim() !== (warehouse.name || "").trim()
+    const locationChanged = editData.location.trim() !== (warehouse.location || "").trim()
+    const observationsChanged = (editData.observations || "").trim() !== (warehouse.observations || "").trim()
+
+    return nameChanged || locationChanged || observationsChanged
+  }, [editData, warehouse])
+
   return (
     <Modal isOpen={isOpen} onClose={handleCancel} title="Editar Bodega" size="lg">
       <div className="space-y-4">
@@ -79,13 +89,14 @@ export function EditWarehouseModal({ isOpen, onClose, warehouse, onSave }: EditW
           <Label htmlFor="edit-warehouse-name" className="font-medium text-camouflage-green-700">
             Nombre <span className="text-red-500">*</span>
           </Label>
-          <Input
+            <Input
             id="edit-warehouse-name"
             type="text"
             placeholder="Ingresa el nombre de la bodega"
             value={editData.name}
             onChange={(e) => handleInputChange("name", e.target.value)}
             className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+            disabled={isLoading}
           />
         </div>
 
@@ -100,6 +111,7 @@ export function EditWarehouseModal({ isOpen, onClose, warehouse, onSave }: EditW
             value={editData.location}
             onChange={(e) => handleInputChange("location", e.target.value)}
             className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+            disabled={isLoading}
           />
         </div>
 
@@ -121,6 +133,7 @@ export function EditWarehouseModal({ isOpen, onClose, warehouse, onSave }: EditW
               e.target.style.outline = "none"
               e.target.style.boxShadow = "none"
             }}
+            disabled={isLoading}
           />
         </div>
 
@@ -129,14 +142,16 @@ export function EditWarehouseModal({ isOpen, onClose, warehouse, onSave }: EditW
             variant="outline"
             onClick={handleCancel}
             className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+            disabled={isLoading}
           >
             Cancelar
           </Button>
           <Button
             onClick={handleSave}
             className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+            disabled={isLoading || !hasChanges}
           >
-            Guardar cambios
+            {isLoading ? "Guardando..." : "Guardar cambios"}
           </Button>
         </div>
       </div>
