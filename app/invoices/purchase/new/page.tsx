@@ -26,9 +26,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { DatePicker } from "@/components/ui/date-picker"
-import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import { PurchaseInvoiceItem } from "@/lib/types/invoices"
+import { useBodegasActive } from "@/hooks/api/use-bodegas"
+import { useProveedoresActive, useCreateProveedor, useUpdateProveedor, useDeactivateProveedor } from "@/hooks/api/use-proveedores"
+import { useProductos } from "@/hooks/api/use-productos"
+import { useCreateFacturaCompra } from "@/hooks/api/use-facturas-compra"
+import type { CreateFacturaCompraDto, CreateFacturaCompraItemDto } from "@/lib/api/types"
 
 // Esquema de validación con Zod
 const invoiceSchema = z
@@ -79,9 +83,20 @@ interface NewSupplierForm {
 }
 
 export default function NewPurchaseInvoice() {
-  const { warehouses, suppliers, products, purchaseInvoices, salesInvoices, addPurchaseInvoice, addSupplier, updateSupplier, deleteSupplier } = useInventory()
   const router = useRouter()
   const { toast } = useToast()
+
+  // Obtener datos del backend
+  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useBodegasActive(true)
+  const { data: suppliers = [], isLoading: isLoadingSuppliers } = useProveedoresActive()
+  const { data: productosData, isLoading: isLoadingProducts } = useProductos({ includeInactive: false, pageSize: 1000 })
+  const products = productosData?.items || []
+
+  // Mutaciones
+  const createFacturaMutation = useCreateFacturaCompra()
+  const createProveedorMutation = useCreateProveedor()
+  const updateProveedorMutation = useUpdateProveedor()
+  const deactivateProveedorMutation = useDeactivateProveedor()
 
   // Estado del formulario principal
   const [formData, setFormData] = useState<InvoiceFormData>({
@@ -134,7 +149,7 @@ export default function NewPurchaseInvoice() {
     setValue(field as any, value, { shouldValidate: true })
   }
 
-  const handleNewSupplierSubmit = () => {
+  const handleNewSupplierSubmit = async () => {
     const result = supplierSchema.safeParse(newSupplier)
     
     if (!result.success) {
@@ -146,25 +161,25 @@ export default function NewPurchaseInvoice() {
       return
     }
 
-    // Crear el proveedor
-    addSupplier({
-      name: newSupplier.name,
-      taxId: newSupplier.taxId,
-      observation: newSupplier.observation,
-      isActive: true,
-    })
+    try {
+      const response = await createProveedorMutation.mutateAsync({
+        nombre: newSupplier.name,
+        identificacion: newSupplier.taxId,
+        observaciones: newSupplier.observation || null,
+        correo: null,
+      })
 
-    toast({
-      title: "Proveedor creado",
-      description: "El proveedor se ha creado correctamente.",
-    })
-
-    // Limpiar el formulario y cerrar modal
-    setNewSupplier({ name: "", taxId: "", observation: "" })
-    setShowNewSupplier(false)
-    
-    // Resetear el Select para que no quede en "new-supplier"
-    handleInputChange("supplierId", "")
+      // Limpiar el formulario y cerrar modal
+      setNewSupplier({ name: "", taxId: "", observation: "" })
+      setShowNewSupplier(false)
+      
+      // Seleccionar el proveedor recién creado
+      if (response.data) {
+        handleInputChange("supplierId", response.data.id)
+      }
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
   const handleEditSupplier = (supplierId: string) => {
@@ -173,16 +188,16 @@ export default function NewPurchaseInvoice() {
       setEditingSupplier({
         id: supplierId,
         data: {
-          name: supplier.name,
-          taxId: supplier.taxId || "",
-          observation: supplier.observation || "",
+          name: supplier.nombre,
+          taxId: supplier.identificacion || "",
+          observation: supplier.observaciones || "",
         }
       })
       setShowEditSupplier(true)
     }
   }
 
-  const handleEditSupplierSubmit = () => {
+  const handleEditSupplierSubmit = async () => {
     if (!editingSupplier) return
     
     const result = supplierSchema.safeParse(editingSupplier.data)
@@ -196,20 +211,22 @@ export default function NewPurchaseInvoice() {
       return
     }
 
-    updateSupplier(editingSupplier.id, {
-      name: editingSupplier.data.name,
-      taxId: editingSupplier.data.taxId,
-      observation: editingSupplier.data.observation,
-      isActive: true,
-    })
+    try {
+      await updateProveedorMutation.mutateAsync({
+        id: editingSupplier.id,
+        data: {
+          nombre: editingSupplier.data.name,
+          identificacion: editingSupplier.data.taxId,
+          observaciones: editingSupplier.data.observation || null,
+          correo: null,
+        },
+      })
 
-    toast({
-      title: "Proveedor actualizado",
-      description: "El proveedor se ha actualizado correctamente.",
-    })
-
-    setEditingSupplier(null)
-    setShowEditSupplier(false)
+      setEditingSupplier(null)
+      setShowEditSupplier(false)
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
   const handleDeleteSupplier = (supplierId: string) => {
@@ -217,28 +234,28 @@ export default function NewPurchaseInvoice() {
     if (supplier) {
       setDeletingSupplier({
         id: supplierId,
-        name: supplier.name
+        name: supplier.nombre
       })
       setShowDeleteSupplier(true)
     }
   }
 
-  const handleDeleteSupplierConfirm = () => {
+  const handleDeleteSupplierConfirm = async () => {
     if (deletingSupplier) {
-      deleteSupplier(deletingSupplier.id)
-      
-      // Limpiar el proveedor seleccionado si es el que se está eliminando
-      if (formData.supplierId === deletingSupplier.id) {
-        handleInputChange("supplierId", "")
+      try {
+        // Desactivar en lugar de eliminar (los proveedores no tienen DELETE según la documentación)
+        await deactivateProveedorMutation.mutateAsync(deletingSupplier.id)
+        
+        // Limpiar el proveedor seleccionado si es el que se está desactivando
+        if (formData.supplierId === deletingSupplier.id) {
+          handleInputChange("supplierId", "")
+        }
+        
+        setDeletingSupplier(null)
+        setShowDeleteSupplier(false)
+      } catch (error) {
+        // Los errores ya se manejan en los hooks
       }
-      
-      toast({
-        title: "Proveedor eliminado",
-        description: `El proveedor ${deletingSupplier.name} ha sido eliminado.`,
-      })
-      
-      setDeletingSupplier(null)
-      setShowDeleteSupplier(false)
     }
   }
 
@@ -282,6 +299,10 @@ export default function NewPurchaseInvoice() {
           if (field === 'productId') {
             const product = products.find(p => p.id === value)
             updatedItem.productName = product ? product.name : ""
+            // Si el producto tiene precio base, usarlo como precio por defecto
+            if (product && product.basePrice > 0 && updatedItem.price === 0) {
+              updatedItem.price = product.basePrice
+            }
           }
           
           // Recalcular totales si se actualizan campos numéricos
@@ -326,34 +347,39 @@ export default function NewPurchaseInvoice() {
     const warehouse = warehouses.find(w => w.id === data.warehouseId)
     const supplier = suppliers.find(s => s.id === data.supplierId)
     
-    if (!warehouse || !supplier) return
+    if (!warehouse || !supplier) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona una bodega y un proveedor válidos.",
+        variant: "destructive",
+      })
+      return
+    }
 
-    const { subtotal, totalDiscount, totalTax, totalAmount } = totals
+    // Mapear items al formato del backend
+    const items: CreateFacturaCompraItemDto[] = formData.items.map(item => ({
+      productoId: item.productId,
+      cantidad: item.quantity,
+      costoUnitario: item.price, // En facturas de compra, el precio es el costo unitario
+      descuento: item.discountAmount,
+      impuesto: item.taxAmount,
+    }))
 
-    const invoiceNumber = String(purchaseInvoices.length + salesInvoices.length + 1)
+    // Crear el DTO para el backend
+    const facturaData: CreateFacturaCompraDto = {
+      bodegaId: data.warehouseId,
+      proveedorId: data.supplierId,
+      fecha: new Date(data.date).toISOString(), // Convertir a ISO string
+      observaciones: data.observations || null,
+      items,
+    }
 
-    addPurchaseInvoice({
-      invoiceNumber,
-      warehouseId: data.warehouseId,
-      warehouseName: warehouse.name,
-      supplierId: data.supplierId,
-      supplierName: supplier.name,
-      date: data.date,
-      observations: data.observations,
-      items: formData.items,
-      subtotal,
-      totalDiscount,
-      totalTax,
-      totalAmount,
-      status: "completed",
-    })
-
-    toast({
-      title: "Factura creada",
-      description: "La factura se ha creado correctamente.",
-    })
-
-    router.push("/invoices/purchase")
+    try {
+      await createFacturaMutation.mutateAsync(facturaData)
+      router.push("/invoices/purchase")
+    } catch (error) {
+      // Los errores ya se manejan en los hooks
+    }
   }
 
   const handleFormError = (errors: any) => {
@@ -427,11 +453,11 @@ export default function NewPurchaseInvoice() {
               size="md2"
               variant="primary"
               className="pl-4 pr-4"
-              disabled={isSubmitting}
+              disabled={isSubmitting || createFacturaMutation.isPending || isLoadingWarehouses || isLoadingSuppliers || isLoadingProducts}
               onClick={handleSubmit(handleFormSubmit, handleFormError)}
             >
               <Save className="mr-2 h-4 w-4" />
-              {isSubmitting ? "Guardando..." : "Guardar Factura"}
+              {isSubmitting || createFacturaMutation.isPending ? "Guardando..." : "Guardar Factura"}
             </Button>
           </div>
         </div>
@@ -457,7 +483,7 @@ export default function NewPurchaseInvoice() {
                   <SelectContent className="rounded-3xl">
                     {warehouses.map((warehouse) => (
                       <SelectItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
+                        {warehouse.nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -485,7 +511,7 @@ export default function NewPurchaseInvoice() {
                     <SelectContent className="rounded-3xl">
                       {suppliers.map((supplier) => (
                         <SelectItem key={supplier.id} value={supplier.id}>
-                          {supplier.name} - {supplier.taxId || 'Sin identificación'}
+                          {supplier.nombre} - {supplier.identificacion || 'Sin identificación'}
                         </SelectItem>
                       ))}
                       <SelectItem value="new-supplier" className="text-camouflage-green-600 font-medium">
@@ -876,21 +902,22 @@ export default function NewPurchaseInvoice() {
             <Card className="w-full max-w-md border-camouflage-green-200">
               <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
               <CardHeader>
-                <CardTitle className="text-camouflage-green-900">Confirmar Eliminación</CardTitle>
+                <CardTitle className="text-camouflage-green-900">Confirmar Desactivación</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-camouflage-green-700">
-                  ¿Estás seguro de que quieres eliminar al proveedor <strong>{deletingSupplier.name}</strong>?
+                  ¿Estás seguro de que quieres desactivar al proveedor <strong>{deletingSupplier.name}</strong>?
                 </p>
-                <p className="text-sm text-red-600">
-                  Esta acción no se puede deshacer.
+                <p className="text-sm text-camouflage-green-600">
+                  El proveedor será desactivado y no podrá ser usado en nuevas facturas.
                 </p>
                 <div className="flex gap-2 pt-4">
                   <Button
                     onClick={handleDeleteSupplierConfirm}
-                    className="flex-1 bg-red-600 hover:bg-red-700"
+                    className="flex-1 bg-orange-600 hover:bg-orange-700"
+                    disabled={deactivateProveedorMutation.isPending}
                   >
-                    Eliminar
+                    {deactivateProveedorMutation.isPending ? "Desactivando..." : "Desactivar"}
                   </Button>
                   <Button
                     variant="outline"
