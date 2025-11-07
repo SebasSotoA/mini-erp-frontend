@@ -205,7 +205,7 @@ export default function Categories() {
 
     try {
       await Promise.all(promises)
-      clearSelection()
+    clearSelection()
     } catch (error: any) {
       // Detectar error específico de regla de negocio solo al desactivar
       if (!isActive && error?.message && error.message.includes("productos asignados")) {
@@ -224,7 +224,7 @@ export default function Categories() {
 
     try {
       await Promise.all(promises)
-      clearSelection()
+    clearSelection()
       setSuccessMessage(`${selectedIds.size} categoría(s) eliminada(s) exitosamente.`)
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -364,7 +364,7 @@ export default function Categories() {
           finalImageUrl = await uploadCategoryImage(newCategoryData.image)
           setUploadedImageUrl(finalImageUrl)
         } catch (error: any) {
-          toast({
+    toast({
             title: "Error al subir imagen",
             description: error.message || "No se pudo subir la imagen. Intenta nuevamente.",
             variant: "destructive",
@@ -392,18 +392,18 @@ export default function Categories() {
           await updateMutation.mutateAsync({
             id: response.data.id,
             data: { imagenCategoriaUrl: finalImageUrl },
-          })
+    })
         } catch (error: any) {
           console.error("Error al mover imagen:", error)
           // No fallar la creación si solo falla el movimiento de la imagen
         }
       }
 
-      // Limpiar el formulario y cerrar el modal
-      setNewCategoryData({ name: "", description: "", image: null })
+    // Limpiar el formulario y cerrar el modal
+    setNewCategoryData({ name: "", description: "", image: null })
       setImagePreview(null)
       setUploadedImageUrl(null)
-      setIsNewCategoryModalOpen(false)
+    setIsNewCategoryModalOpen(false)
       setSuccessMessage("Categoría creada exitosamente.")
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -533,7 +533,7 @@ export default function Categories() {
             })
           }
         } catch (error: any) {
-          toast({
+    toast({
             title: "Error al subir imagen",
             description: error.message || "No se pudo subir la imagen. Intenta nuevamente.",
             variant: "destructive",
@@ -561,8 +561,8 @@ export default function Categories() {
       }
 
       await updateMutation.mutateAsync({ id: editingCategory.id, data: updateData })
-      setIsEditModalOpen(false)
-      setEditingCategory(null)
+    setIsEditModalOpen(false)
+    setEditingCategory(null)
       setEditCategoryData({ name: "", description: "", image: null, currentImageUrl: null })
       setEditImagePreview(null)
       setUploadedEditImageUrl(null)
@@ -740,9 +740,9 @@ export default function Categories() {
                   <>
                     Categorías Registradas ({pagination.totalItems.toLocaleString()})
                     {searchTerm && categories.length !== pagination.totalItems && (
-                      <span className="ml-2 text-sm font-normal text-camouflage-green-600">
+                  <span className="ml-2 text-sm font-normal text-camouflage-green-600">
                         de {pagination.totalItems.toLocaleString()} total
-                      </span>
+                  </span>
                     )}
                   </>
                 )}
@@ -853,50 +853,50 @@ export default function Categories() {
               </div>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-camouflage-green-200 hover:bg-transparent">
-                      <TableHead className="w-[36px]">
-                        <div className="pl-3">
-                          <Checkbox
-                            checked={selectedCount === categories.length && categories.length > 0}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedIds(new Set(categories.map((c) => c.id)))
-                              } else {
+            <Table>
+              <TableHeader>
+                <TableRow className="border-camouflage-green-200 hover:bg-transparent">
+                  <TableHead className="w-[36px]">
+                    <div className="pl-3">
+                      <Checkbox
+                        checked={selectedCount === categories.length && categories.length > 0}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedIds(new Set(categories.map((c) => c.id)))
+                          } else {
                                 clearSelection()
-                              }
-                            }}
-                            aria-label="Seleccionar todos"
+                          }
+                        }}
+                        aria-label="Seleccionar todos"
                             disabled={isLoadingData}
+                      />
+                    </div>
+                  </TableHead>
+                      <TableHead className="w-[100px] font-semibold text-camouflage-green-700">Imagen</TableHead>
+                  <TableHead className="w-[200px] font-semibold text-camouflage-green-700">
+                    <div>
+                      <button
+                            onClick={() => handleSort("nombre")}
+                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
+                            disabled={isLoadingData}
+                      >
+                        Nombre
+                        <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
+                          <ChevronUp
+                                className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}
+                          />
+                          <ChevronDown
+                                className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
                           />
                         </div>
-                      </TableHead>
-                      <TableHead className="w-[100px] font-semibold text-camouflage-green-700">Imagen</TableHead>
-                      <TableHead className="w-[200px] font-semibold text-camouflage-green-700">
-                        <div>
-                          <button
-                            onClick={() => handleSort("nombre")}
-                            className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
-                            disabled={isLoadingData}
-                          >
-                            Nombre
-                            <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
-                              <ChevronUp
-                                className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}
-                              />
-                              <ChevronDown
-                                className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
-                              />
-                            </div>
-                          </button>
-                        </div>
-                      </TableHead>
+                      </button>
+                    </div>
+                  </TableHead>
                       <TableHead className="w-[300px] font-semibold text-camouflage-green-700">Descripción</TableHead>
-                      <TableHead className="w-[160px] font-semibold text-camouflage-green-700">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                  <TableHead className="w-[160px] font-semibold text-camouflage-green-700">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                     {categories.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="py-8 text-center text-camouflage-green-600">
@@ -907,20 +907,20 @@ export default function Categories() {
                       </TableRow>
                     ) : (
                       categories.map((category) => (
-                        <TableRow
-                          key={category.id}
-                          className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
-                        >
-                          <TableCell className="w-[36px]">
-                            <div className="pl-3">
-                              <Checkbox
-                                checked={isSelected(category.id)}
-                                onCheckedChange={() => toggleSelect(category.id)}
+                  <TableRow
+                    key={category.id}
+                    className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
+                  >
+                    <TableCell className="w-[36px]">
+                      <div className="pl-3">
+                        <Checkbox
+                          checked={isSelected(category.id)}
+                          onCheckedChange={() => toggleSelect(category.id)}
                                 aria-label={`Seleccionar ${category.nombre}`}
                                 disabled={isLoadingData}
-                              />
-                            </div>
-                          </TableCell>
+                        />
+                      </div>
+                    </TableCell>
                           <TableCell className="w-[100px]">
                             {category.imagenCategoriaUrl ? (
                               <div className="relative h-12 w-12 overflow-hidden rounded-lg">
@@ -937,92 +937,92 @@ export default function Categories() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="w-[200px]">
-                            <button
-                              onClick={() => router.push(`/inventory/categories/${category.id}`)}
-                              className="text-left font-medium text-camouflage-green-900 transition-colors hover:text-camouflage-green-700 hover:underline"
+                    <TableCell className="w-[200px]">
+                      <button
+                        onClick={() => router.push(`/inventory/categories/${category.id}`)}
+                        className="text-left font-medium text-camouflage-green-900 transition-colors hover:text-camouflage-green-700 hover:underline"
                               disabled={isLoadingData}
-                            >
+                      >
                               {category.nombre}
-                            </button>
-                          </TableCell>
+                      </button>
+                    </TableCell>
                           <TableCell className="w-[300px]">
-                            <div
+                      <div
                               className="max-w-[280px] truncate text-sm text-camouflage-green-600"
                               title={category.descripcion || ""}
-                            >
+                      >
                               {category.descripcion || "-"}
-                            </div>
-                          </TableCell>
-                          <TableCell className="w-[160px]">
-                            <div className="flex items-center justify-start gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                                title="Ver detalles"
-                                onClick={() => router.push(`/inventory/categories/${category.id}`)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="w-[160px]">
+                      <div className="flex items-center justify-start gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                          title="Ver detalles"
+                          onClick={() => router.push(`/inventory/categories/${category.id}`)}
                                 disabled={isLoadingData}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                                title="Editar"
-                                onClick={() => handleEditCategory(category)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                          title="Editar"
+                          onClick={() => handleEditCategory(category)}
                                 disabled={isLoadingData}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                                 title={category.activo ? "Desactivar" : "Activar"}
-                                onClick={() => toggleCategoryStatus(category.id)}
+                          onClick={() => toggleCategoryStatus(category.id)}
                                 disabled={isLoadingData}
-                              >
+                        >
                                 {category.activo ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                                    title="Eliminar"
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                              title="Eliminar"
                                     disabled={isLoadingData}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Eliminar categoría</AlertDialogTitle>
-                                    <AlertDialogDescription>
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Eliminar categoría</AlertDialogTitle>
+                              <AlertDialogDescription>
                                       Esta acción no se puede deshacer. Se eliminará "{category.nombre}".
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-red-600 hover:bg-red-700"
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-red-600 hover:bg-red-700"
                                       onClick={() => deleteCategory(category.id)}
-                                    >
-                                      Eliminar
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                       ))
-                    )}
-                  </TableBody>
-                </Table>
+                )}
+              </TableBody>
+            </Table>
                 {/* Paginación */}
                 {pagination.totalPages > 0 && (
                   <PaginationControls
@@ -1036,239 +1036,239 @@ export default function Categories() {
           </CardContent>
         </Card>
 
-        {/* Modal para nueva categoría */}
+      {/* Modal para nueva categoría */}
         <Modal isOpen={isNewCategoryModalOpen} onClose={handleCancelNewCategory} title="Nueva Categoría" size="lg">
           <div className="space-y-4">
-            <div className="space-y-1 pt-2.5">
-              <Label htmlFor="category-name" className="font-medium text-camouflage-green-700">
-                Nombre <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="category-name"
-                type="text"
-                placeholder="Ingresa el nombre de la categoría"
-                value={newCategoryData.name}
-                onChange={(e) => handleNewCategoryInputChange("name", e.target.value)}
-                className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          <div className="space-y-1 pt-2.5">
+            <Label htmlFor="category-name" className="font-medium text-camouflage-green-700">
+              Nombre <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="category-name"
+              type="text"
+              placeholder="Ingresa el nombre de la categoría"
+              value={newCategoryData.name}
+              onChange={(e) => handleNewCategoryInputChange("name", e.target.value)}
+              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
                 disabled={createMutation.isPending || isUploadingImage}
-              />
-            </div>
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category-description" className="font-medium text-camouflage-green-700">
-                Descripción
-              </Label>
-              <Textarea
-                id="category-description"
-                placeholder="Ingresa una descripción de la categoría"
-                value={newCategoryData.description}
-                onChange={(e) => handleNewCategoryInputChange("description", e.target.value)}
-                className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-                style={{
-                  outline: "none",
-                  boxShadow: "none",
-                }}
-                onFocus={(e) => {
-                  e.target.style.outline = "none"
-                  e.target.style.boxShadow = "none"
-                }}
+          <div className="space-y-2">
+            <Label htmlFor="category-description" className="font-medium text-camouflage-green-700">
+              Descripción
+            </Label>
+            <Textarea
+              id="category-description"
+              placeholder="Ingresa una descripción de la categoría"
+              value={newCategoryData.description}
+              onChange={(e) => handleNewCategoryInputChange("description", e.target.value)}
+              className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              style={{
+                outline: "none",
+                boxShadow: "none",
+              }}
+              onFocus={(e) => {
+                e.target.style.outline = "none"
+                e.target.style.boxShadow = "none"
+              }}
                 disabled={createMutation.isPending || isUploadingImage}
-              />
-            </div>
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label className="font-medium text-camouflage-green-700">Imagen de la categoría</Label>
-              <div
-                className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                  isImageDragOver
-                    ? "border-camouflage-green-500 bg-camouflage-green-50"
-                    : "hover:bg-camouflage-green-25 border-camouflage-green-300 hover:border-camouflage-green-400"
-                }`}
-                onClick={handleImageAreaClick}
-                onDragOver={handleImageDragOver}
-                onDragLeave={handleImageDragLeave}
-                onDrop={handleImageDrop}
-              >
+          <div className="space-y-2">
+            <Label className="font-medium text-camouflage-green-700">Imagen de la categoría</Label>
+            <div
+              className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+                isImageDragOver
+                  ? "border-camouflage-green-500 bg-camouflage-green-50"
+                  : "hover:bg-camouflage-green-25 border-camouflage-green-300 hover:border-camouflage-green-400"
+              }`}
+              onClick={handleImageAreaClick}
+              onDragOver={handleImageDragOver}
+              onDragLeave={handleImageDragLeave}
+              onDrop={handleImageDrop}
+            >
                 {imagePreview || uploadedImageUrl ? (
-                  <div className="space-y-3">
-                    <div className="flex justify-center">
+                <div className="space-y-3">
+                  <div className="flex justify-center">
                       <div className="relative h-32 w-32 overflow-hidden rounded-lg">
                         <Image
                           src={imagePreview || uploadedImageUrl || ""}
-                          alt="Vista previa"
+                      alt="Vista previa"
                           fill
                           className="object-cover"
-                        />
-                      </div>
+                    />
+                  </div>
                     </div>
                     {newCategoryData.image && (
-                      <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
-                        <ImageIcon className="h-4 w-4" />
-                        <span className="text-sm font-medium">{newCategoryData.image.name}</span>
-                      </div>
+                  <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
+                    <ImageIcon className="h-4 w-4" />
+                    <span className="text-sm font-medium">{newCategoryData.image.name}</span>
+                  </div>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeImage()
-                      }}
-                      className="border-red-300 text-red-600 hover:bg-red-50"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeImage()
+                    }}
+                    className="border-red-300 text-red-600 hover:bg-red-50"
                       disabled={createMutation.isPending || isUploadingImage}
-                    >
-                      <Trash2 className="mr-1 h-4 w-4" />
-                      Eliminar imagen
-                    </Button>
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    Eliminar imagen
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex justify-center gap-3">
+                    <CloudUpload className="h-8 w-8 text-camouflage-green-500" />
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex justify-center gap-3">
-                      <CloudUpload className="h-8 w-8 text-camouflage-green-500" />
-                    </div>
-                    <p className="text-sm font-medium text-camouflage-green-600">
-                      Arrastra una imagen aquí o haz clic para seleccionar
-                    </p>
-                    <p className="text-xs text-camouflage-green-500">JPG, PNG, GIF (máximo 5MB)</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={handleCancelNewCategory}
-                className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-                disabled={createMutation.isPending || isUploadingImage}
-              >
-                Cancelar
-              </Button>
-              <Button onClick={handleSaveNewCategory} variant="primary" disabled={createMutation.isPending || isUploadingImage}>
-                {createMutation.isPending || isUploadingImage ? "Guardando..." : "Guardar"}
-              </Button>
+                  <p className="text-sm font-medium text-camouflage-green-600">
+                    Arrastra una imagen aquí o haz clic para seleccionar
+                  </p>
+                  <p className="text-xs text-camouflage-green-500">JPG, PNG, GIF (máximo 5MB)</p>
+                </div>
+              )}
             </div>
           </div>
-        </Modal>
 
-        {/* Modal para editar categoría */}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleCancelNewCategory}
+              className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                disabled={createMutation.isPending || isUploadingImage}
+            >
+              Cancelar
+            </Button>
+              <Button onClick={handleSaveNewCategory} variant="primary" disabled={createMutation.isPending || isUploadingImage}>
+                {createMutation.isPending || isUploadingImage ? "Guardando..." : "Guardar"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal para editar categoría */}
         <Modal isOpen={isEditModalOpen} onClose={handleCancelEditCategory} title="Editar Categoría" size="lg">
-          <div className="space-y-4">
-            <div className="space-y-1 pt-2.5">
-              <Label htmlFor="edit-category-name" className="font-medium text-camouflage-green-700">
-                Nombre <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="edit-category-name"
-                type="text"
-                placeholder="Ingresa el nombre de la categoría"
-                value={editCategoryData.name}
-                onChange={(e) => handleEditCategoryInputChange("name", e.target.value)}
-                className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+        <div className="space-y-4">
+          <div className="space-y-1 pt-2.5">
+            <Label htmlFor="edit-category-name" className="font-medium text-camouflage-green-700">
+              Nombre <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="edit-category-name"
+              type="text"
+              placeholder="Ingresa el nombre de la categoría"
+              value={editCategoryData.name}
+              onChange={(e) => handleEditCategoryInputChange("name", e.target.value)}
+              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
                 disabled={updateMutation.isPending || isUploadingEditImage}
-              />
-            </div>
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="edit-category-description" className="font-medium text-camouflage-green-700">
-                Descripción
-              </Label>
-              <Textarea
-                id="edit-category-description"
-                placeholder="Ingresa una descripción de la categoría"
-                value={editCategoryData.description}
-                onChange={(e) => handleEditCategoryInputChange("description", e.target.value)}
-                className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-                style={{
-                  outline: "none",
-                  boxShadow: "none",
-                }}
-                onFocus={(e) => {
-                  e.target.style.outline = "none"
-                  e.target.style.boxShadow = "none"
-                }}
+          <div className="space-y-2">
+            <Label htmlFor="edit-category-description" className="font-medium text-camouflage-green-700">
+              Descripción
+            </Label>
+            <Textarea
+              id="edit-category-description"
+              placeholder="Ingresa una descripción de la categoría"
+              value={editCategoryData.description}
+              onChange={(e) => handleEditCategoryInputChange("description", e.target.value)}
+              className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              style={{
+                outline: "none",
+                boxShadow: "none",
+              }}
+              onFocus={(e) => {
+                e.target.style.outline = "none"
+                e.target.style.boxShadow = "none"
+              }}
                 disabled={updateMutation.isPending || isUploadingEditImage}
-              />
-            </div>
+            />
+          </div>
 
-            <div className="space-y-2">
-              <Label className="font-medium text-camouflage-green-700">Imagen de la categoría</Label>
-              <div
-                className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+          <div className="space-y-2">
+            <Label className="font-medium text-camouflage-green-700">Imagen de la categoría</Label>
+            <div
+              className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
                   isEditImageDragOver
-                    ? "border-camouflage-green-500 bg-camouflage-green-50"
-                    : "hover:bg-camouflage-green-25 border-camouflage-green-300 hover:border-camouflage-green-400"
-                }`}
-                onClick={handleEditImageAreaClick}
-                onDragOver={handleEditImageDragOver}
-                onDragLeave={handleEditImageDragLeave}
-                onDrop={handleEditImageDrop}
-              >
+                  ? "border-camouflage-green-500 bg-camouflage-green-50"
+                  : "hover:bg-camouflage-green-25 border-camouflage-green-300 hover:border-camouflage-green-400"
+              }`}
+              onClick={handleEditImageAreaClick}
+              onDragOver={handleEditImageDragOver}
+              onDragLeave={handleEditImageDragLeave}
+              onDrop={handleEditImageDrop}
+            >
                 {editImagePreview || editCategoryData.currentImageUrl ? (
-                  <div className="space-y-3">
-                    <div className="flex justify-center">
+                <div className="space-y-3">
+                  <div className="flex justify-center">
                       <div className="relative h-32 w-32 overflow-hidden rounded-lg">
                         <Image
                           src={editImagePreview || editCategoryData.currentImageUrl || ""}
-                          alt="Vista previa"
+                      alt="Vista previa"
                           fill
                           className="object-cover"
-                        />
-                      </div>
+                    />
+                  </div>
                     </div>
                     {editCategoryData.image && (
-                      <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
-                        <ImageIcon className="h-4 w-4" />
-                        <span className="text-sm font-medium">{editCategoryData.image.name}</span>
-                      </div>
+                  <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
+                    <ImageIcon className="h-4 w-4" />
+                    <span className="text-sm font-medium">{editCategoryData.image.name}</span>
+                  </div>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        removeEditImage()
-                      }}
-                      className="border-red-300 text-red-600 hover:bg-red-50"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeEditImage()
+                    }}
+                    className="border-red-300 text-red-600 hover:bg-red-50"
                       disabled={updateMutation.isPending || isUploadingEditImage}
-                    >
-                      <Trash2 className="mr-1 h-4 w-4" />
-                      Eliminar imagen
-                    </Button>
+                  >
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    Eliminar imagen
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex justify-center gap-3">
+                    <CloudUpload className="h-8 w-8 text-camouflage-green-500" />
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="flex justify-center gap-3">
-                      <CloudUpload className="h-8 w-8 text-camouflage-green-500" />
-                    </div>
-                    <p className="text-sm font-medium text-camouflage-green-600">
-                      Arrastra una imagen aquí o haz clic para seleccionar
-                    </p>
-                    <p className="text-xs text-camouflage-green-500">JPG, PNG, GIF (máximo 5MB)</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={handleCancelEditCategory}
-                className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-                disabled={updateMutation.isPending || isUploadingEditImage}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSaveEditCategory}
-                variant="primary"
-                disabled={updateMutation.isPending || isUploadingEditImage || !hasEditChanges}
-              >
-                {updateMutation.isPending || isUploadingEditImage ? "Guardando..." : "Guardar cambios"}
-              </Button>
+                  <p className="text-sm font-medium text-camouflage-green-600">
+                    Arrastra una imagen aquí o haz clic para seleccionar
+                  </p>
+                  <p className="text-xs text-camouflage-green-500">JPG, PNG, GIF (máximo 5MB)</p>
+                </div>
+              )}
             </div>
           </div>
-        </Modal>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleCancelEditCategory}
+              className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                disabled={updateMutation.isPending || isUploadingEditImage}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveEditCategory}
+              variant="primary"
+                disabled={updateMutation.isPending || isUploadingEditImage || !hasEditChanges}
+            >
+                {updateMutation.isPending || isUploadingEditImage ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
       </div>
 
       {/* Toast de error personalizado */}

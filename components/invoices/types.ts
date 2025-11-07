@@ -2,7 +2,16 @@ export interface InvoiceFilters {
   search: string
   dropdown: string
   status: string
-  dateFrom: string
+  date?: string
+  numeroFactura?: string
+  proveedorId?: string
+  proveedorNombre?: string
+  vendedorId?: string
+  vendedorNombre?: string
+  bodegaId?: string
+  bodegaNombre?: string
+  formaPago?: string
+  medioPago?: string
 }
 
 export interface InvoiceColumn<T> {
@@ -27,4 +36,6 @@ export interface FilterConfig {
   dropdownField?: keyof InvoiceFilters
   dropdownOptions?: Array<{ value: string; label: string }>
   dropdownPlaceholder?: string
+  supplierOptions?: Array<{ value: string; label: string }>
+  salespersonOptions?: Array<{ value: string; label: string }>
 }

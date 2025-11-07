@@ -11,6 +11,8 @@ import {
   Calculator,
   Edit,
   AlertCircle,
+  CheckCircle,
+  X,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useState, useMemo, useEffect } from "react"
@@ -22,20 +24,26 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Modal } from "@/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { DatePicker } from "@/components/ui/date-picker"
-import { useInventory } from "@/contexts/inventory-context"
 import { useToast } from "@/hooks/use-toast"
 import { SalesInvoiceItem } from "@/lib/types/invoices"
+import { useBodegasActive, useBodegaProductos } from "@/hooks/api/use-bodegas"
+import { useVendedoresActive, useCreateVendedor, useUpdateVendedor, useDeactivateVendedor, vendedoresKeys } from "@/hooks/api/use-vendedores"
+import { useQueryClient } from "@tanstack/react-query"
+import { ApiError, NetworkError } from "@/lib/api/errors"
+import { useProductos } from "@/hooks/api/use-productos"
+import { useCreateFacturaVenta } from "@/hooks/api/use-facturas-venta"
+import type { CreateFacturaVentaDto, CreateFacturaVentaItemDto } from "@/lib/api/types"
 
 // Esquema de validación con Zod
 const invoiceSchema = z
   .object({
     warehouseId: z.string().min(1, "La bodega es requerida"),
     salespersonId: z.string().min(1, "El vendedor es requerido"),
-    email: z.string().email("Email inválido").optional().or(z.literal("")),
     date: z.string().min(1, "La fecha es requerida"),
     paymentType: z.enum(["cash", "credit"], {
       required_error: "La forma de pago es requerida",
@@ -66,7 +74,7 @@ const invoiceSchema = z
     return true
   }, {
     message: "El plazo de pago es requerido cuando se selecciona Crédito",
-    path: ["paymentTerm"], // Esto hace que el error aparezca en el campo paymentTerm
+    path: ["paymentTerm"],
   })
 
 type InvoiceFormSchema = z.infer<typeof invoiceSchema>
@@ -74,7 +82,9 @@ type InvoiceFormSchema = z.infer<typeof invoiceSchema>
 // Esquema para vendedores
 const salespersonSchema = z.object({
   name: z.string().min(1, "El nombre es requerido"),
-  identification: z.string().min(1, "La identificación es requerida"),
+  identification: z.string()
+    .min(1, "La identificación es requerida")
+    .regex(/^[0-9-]+$/, "La identificación solo puede contener números y guiones."),
   observation: z.string().optional(),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
 })
@@ -84,7 +94,6 @@ type SalespersonFormSchema = z.infer<typeof salespersonSchema>
 interface InvoiceFormData {
   warehouseId: string
   salespersonId: string
-  email: string
   date: string
   paymentType: "cash" | "credit"
   paymentMethod: string
@@ -101,22 +110,62 @@ interface NewSalespersonForm {
 }
 
 export default function NewSalesInvoice() {
-  const { warehouses, salespersons, paymentMethods, products, salesInvoices, purchaseInvoices, addSalesInvoice, addSalesperson, updateSalesperson, deleteSalesperson } = useInventory()
   const router = useRouter()
   const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  // Obtener datos del backend
+  const { data: warehouses = [], isLoading: isLoadingWarehouses } = useBodegasActive(true)
+  const { data: salespersonsData, isLoading: isLoadingSalespersons } = useVendedoresActive()
+
+  // Mutaciones
+  const createFacturaMutation = useCreateFacturaVenta()
+  const createVendedorMutation = useCreateVendedor()
+  const updateVendedorMutation = useUpdateVendedor()
+  const deactivateVendedorMutation = useDeactivateVendedor()
 
   // Estado del formulario principal
   const [formData, setFormData] = useState<InvoiceFormData>({
     warehouseId: "",
     salespersonId: "",
-    email: "",
     date: new Date().toISOString().split('T')[0],
     paymentType: "cash",
     paymentMethod: "",
     paymentTerm: "",
     observations: "",
-    items: [],
+    items: [
+      {
+        id: `item-${Date.now()}`,
+        productId: "",
+        productName: "",
+        price: 0,
+        discount: 0,
+        taxRate: 19,
+        quantity: 1,
+        subtotal: 0,
+        discountAmount: 0,
+        taxAmount: 0,
+        total: 0,
+      }
+    ],
   })
+
+  // Obtener productos según la bodega seleccionada
+  const { data: productosData, isLoading: isLoadingProducts } = useProductos({ includeInactive: false, pageSize: 1000 })
+  const { data: bodegaProductosData, isLoading: isLoadingBodegaProductos } = useBodegaProductos(
+    formData.warehouseId || undefined,
+    { includeInactive: false, pageSize: 1000 }
+  )
+  
+  // Usar productos de la bodega si hay una seleccionada, sino usar todos los productos
+  const products = formData.warehouseId && bodegaProductosData?.items
+    ? bodegaProductosData.items
+    : productosData?.items || []
+  
+  // Filtrar solo vendedores activos (medida de seguridad adicional)
+  const salespersons = Array.isArray(salespersonsData) 
+    ? salespersonsData.filter((salesperson) => salesperson.activo === true)
+    : []
 
   // Estado para nuevo vendedor
   const [showNewSalesperson, setShowNewSalesperson] = useState(false)
@@ -138,6 +187,20 @@ export default function NewSalesInvoice() {
   // Estado para mostrar errores de validación
   const [showErrorToast, setShowErrorToast] = useState(false)
   const [showItemsErrorToast, setShowItemsErrorToast] = useState(false)
+  const [showDuplicateSalespersonToast, setShowDuplicateSalespersonToast] = useState(false)
+  const [duplicateSalespersonMessage, setDuplicateSalespersonMessage] = useState("")
+  const [showInvalidIdentificationToast, setShowInvalidIdentificationToast] = useState(false)
+  const [hasInvalidIdentificationError, setHasInvalidIdentificationError] = useState(false)
+  const [showNameRequiredToast, setShowNameRequiredToast] = useState(false)
+  const [showDiscountErrorToast, setShowDiscountErrorToast] = useState(false)
+  const [showStockWarningToast, setShowStockWarningToast] = useState(false)
+  const [stockWarningMessage, setStockWarningMessage] = useState("")
+  const [showStockErrorToast, setShowStockErrorToast] = useState(false)
+  const [stockErrorMessage, setStockErrorMessage] = useState("")
+  
+  // Estado para toasts de éxito de vendedores
+  const [showSalespersonSuccessToast, setShowSalespersonSuccessToast] = useState(false)
+  const [salespersonSuccessMessage, setSalespersonSuccessMessage] = useState("")
 
   // React Hook Form
   const {
@@ -150,7 +213,6 @@ export default function NewSalesInvoice() {
     defaultValues: {
       warehouseId: formData.warehouseId,
       salespersonId: formData.salespersonId,
-      email: formData.email,
       date: formData.date,
       paymentType: formData.paymentType,
       paymentMethod: formData.paymentMethod,
@@ -160,64 +222,189 @@ export default function NewSalesInvoice() {
     },
   })
 
-  // Estado para nuevo item (solo para agregar filas)
-  const [newItem, setNewItem] = useState({
-    productId: "",
-    quantity: 1,
-    price: 0,
-    discount: 0,
-    taxRate: 19,
-  })
+  // Sincronizar el estado inicial del formulario con React Hook Form
+  useEffect(() => {
+    setValue("items", formData.items, { shouldValidate: false })
+  }, []) // Solo al montar el componente
 
   const handleInputChange = (field: keyof InvoiceFormData, value: string) => {
-    setFormData(prev => {
-      const newData = { ...prev, [field]: value }
-      
-      // Si se cambia el tipo de pago a "cash", limpiar el plazo de pago
-      if (field === "paymentType" && value === "cash") {
-        newData.paymentTerm = ""
+    // Si se cambia la bodega, limpiar los productos seleccionados en los items
+    if (field === 'warehouseId') {
+      setFormData(prev => {
+        const clearedItems = prev.items.map(item => ({
+          ...item,
+          productId: "",
+          productName: "",
+          price: 0,
+          subtotal: 0,
+          discountAmount: 0,
+          taxAmount: 0,
+          total: 0,
+        }))
+        setValue("items", clearedItems, { shouldValidate: false })
+        return { ...prev, [field]: value, items: clearedItems }
+      })
+    } else if (field === 'paymentType' && value === 'cash') {
+      // Si se cambia a contado, limpiar el plazo de pago
+      setFormData(prev => {
+        const newData = { ...prev, [field]: value as "cash" | "credit", paymentTerm: "" }
         setValue("paymentTerm", "", { shouldValidate: true })
-      }
-      
-      return newData
-    })
+        return newData
+      })
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }))
+    }
     setValue(field as any, value, { shouldValidate: true })
   }
 
-  const handleNewSalespersonSubmit = () => {
-    const result = salespersonSchema.safeParse(newSalesperson)
-    
-    if (!result.success) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos.",
-        variant: "destructive",
-      })
+  const handleNewSalespersonSubmit = async () => {
+    // Validar que el nombre no esté vacío
+    if (!newSalesperson.name || newSalesperson.name.trim() === "") {
+      setShowNameRequiredToast(true)
+      setTimeout(() => setShowNameRequiredToast(false), 5000)
       return
     }
 
-    // Crear el vendedor
-    addSalesperson({
-      name: newSalesperson.name,
-      identification: newSalesperson.identification,
-      observation: newSalesperson.observation,
-      isActive: true,
-    })
+    // Validar formato de identificación antes de enviar
+    const identificationRegex = /^[0-9-]+$/
+    if (!identificationRegex.test(newSalesperson.identification)) {
+      setHasInvalidIdentificationError(true)
+      setShowInvalidIdentificationToast(true)
+      setTimeout(() => setShowInvalidIdentificationToast(false), 5000)
+      return
+    }
 
-    // Sincronizar email al formulario principal
-    handleInputChange("email", newSalesperson.email || "")
-
-    toast({
-      title: "Vendedor creado",
-      description: "El vendedor se ha creado correctamente.",
-    })
-
-    // Limpiar el formulario y cerrar modal
-    setNewSalesperson({ name: "", identification: "", observation: "", email: "" })
-    setShowNewSalesperson(false)
+    const result = salespersonSchema.safeParse(newSalesperson)
     
-    // Resetear el Select para que no quede en "new-salesperson"
-    handleInputChange("salespersonId", "")
+    if (!result.success) {
+      // Verificar si el error es de nombre
+      const nameError = result.error.errors.find(err => err.path.includes("name"))
+      if (nameError) {
+        setShowNameRequiredToast(true)
+        setTimeout(() => setShowNameRequiredToast(false), 5000)
+        return
+      }
+      // Verificar si el error es de identificación
+      const identificationError = result.error.errors.find(err => err.path.includes("identification"))
+      if (identificationError && identificationError.message.includes("solo puede contener números y guiones")) {
+        setHasInvalidIdentificationError(true)
+        setShowInvalidIdentificationToast(true)
+        setTimeout(() => setShowInvalidIdentificationToast(false), 5000)
+      } else {
+        setHasInvalidIdentificationError(false)
+        toast({
+          title: "Error",
+          description: "Por favor completa todos los campos requeridos.",
+          variant: "destructive",
+        })
+      }
+      return
+    }
+
+    // Si llegamos aquí, la validación pasó
+    setHasInvalidIdentificationError(false)
+
+    try {
+      const response = await createVendedorMutation.mutateAsync({
+        nombre: newSalesperson.name,
+        identificacion: newSalesperson.identification,
+        observaciones: newSalesperson.observation || null,
+        correo: newSalesperson.email && newSalesperson.email.trim() !== "" ? newSalesperson.email.trim() : null,
+      })
+
+      // Invalidar y refetch la query de vendedores activos para actualizar el dropdown
+      await queryClient.invalidateQueries({ queryKey: vendedoresKeys.list(true) })
+      await queryClient.invalidateQueries({ queryKey: vendedoresKeys.lists() })
+      await queryClient.refetchQueries({ queryKey: vendedoresKeys.list(true) })
+
+      // Limpiar el formulario y cerrar modal
+      setNewSalesperson({ name: "", identification: "", observation: "", email: "" })
+      setShowNewSalesperson(false)
+      
+      // Toast personalizado de éxito (visual)
+      setSalespersonSuccessMessage(`El vendedor "${newSalesperson.name}" ha sido creado exitosamente.`)
+      setShowSalespersonSuccessToast(true)
+      setTimeout(() => setShowSalespersonSuccessToast(false), 5000)
+      
+      // Seleccionar el vendedor recién creado
+      if (response.data) {
+        handleInputChange("salespersonId", response.data.id)
+      }
+    } catch (error: any) {
+      // Manejar errores específicos
+      let errorMessage = "Ocurrió un error al crear el vendedor."
+      let errorTitle = "Error al crear vendedor"
+
+      // Obtener el mensaje del error
+      const errorMsg = error?.message || error?.toString() || ""
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor. Por favor, verifica que la API esté en ejecución e intenta nuevamente."
+        toast({
+          title: errorTitle,
+          description: errorMessage,
+          variant: "destructive",
+        })
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMsg
+        // Verificar si es el error de vendedor duplicado
+        const lowerMsg = errorMessage.toLowerCase()
+        if (
+          lowerMsg.includes("ya existe") || 
+          lowerMsg.includes("duplicado") ||
+          (lowerMsg.includes("identificación") && lowerMsg.includes("ya existe"))
+        ) {
+          const duplicateMsg = lowerMsg.includes("identificación") 
+            ? (errorMessage || "Ya existe un vendedor con esta identificación.")
+            : "Ya existe un vendedor con este nombre o identificación."
+          setDuplicateSalespersonMessage(duplicateMsg)
+          setShowDuplicateSalespersonToast(true)
+          setTimeout(() => setShowDuplicateSalespersonToast(false), 5000)
+        } else if (lowerMsg.includes("solo puede contener números y guiones")) {
+          setHasInvalidIdentificationError(true)
+          setShowInvalidIdentificationToast(true)
+          setTimeout(() => setShowInvalidIdentificationToast(false), 5000)
+        } else {
+          toast({
+            title: errorTitle,
+            description: errorMessage,
+            variant: "destructive",
+          })
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMsg
+        const lowerMsg = errorMessage.toLowerCase()
+        if (
+          lowerMsg.includes("ya existe") || 
+          lowerMsg.includes("duplicado") ||
+          (lowerMsg.includes("identificación") && lowerMsg.includes("ya existe"))
+        ) {
+          const duplicateMsg = lowerMsg.includes("identificación") 
+            ? (errorMessage || "Ya existe un vendedor con esta identificación.")
+            : "Ya existe un vendedor con este nombre o identificación."
+          setDuplicateSalespersonMessage(duplicateMsg)
+          setShowDuplicateSalespersonToast(true)
+          setTimeout(() => setShowDuplicateSalespersonToast(false), 5000)
+        } else if (lowerMsg.includes("solo puede contener números y guiones")) {
+          setHasInvalidIdentificationError(true)
+          setShowInvalidIdentificationToast(true)
+          setTimeout(() => setShowInvalidIdentificationToast(false), 5000)
+        } else {
+          toast({
+            title: errorTitle,
+            description: errorMessage,
+            variant: "destructive",
+          })
+        }
+      } else {
+        toast({
+          title: errorTitle,
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+    }
   }
 
   const handleEditSalesperson = (salespersonId: string) => {
@@ -226,47 +413,191 @@ export default function NewSalesInvoice() {
       setEditingSalesperson({
         id: salespersonId,
         data: {
-          name: salesperson.name,
-          identification: salesperson.identification,
-          observation: salesperson.observation || "",
-          email: formData.email || "",
+          name: salesperson.nombre,
+          identification: salesperson.identificacion || "",
+          observation: salesperson.observaciones || "",
+          email: salesperson.correo || "",
         }
       })
       setShowEditSalesperson(true)
     }
   }
 
-  const handleEditSalespersonSubmit = () => {
+  const handleEditSalespersonSubmit = async () => {
     if (!editingSalesperson) return
+    
+    // Validar que el nombre no esté vacío
+    if (!editingSalesperson.data.name || editingSalesperson.data.name.trim() === "") {
+      setShowNameRequiredToast(true)
+      setTimeout(() => setShowNameRequiredToast(false), 5000)
+      return
+    }
+    
+    // Validar formato de identificación antes de enviar
+    const identificationRegex = /^[0-9-]+$/
+    if (!identificationRegex.test(editingSalesperson.data.identification)) {
+      setHasInvalidIdentificationError(true)
+      setShowInvalidIdentificationToast(true)
+      setTimeout(() => setShowInvalidIdentificationToast(false), 5000)
+      return
+    }
     
     const result = salespersonSchema.safeParse(editingSalesperson.data)
     
     if (!result.success) {
-      toast({
-        title: "Error",
-        description: "Por favor completa todos los campos requeridos.",
-        variant: "destructive",
-      })
+      // Verificar si el error es de nombre
+      const nameError = result.error.errors.find(err => err.path.includes("name"))
+      if (nameError) {
+        setShowNameRequiredToast(true)
+        setTimeout(() => setShowNameRequiredToast(false), 5000)
+        return
+      }
+      // Verificar si el error es de identificación
+      const identificationError = result.error.errors.find(err => err.path.includes("identification"))
+      if (identificationError && identificationError.message.includes("solo puede contener números y guiones")) {
+        setHasInvalidIdentificationError(true)
+        setShowInvalidIdentificationToast(true)
+        setTimeout(() => setShowInvalidIdentificationToast(false), 5000)
+      } else {
+        setHasInvalidIdentificationError(false)
+        toast({
+          title: "Error",
+          description: "Por favor completa todos los campos requeridos.",
+          variant: "destructive",
+        })
+      }
       return
     }
 
-    updateSalesperson(editingSalesperson.id, {
-      name: editingSalesperson.data.name,
-      identification: editingSalesperson.data.identification,
-      observation: editingSalesperson.data.observation,
-      isActive: true,
-    })
+    // Si llegamos aquí, la validación pasó
+    setHasInvalidIdentificationError(false)
 
-    // Sincronizar email al formulario principal
-    handleInputChange("email", editingSalesperson.data.email || "")
+    try {
+      await updateVendedorMutation.mutateAsync({
+        id: editingSalesperson.id,
+        data: {
+          nombre: editingSalesperson.data.name,
+          identificacion: editingSalesperson.data.identification,
+          observaciones: editingSalesperson.data.observation || null,
+          correo: editingSalesperson.data.email && editingSalesperson.data.email.trim() !== "" ? editingSalesperson.data.email.trim() : null,
+        },
+      })
 
-    toast({
-      title: "Vendedor actualizado",
-      description: "El vendedor se ha actualizado correctamente.",
-    })
+      // Invalidar y refetch la query de vendedores activos para actualizar el dropdown
+      await queryClient.invalidateQueries({ queryKey: vendedoresKeys.list(true) })
+      await queryClient.invalidateQueries({ queryKey: vendedoresKeys.lists() })
+      await queryClient.refetchQueries({ queryKey: vendedoresKeys.list(true) })
 
-    setEditingSalesperson(null)
-    setShowEditSalesperson(false)
+      setEditingSalesperson(null)
+      setShowEditSalesperson(false)
+
+      // Toast personalizado de éxito (visual)
+      setSalespersonSuccessMessage(`El vendedor "${editingSalesperson.data.name}" ha sido actualizado correctamente.`)
+      setShowSalespersonSuccessToast(true)
+      setTimeout(() => setShowSalespersonSuccessToast(false), 5000)
+    } catch (error: any) {
+      // Manejar errores específicos
+      let errorMessage = "Ocurrió un error al actualizar el vendedor."
+      let errorTitle = "Error al actualizar vendedor"
+
+      // Obtener el mensaje del error
+      const errorMsg = error?.message || error?.toString() || ""
+
+      if (error instanceof NetworkError) {
+        errorTitle = "Error de conexión"
+        errorMessage = "No se pudo conectar con el servidor. Por favor, verifica que la API esté en ejecución e intenta nuevamente."
+        toast({
+          title: errorTitle,
+          description: errorMessage,
+          variant: "destructive",
+        })
+      } else if (error instanceof ApiError) {
+        errorMessage = error.message || errorMsg
+        const lowerMsg = errorMessage.toLowerCase()
+        
+        // Verificar si hay errores de validación en el array de errores
+        const hasNombreError = error.errors?.some(err => {
+          const fieldLower = err.field?.toLowerCase() || ""
+          const msgLower = err.message?.toLowerCase() || ""
+          return (fieldLower.includes("nombre") || fieldLower.includes("name")) && 
+                 (msgLower.includes("requerido") || msgLower.includes("required") || 
+                  msgLower.includes("presente") || msgLower.includes("present") || 
+                  msgLower.includes("obligatorio") || msgLower.includes("cannot be empty"))
+        })
+        
+        // Detectar errores relacionados con nombre requerido (más flexible)
+        if (
+          hasNombreError ||
+          (lowerMsg.includes("nombre") && (lowerMsg.includes("requerido") || lowerMsg.includes("required") || lowerMsg.includes("presente") || lowerMsg.includes("present") || lowerMsg.includes("obligatorio"))) ||
+          (lowerMsg.includes("name") && (lowerMsg.includes("required") || lowerMsg.includes("cannot be empty") || lowerMsg.includes("must not be empty"))) ||
+          (lowerMsg.includes("el campo") && lowerMsg.includes("nombre") && (lowerMsg.includes("es requerido") || lowerMsg.includes("es obligatorio"))) ||
+          (error.statusCode === 400 && (lowerMsg.includes("nombre") || lowerMsg.includes("name")))
+        ) {
+          setShowNameRequiredToast(true)
+          setTimeout(() => setShowNameRequiredToast(false), 5000)
+        } else if (
+          lowerMsg.includes("ya existe") || 
+          lowerMsg.includes("duplicado") ||
+          (lowerMsg.includes("identificación") && lowerMsg.includes("ya existe"))
+        ) {
+          const duplicateMsg = lowerMsg.includes("identificación") 
+            ? (errorMessage || "Ya existe un vendedor con esta identificación.")
+            : "Ya existe un vendedor con este nombre o identificación."
+          setDuplicateSalespersonMessage(duplicateMsg)
+          setShowDuplicateSalespersonToast(true)
+          setTimeout(() => setShowDuplicateSalespersonToast(false), 5000)
+        } else if (lowerMsg.includes("solo puede contener números y guiones")) {
+          setHasInvalidIdentificationError(true)
+          setShowInvalidIdentificationToast(true)
+          setTimeout(() => setShowInvalidIdentificationToast(false), 5000)
+        } else {
+          toast({
+            title: errorTitle,
+            description: errorMessage,
+            variant: "destructive",
+          })
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message || errorMsg
+        const lowerMsg = errorMessage.toLowerCase()
+        // Detectar errores relacionados con nombre requerido (más flexible)
+        if (
+          (lowerMsg.includes("nombre") && (lowerMsg.includes("requerido") || lowerMsg.includes("required") || lowerMsg.includes("presente") || lowerMsg.includes("present") || lowerMsg.includes("obligatorio"))) ||
+          (lowerMsg.includes("name") && (lowerMsg.includes("required") || lowerMsg.includes("cannot be empty") || lowerMsg.includes("must not be empty"))) ||
+          (lowerMsg.includes("el campo") && lowerMsg.includes("nombre") && (lowerMsg.includes("es requerido") || lowerMsg.includes("es obligatorio")))
+        ) {
+          setShowNameRequiredToast(true)
+          setTimeout(() => setShowNameRequiredToast(false), 5000)
+        } else if (
+          lowerMsg.includes("ya existe") || 
+          lowerMsg.includes("duplicado") ||
+          (lowerMsg.includes("identificación") && lowerMsg.includes("ya existe"))
+        ) {
+          const duplicateMsg = lowerMsg.includes("identificación") 
+            ? (errorMessage || "Ya existe un vendedor con esta identificación.")
+            : "Ya existe un vendedor con este nombre o identificación."
+          setDuplicateSalespersonMessage(duplicateMsg)
+          setShowDuplicateSalespersonToast(true)
+          setTimeout(() => setShowDuplicateSalespersonToast(false), 5000)
+        } else if (lowerMsg.includes("solo puede contener números y guiones")) {
+          setHasInvalidIdentificationError(true)
+          setShowInvalidIdentificationToast(true)
+          setTimeout(() => setShowInvalidIdentificationToast(false), 5000)
+        } else {
+          toast({
+            title: errorTitle,
+            description: errorMessage,
+            variant: "destructive",
+          })
+        }
+      } else {
+        toast({
+          title: errorTitle,
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
+    }
   }
 
   const handleDeleteSalesperson = (salespersonId: string) => {
@@ -274,36 +605,29 @@ export default function NewSalesInvoice() {
     if (salesperson) {
       setDeletingSalesperson({
         id: salespersonId,
-        name: salesperson.name
+        name: salesperson.nombre
       })
       setShowDeleteSalesperson(true)
     }
   }
 
-  const handleDeleteSalespersonConfirm = () => {
+  const handleDeleteSalespersonConfirm = async () => {
     if (deletingSalesperson) {
-      deleteSalesperson(deletingSalesperson.id)
-      
-      // Limpiar el vendedor seleccionado si es el que se está eliminando
-      if (formData.salespersonId === deletingSalesperson.id) {
-        handleInputChange("salespersonId", "")
+      try {
+        // Desactivar en lugar de eliminar
+        await deactivateVendedorMutation.mutateAsync(deletingSalesperson.id)
+        
+        // Limpiar el vendedor seleccionado si es el que se está desactivando
+        if (formData.salespersonId === deletingSalesperson.id) {
+          handleInputChange("salespersonId", "")
+        }
+        
+        setDeletingSalesperson(null)
+        setShowDeleteSalesperson(false)
+      } catch (error) {
+        // Los errores ya se manejan en los hooks
       }
-      
-      toast({
-        title: "Vendedor eliminado",
-        description: `El vendedor ${deletingSalesperson.name} ha sido eliminado.`,
-      })
-      
-      setDeletingSalesperson(null)
-      setShowDeleteSalesperson(false)
     }
-  }
-
-  const calculateItemTotal = (item: typeof newItem) => {
-    const subtotal = item.price * item.quantity
-    const discountAmount = (subtotal * item.discount) / 100
-    const taxAmount = ((subtotal - discountAmount) * item.taxRate) / 100
-    return subtotal - discountAmount + taxAmount
   }
 
   const addItem = () => {
@@ -344,23 +668,75 @@ export default function NewSalesInvoice() {
           
           // Si se actualiza el producto, también actualizar el nombre
           if (field === 'productId') {
-            const product = products.find(p => p.id === value)
-            updatedItem.productName = product ? product.name : ""
+            // Buscar el producto en la lista actual de productos (de la bodega seleccionada)
+            const product = products.find((p: any) => p.id === value) as any
+            updatedItem.productName = product ? (product.nombre || product.name) : ""
+            // Si el producto tiene precio base, usarlo como precio por defecto
+            const precioBase = product?.precioBase || product?.basePrice || 0
+            if (product && precioBase > 0 && updatedItem.price === 0) {
+              updatedItem.price = precioBase
+            }
+            // Si se selecciona un producto, asegurar que la cantidad sea al menos 1
+            if (updatedItem.quantity === 0) {
+              updatedItem.quantity = 1
+            }
           }
           
-          // Recalcular totales si se actualizan campos numéricos
-          if (['price', 'discount', 'taxRate', 'quantity'].includes(field)) {
+          // Validar stock cuando se actualiza cantidad o producto
+          if (field === 'quantity' || field === 'productId') {
+            if (updatedItem.productId && updatedItem.quantity > 0) {
+              const product = products.find((p: any) => p.id === updatedItem.productId) as any
+              if (product) {
+                // Obtener stock disponible en la bodega seleccionada
+                // Prioridad: cantidadEnBodega (stock específico de la bodega) > stock (ya mapeado) > stockActual
+                let stockDisponible = 0
+                if ((product as any).cantidadEnBodega !== undefined) {
+                  // Si viene cantidadEnBodega directamente del backend (preservado en el hook)
+                  stockDisponible = (product as any).cantidadEnBodega
+                } else if (formData.warehouseId && bodegaProductosData?.items) {
+                  // Cuando viene de useBodegaProductos, el campo 'stock' ya tiene cantidadEnBodega
+                  stockDisponible = product.stock || 0
+                } else {
+                  // Cuando viene de useProductos (todos los productos), usar stockActual
+                  stockDisponible = (product as any).stockActual || product.stock || 0
+                }
+                
+                if (updatedItem.quantity > stockDisponible) {
+                  setStockWarningMessage(
+                    `Advertencia: La cantidad vendida de "${product.nombre || product.name}" es mayor a la disponible en el inventario. Cantidad actual: ${stockDisponible}`
+                  )
+                  setShowStockWarningToast(true)
+                  setTimeout(() => setShowStockWarningToast(false), 5000)
+                }
+              }
+            }
+          }
+          
+          // Validar descuento cuando se actualiza
+          if (field === 'discount' && value > 100) {
+            setShowDiscountErrorToast(true)
+            setTimeout(() => setShowDiscountErrorToast(false), 5000)
+            // Limitar el descuento a 100%
+            updatedItem.discount = 100
+            value = 100
+          }
+          
+          // Recalcular totales si se actualizan campos numéricos O si se selecciona un producto
+          if (['price', 'discount', 'taxRate', 'quantity', 'productId'].includes(field)) {
             const subtotal = updatedItem.price * updatedItem.quantity
-            const discountAmount = (subtotal * updatedItem.discount) / 100
-            const taxAmount = ((subtotal - discountAmount) * updatedItem.taxRate) / 100
-            const total = subtotal - discountAmount + taxAmount
+            // Solo calcular si el descuento es válido (<= 100%)
+            const discountPercent = updatedItem.discount <= 100 ? updatedItem.discount : 0
+            const discountAmount = (subtotal * discountPercent) / 100
+            const subtotalAfterDiscount = subtotal - discountAmount
+            const taxAmount = (subtotalAfterDiscount * updatedItem.taxRate) / 100
+            const total = subtotalAfterDiscount + taxAmount
             
             updatedItem = {
               ...updatedItem,
               subtotal,
-              discountAmount,
-              taxAmount,
-              total
+              discountAmount: updatedItem.discount <= 100 ? discountAmount : 0,
+              taxAmount: updatedItem.discount <= 100 ? taxAmount : 0,
+              total: updatedItem.discount <= 100 ? total : subtotal
             }
           }
           
@@ -378,9 +754,11 @@ export default function NewSalesInvoice() {
 
   const totals = useMemo(() => {
     const subtotal = formData.items.reduce((sum, item) => sum + item.subtotal, 0)
-    const totalDiscount = formData.items.reduce((sum, item) => sum + item.discountAmount, 0)
-    const totalTax = formData.items.reduce((sum, item) => sum + item.taxAmount, 0)
-    const totalAmount = formData.items.reduce((sum, item) => sum + item.total, 0)
+    // Solo calcular descuento, impuesto y total si todos los items tienen descuento válido (<= 100%)
+    const hasInvalidDiscount = formData.items.some(item => item.discount > 100)
+    const totalDiscount = hasInvalidDiscount ? 0 : formData.items.reduce((sum, item) => sum + item.discountAmount, 0)
+    const totalTax = hasInvalidDiscount ? 0 : formData.items.reduce((sum, item) => sum + item.taxAmount, 0)
+    const totalAmount = hasInvalidDiscount ? subtotal : formData.items.reduce((sum, item) => sum + item.total, 0)
 
     return { subtotal, totalDiscount, totalTax, totalAmount }
   }, [formData.items])
@@ -390,37 +768,112 @@ export default function NewSalesInvoice() {
     const warehouse = warehouses.find(w => w.id === data.warehouseId)
     const salesperson = salespersons.find(s => s.id === data.salespersonId)
     
-    if (!warehouse || !salesperson) return
+    if (!warehouse || !salesperson) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona una bodega y un vendedor válidos.",
+        variant: "destructive",
+      })
+      return
+    }
 
-    const { subtotal, totalDiscount, totalTax, totalAmount } = totals
+    // Filtrar items vacíos (sin producto seleccionado) y mapear al formato del backend
+    const validItems = formData.items.filter(item => item.productId && item.productId.trim() !== "")
+    
+    if (validItems.length === 0) {
+      setShowItemsErrorToast(true)
+      setTimeout(() => setShowItemsErrorToast(false), 4000)
+      return
+    }
 
-    const invoiceNumber = `SV-${new Date().getFullYear()}-${String(salesInvoices.length + purchaseInvoices.length + 1).padStart(3, '0')}`
-
-    addSalesInvoice({
-      invoiceNumber,
-      warehouseId: data.warehouseId,
-      warehouseName: warehouse.name,
-      salespersonId: data.salespersonId,
-      salespersonName: salesperson.name,
-      email: data.email,
-      date: data.date,
-      paymentType: data.paymentType,
-      paymentMethod: data.paymentMethod,
-      observations: data.observations,
-      items: formData.items, // Usar formData.items que tiene productName
-      subtotal,
-      totalDiscount,
-      totalTax,
-      totalAmount,
-      status: "completed",
+    // Validar que todos los items tengan datos válidos y stock suficiente
+    let stockError: Error | null = null
+    const items: CreateFacturaVentaItemDto[] = validItems.map(item => {
+      // Validar que el productoId sea un GUID válido
+      if (!item.productId || item.productId.trim() === "") {
+        throw new Error("Todos los items deben tener un producto seleccionado")
+      }
+      
+      const cantidad = Number(item.quantity)
+      const precioUnitario = Number(item.price)
+      
+      // Validar que cantidad y precioUnitario sean números válidos y positivos
+      if (isNaN(cantidad) || cantidad <= 0) {
+        throw new Error("La cantidad debe ser mayor a 0")
+      }
+      if (isNaN(precioUnitario) || precioUnitario < 0) {
+        throw new Error("El precio unitario debe ser mayor o igual a 0")
+      }
+      
+      // Validar stock disponible
+      const product = products.find((p: any) => p.id === item.productId) as any
+      if (product) {
+        // Obtener stock disponible en la bodega seleccionada
+        // Prioridad: cantidadEnBodega (stock específico de la bodega) > stock (ya mapeado) > stockActual
+        let stockDisponible = 0
+        if ((product as any).cantidadEnBodega !== undefined) {
+          // Si viene cantidadEnBodega directamente del backend (preservado en el hook)
+          stockDisponible = (product as any).cantidadEnBodega
+        } else if (formData.warehouseId && bodegaProductosData?.items) {
+          // Cuando viene de useBodegaProductos, el campo 'stock' ya tiene cantidadEnBodega
+          stockDisponible = product.stock || 0
+        } else {
+          // Cuando viene de useProductos (todos los productos), usar stockActual
+          stockDisponible = (product as any).stockActual || product.stock || 0
+        }
+        
+        if (cantidad > stockDisponible) {
+          stockError = new Error(`No hay stock suficiente para "${product.nombre || product.name}". Stock disponible: ${stockDisponible}`)
+          throw stockError
+        }
+      }
+      
+      return {
+        productoId: item.productId.trim(),
+        cantidad: cantidad,
+        precioUnitario: precioUnitario,
+        descuento: Number(item.discountAmount) || 0,
+        impuesto: Number(item.taxAmount) || 0,
+      }
     })
 
-    toast({
-      title: "Factura creada",
-      description: "La factura se ha creado correctamente.",
-    })
+    // Crear el DTO para el backend
+    // Formatear la fecha correctamente: convertir a UTC con hora a medianoche
+    // PostgreSQL requiere DateTime con Kind=UTC para timestamp with time zone
+    const fechaDate = new Date(data.date + 'T00:00:00') // Crear fecha local a medianoche
+    // Convertir a UTC manteniendo la misma fecha (medianoche UTC)
+    const fechaUTC = new Date(Date.UTC(
+      fechaDate.getFullYear(),
+      fechaDate.getMonth(),
+      fechaDate.getDate(),
+      0, 0, 0, 0
+    ))
+    const fechaISO = fechaUTC.toISOString() // Formato: YYYY-MM-DDTHH:mm:ss.sssZ
 
-    router.push("/invoices/sales")
+    const facturaData: CreateFacturaVentaDto = {
+      bodegaId: data.warehouseId,
+      vendedorId: data.salespersonId,
+      fecha: fechaISO,
+      formaPago: data.paymentType === "cash" ? "Contado" : "Credito",
+      plazoPago: data.paymentType === "credit" && data.paymentTerm ? Number(data.paymentTerm) : null,
+      medioPago: data.paymentMethod as "Efectivo" | "Tarjeta" | "Transferencia" | "Cheque",
+      observaciones: data.observations || null,
+      items,
+    }
+
+    try {
+      await createFacturaMutation.mutateAsync(facturaData)
+      router.push("/invoices/sales?created=true")
+    } catch (error: any) {
+      // Verificar si es un error de stock insuficiente
+      const errorMessage = error?.message || error?.toString() || ""
+      if (errorMessage.includes("No hay stock suficiente") || errorMessage.includes("stock suficiente")) {
+        setStockErrorMessage(errorMessage)
+        setShowStockErrorToast(true)
+        setTimeout(() => setShowStockErrorToast(false), 5000)
+      }
+      // Los demás errores ya se manejan en los hooks
+    }
   }
 
   const handleFormError = (errors: any) => {
@@ -438,11 +891,13 @@ export default function NewSalesInvoice() {
   const closeNewSalespersonModal = () => {
     setShowNewSalesperson(false)
     setNewSalesperson({ name: "", identification: "", observation: "", email: "" })
+    setHasInvalidIdentificationError(false)
   }
 
   const closeEditSalespersonModal = () => {
     setShowEditSalesperson(false)
     setEditingSalesperson(null)
+    setHasInvalidIdentificationError(false)
   }
 
   const closeDeleteSalespersonModal = () => {
@@ -494,11 +949,11 @@ export default function NewSalesInvoice() {
               size="md2"
               variant="primary"
               className="pl-4 pr-4"
-              disabled={isSubmitting}
+              disabled={isSubmitting || createFacturaMutation.isPending || isLoadingWarehouses || isLoadingSalespersons || isLoadingProducts || isLoadingBodegaProductos}
               onClick={handleSubmit(handleFormSubmit, handleFormError)}
             >
               <Save className="mr-2 h-4 w-4" />
-              {isSubmitting ? "Guardando..." : "Guardar Factura"}
+              {isSubmitting || createFacturaMutation.isPending ? "Guardando..." : "Guardar Factura"}
             </Button>
           </div>
         </div>
@@ -516,15 +971,15 @@ export default function NewSalesInvoice() {
                   Bodega *
                 </Label>
                 <Select value={formData.warehouseId} onValueChange={(value) => handleInputChange("warehouseId", value)}>
-                      <SelectTrigger className={`border-camouflage-green-300 bg-white ${
-                        errors?.warehouseId ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                      }`}>
-                        <SelectValue placeholder="Seleccionar bodega" />
-                      </SelectTrigger>
+                    <SelectTrigger className={`border-camouflage-green-300 bg-white ${
+                      errors?.warehouseId ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
+                    }`}>
+                      <SelectValue placeholder="Seleccionar bodega" />
+                    </SelectTrigger>
                   <SelectContent className="rounded-3xl">
                     {warehouses.map((warehouse) => (
                       <SelectItem key={warehouse.id} value={warehouse.id}>
-                        {warehouse.name}
+                        {warehouse.nombre}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -550,11 +1005,21 @@ export default function NewSalesInvoice() {
                         <SelectValue placeholder="Seleccionar vendedor" />
                       </SelectTrigger>
                     <SelectContent className="rounded-3xl">
-                      {salespersons.map((salesperson) => (
-                        <SelectItem key={salesperson.id} value={salesperson.id}>
-                          {salesperson.name} - {salesperson.identification}
+                      {isLoadingSalespersons ? (
+                        <SelectItem value="loading" disabled>
+                          Cargando vendedores...
                         </SelectItem>
-                      ))}
+                      ) : salespersons.length === 0 ? (
+                        <SelectItem value="no-salespersons" disabled>
+                          No hay vendedores disponibles
+                        </SelectItem>
+                      ) : (
+                        salespersons.map((salesperson) => (
+                          <SelectItem key={salesperson.id} value={salesperson.id}>
+                            {salesperson.nombre} - {salesperson.identificacion || 'Sin identificación'}
+                          </SelectItem>
+                        ))
+                      )}
                       <SelectItem value="new-salesperson" className="text-camouflage-green-600 font-medium">
                         <div className="flex items-center gap-2">
                           <UserPlus className="h-4 w-4" />
@@ -591,8 +1056,6 @@ export default function NewSalesInvoice() {
                   )}
                 </div>
               </div>
-
-              
 
               {/* Fecha */}
               <div className="space-y-2">
@@ -662,18 +1125,17 @@ export default function NewSalesInvoice() {
                           <SelectValue placeholder="Seleccionar medio de pago" />
                         </SelectTrigger>
                       <SelectContent className="rounded-3xl">
-                        {paymentMethods.map((method) => (
-                          <SelectItem key={method.id} value={method.name}>
-                            {method.name}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="Efectivo">Efectivo</SelectItem>
+                        <SelectItem value="Tarjeta">Tarjeta</SelectItem>
+                        <SelectItem value="Transferencia">Transferencia</SelectItem>
+                        <SelectItem value="Cheque">Cheque</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
               </div>
 
-              {/* Observaciones - Siempre en su propia fila y de ancho completo */}
+              {/* Observaciones */}
               <div className="space-y-2 md:col-span-2 lg:col-span-3">
                 <Label htmlFor="observations" className="text-camouflage-green-700">
                   Observaciones
@@ -683,10 +1145,17 @@ export default function NewSalesInvoice() {
                   value={formData.observations}
                   onChange={(e) => handleInputChange("observations", e.target.value)}
                   placeholder="Observaciones adicionales sobre la factura..."
-                  autoComplete="off"
-                  className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 min-h-[80px] resize-none focus:outline-none focus:ring-0 ${
-                    errors?.observations ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                  }`}
+                  className={`
+                    border-camouflage-green-300 
+                    bg-white 
+                    placeholder:text-camouflage-green-500 
+                    min-h-[80px] 
+                    resize-none
+                    focus:outline-none 
+                    focus:ring-0
+                    focus:border-camouflage-green-500
+                    ${errors?.observations ? "border-red-500 focus:border-red-500" : ""}
+                  `}
                 />
               </div>
             </div>
@@ -730,16 +1199,33 @@ export default function NewSalesInvoice() {
                           <Select 
                             value={item.productId} 
                             onValueChange={(value) => updateItem(item.id, 'productId', value)}
+                            disabled={!formData.warehouseId}
                           >
-                            <SelectTrigger className="border-camouflage-green-300 h-8 rounded-lg bg-white text-left w-full">
-                              <SelectValue placeholder="Seleccionar producto" />
+                            <SelectTrigger className={`border-camouflage-green-300 h-8 rounded-lg bg-white text-left w-full ${
+                              !formData.warehouseId ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}>
+                              <SelectValue placeholder={formData.warehouseId ? "Seleccionar producto" : "Selecciona una bodega primero"} />
                             </SelectTrigger>
                             <SelectContent className="rounded-3xl">
-                              {products.map((product) => (
-                                <SelectItem key={product.id} value={product.id}>
-                                  {product.name}
+                              {!formData.warehouseId ? (
+                                <SelectItem value="no-warehouse" disabled>
+                                  Selecciona una bodega primero
                                 </SelectItem>
-                              ))}
+                              ) : isLoadingBodegaProductos ? (
+                                <SelectItem value="loading" disabled>
+                                  Cargando productos...
+                                </SelectItem>
+                              ) : products.length === 0 ? (
+                                <SelectItem value="no-products" disabled>
+                                  No hay productos disponibles en esta bodega
+                                </SelectItem>
+                              ) : (
+                                products.map((product: any) => (
+                                  <SelectItem key={product.id} value={product.id}>
+                                    {product.nombre || product.name}
+                                  </SelectItem>
+                                ))
+                              )}
                             </SelectContent>
                           </Select>
                         </TableCell>
@@ -855,219 +1341,250 @@ export default function NewSalesInvoice() {
         </Card>
 
         {/* Modal para nuevo vendedor */}
-        {showNewSalesperson && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            onClick={closeNewSalespersonModal}
-          >
-            <Card className="w-full max-w-md border-camouflage-green-200">
-              <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <CardHeader>
-                <CardTitle className="text-camouflage-green-900">Nuevo Vendedor</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="salespersonName" className="text-camouflage-green-700">
-                    Nombre *
-                  </Label>
-                  <Input
-                    id="salespersonName"
-                    value={newSalesperson.name}
-                    onChange={(e) => setNewSalesperson(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Nombre del vendedor"
-                    className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="salespersonEmail" className="text-camouflage-green-700">
-                    Correo Electrónico
-                  </Label>
-                  <Input
-                    id="salespersonEmail"
-                    type="email"
-                    value={newSalesperson.email}
-                    onChange={(e) => setNewSalesperson(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="correo@vendedor.com"
-                    className={`border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500 ${
-                      errors?.email ? "border-red-500 focus:border-red-500" : "focus:border-camouflage-green-500"
-                    }`}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="salespersonId" className="text-camouflage-green-700">
-                    Identificación *
-                  </Label>
-                  <Input
-                    id="salespersonId"
-                    value={newSalesperson.identification}
-                    onChange={(e) => setNewSalesperson(prev => ({ ...prev, identification: e.target.value }))}
-                    placeholder="Cédula, DNI, etc."
-                    className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="salespersonObservation" className="text-camouflage-green-700">
-                    Observación
-                  </Label>
-                  <Textarea
-                    id="salespersonObservation"
-                    value={newSalesperson.observation}
-                    onChange={(e) => setNewSalesperson(prev => ({ ...prev, observation: e.target.value }))}
-                    placeholder="Observaciones adicionales"
-                    className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
-                  />
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    onClick={handleNewSalespersonSubmit}
-                    variant="primary"
-                    className="flex-1"
-                  >
-                    Crear Vendedor
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={closeNewSalespersonModal}
-                    className="flex-1 border-camouflage-green-300"
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </CardContent>
-              </div>
-            </Card>
+        <Modal
+          isOpen={showNewSalesperson}
+          onClose={closeNewSalespersonModal}
+          title="Nuevo Vendedor"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="space-y-1 pt-2.5">
+              <Label htmlFor="salespersonName" className="font-medium text-camouflage-green-700">
+                Nombre <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="salespersonName"
+                value={newSalesperson.name}
+                onChange={(e) => setNewSalesperson(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Nombre del vendedor"
+                className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="salespersonId" className="font-medium text-camouflage-green-700">
+                Identificación <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="salespersonId"
+                value={newSalesperson.identification}
+                onChange={(e) => {
+                  setNewSalesperson(prev => ({ ...prev, identification: e.target.value }))
+                  // Limpiar el error cuando el usuario empiece a escribir
+                  if (hasInvalidIdentificationError) {
+                    setHasInvalidIdentificationError(false)
+                  }
+                }}
+                placeholder="Cédula, DNI, etc."
+                className={`bg-white placeholder:text-gray-400 ${
+                  hasInvalidIdentificationError
+                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                    : "border-camouflage-green-300 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+                }`}
+                disabled={createVendedorMutation.isPending}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="salespersonEmail" className="font-medium text-camouflage-green-700">
+                Correo
+              </Label>
+              <Input
+                id="salespersonEmail"
+                type="email"
+                value={newSalesperson.email}
+                onChange={(e) => setNewSalesperson(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="correo@ejemplo.com"
+                className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="salespersonObservation" className="font-medium text-camouflage-green-700">
+                Observaciones
+              </Label>
+              <Textarea
+                id="salespersonObservation"
+                value={newSalesperson.observation}
+                onChange={(e) => setNewSalesperson(prev => ({ ...prev, observation: e.target.value }))}
+                placeholder="Observaciones adicionales"
+                className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+                style={{
+                  outline: "none",
+                  boxShadow: "none",
+                }}
+                onFocus={(e) => {
+                  e.target.style.outline = "none"
+                  e.target.style.boxShadow = "none"
+                }}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={closeNewSalespersonModal}
+                className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleNewSalespersonSubmit}
+                className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                disabled={!newSalesperson.name.trim() || !newSalesperson.identification.trim() || createVendedorMutation.isPending}
+              >
+                {createVendedorMutation.isPending ? "Creando..." : "Crear Vendedor"}
+              </Button>
+            </div>
           </div>
-        )}
+        </Modal>
 
         {/* Modal para editar vendedor */}
-        {showEditSalesperson && editingSalesperson && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            onClick={closeEditSalespersonModal}
+        {editingSalesperson && (
+          <Modal
+            isOpen={showEditSalesperson}
+            onClose={closeEditSalespersonModal}
+            title="Editar Vendedor"
+            size="lg"
           >
-            <Card className="w-full max-w-md border-camouflage-green-200">
-              <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <CardHeader>
-                <CardTitle className="text-camouflage-green-900">Editar Vendedor</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="editSalespersonName" className="text-camouflage-green-700">
-                    Nombre *
-                  </Label>
-                  <Input
-                    id="editSalespersonName"
-                    value={editingSalesperson.data.name}
-                    onChange={(e) => setEditingSalesperson(prev => prev ? {
-                      ...prev,
-                      data: { ...prev.data, name: e.target.value }
-                    } : null)}
-                    placeholder="Nombre del vendedor"
-                    className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editSalespersonEmail" className="text-camouflage-green-700">
-                    Correo Electrónico
-                  </Label>
-                  <Input
-                    id="editSalespersonEmail"
-                    type="email"
-                    value={editingSalesperson.data.email}
-                    onChange={(e) => setEditingSalesperson(prev => prev ? {
-                      ...prev,
-                      data: { ...prev.data, email: e.target.value }
-                    } : null)}
-                    placeholder="correo@vendedor.com"
-                    className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editSalespersonId" className="text-camouflage-green-700">
-                    Identificación *
-                  </Label>
-                  <Input
-                    id="editSalespersonId"
-                    value={editingSalesperson.data.identification}
-                    onChange={(e) => setEditingSalesperson(prev => prev ? {
+            <div className="space-y-4">
+              <div className="space-y-1 pt-2.5">
+                <Label htmlFor="editSalespersonName" className="font-medium text-camouflage-green-700">
+                  Nombre <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="editSalespersonName"
+                  value={editingSalesperson.data.name}
+                  onChange={(e) => setEditingSalesperson(prev => prev ? {
+                    ...prev,
+                    data: { ...prev.data, name: e.target.value }
+                  } : null)}
+                  placeholder="Nombre del vendedor"
+                  className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editSalespersonId" className="font-medium text-camouflage-green-700">
+                  Identificación <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="editSalespersonId"
+                  value={editingSalesperson.data.identification}
+                  onChange={(e) => {
+                    setEditingSalesperson(prev => prev ? {
                       ...prev,
                       data: { ...prev.data, identification: e.target.value }
-                    } : null)}
-                    placeholder="Cédula, DNI, etc."
-                    className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="editSalespersonObservation" className="text-camouflage-green-700">
-                    Observación
-                  </Label>
-                  <Textarea
-                    id="editSalespersonObservation"
-                    value={editingSalesperson.data.observation}
-                    onChange={(e) => setEditingSalesperson(prev => prev ? {
-                      ...prev,
-                      data: { ...prev.data, observation: e.target.value }
-                    } : null)}
-                    placeholder="Observaciones adicionales"
-                    className="border-camouflage-green-300 bg-white placeholder:text-camouflage-green-500"
-                  />
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    onClick={handleEditSalespersonSubmit}
-                    variant="primary"
-                    className="flex-1"
-                  >
-                    Actualizar Vendedor
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={closeEditSalespersonModal}
-                    className="flex-1 border-camouflage-green-300"
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </CardContent>
+                    } : null)
+                    // Limpiar el error cuando el usuario empiece a escribir
+                    if (hasInvalidIdentificationError) {
+                      setHasInvalidIdentificationError(false)
+                    }
+                  }}
+                  placeholder="Cédula, DNI, etc."
+                  className={`bg-white placeholder:text-gray-400 ${
+                    hasInvalidIdentificationError
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                      : "border-camouflage-green-300 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+                  }`}
+                  disabled={updateVendedorMutation.isPending}
+                />
               </div>
-            </Card>
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="editSalespersonEmail" className="font-medium text-camouflage-green-700">
+                  Correo
+                </Label>
+                <Input
+                  id="editSalespersonEmail"
+                  type="email"
+                  value={editingSalesperson.data.email}
+                  onChange={(e) => setEditingSalesperson(prev => prev ? {
+                    ...prev,
+                    data: { ...prev.data, email: e.target.value }
+                  } : null)}
+                  placeholder="correo@ejemplo.com"
+                  className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editSalespersonObservation" className="font-medium text-camouflage-green-700">
+                  Observaciones
+                </Label>
+                <Textarea
+                  id="editSalespersonObservation"
+                  value={editingSalesperson.data.observation}
+                  onChange={(e) => setEditingSalesperson(prev => prev ? {
+                    ...prev,
+                    data: { ...prev.data, observation: e.target.value }
+                  } : null)}
+                  placeholder="Observaciones adicionales"
+                  className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+                  style={{
+                    outline: "none",
+                    boxShadow: "none",
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.outline = "none"
+                    e.target.style.boxShadow = "none"
+                  }}
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={closeEditSalespersonModal}
+                  className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleEditSalespersonSubmit}
+                  className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
+                  disabled={
+                    (editingSalesperson?.data?.name?.trim() || "").length === 0 || 
+                    (editingSalesperson?.data?.identification?.trim() || "").length === 0 || 
+                    updateVendedorMutation.isPending
+                  }
+                >
+                  {updateVendedorMutation.isPending ? "Actualizando..." : "Actualizar Vendedor"}
+                </Button>
+              </div>
+            </div>
+          </Modal>
         )}
 
         {/* Modal de confirmación para eliminar vendedor */}
         {showDeleteSalesperson && deletingSalesperson && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            style={{ top: 0, left: 0, right: 0, bottom: 0 }}
             onClick={closeDeleteSalespersonModal}
           >
-            <Card className="w-full max-w-md border-camouflage-green-200">
+            <Card className="w-full max-w-md border-camouflage-green-200 shadow-xl">
               <div onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-              <CardHeader>
-                <CardTitle className="text-camouflage-green-900">Confirmar Eliminación</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-camouflage-green-700">
-                  ¿Estás seguro de que quieres eliminar al vendedor <strong>{deletingSalesperson.name}</strong>?
-                </p>
-                <p className="text-sm text-red-600">
-                  Esta acción no se puede deshacer.
-                </p>
-                <div className="flex gap-2 pt-4">
-                  <Button
-                    onClick={handleDeleteSalespersonConfirm}
-                    className="flex-1 bg-red-600 hover:bg-red-700"
-                  >
-                    Eliminar
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={closeDeleteSalespersonModal}
-                    className="flex-1 border-camouflage-green-300"
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </CardContent>
+                <CardHeader>
+                  <CardTitle className="text-camouflage-green-900">Confirmar Desactivación</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-camouflage-green-700">
+                    ¿Estás seguro de que quieres desactivar al vendedor <strong>{deletingSalesperson.name}</strong>?
+                  </p>
+                  <p className="text-sm text-camouflage-green-600">
+                    El vendedor será desactivado y no podrá ser usado en nuevas facturas.
+                  </p>
+                  <div className="flex gap-2 pt-4">
+                    <Button
+                      onClick={handleDeleteSalespersonConfirm}
+                      className="flex-1 bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
+                      disabled={deactivateVendedorMutation.isPending}
+                    >
+                      {deactivateVendedorMutation.isPending ? "Desactivando..." : "Desactivar"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={closeDeleteSalespersonModal}
+                      className="flex-1 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                      disabled={deactivateVendedorMutation.isPending}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </CardContent>
               </div>
             </Card>
           </div>
@@ -1092,6 +1609,98 @@ export default function NewSalesInvoice() {
               <AlertCircle className="h-5 w-5 text-orange-600" />
               <p className="text-sm font-medium text-orange-800">
                 Debe agregar al menos un item a la factura para continuar
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Toast específico para identificación duplicada de vendedor */}
+        {showDuplicateSalespersonToast && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <p className="text-sm font-medium text-red-800">
+                {duplicateSalespersonMessage}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Toast específico para identificación inválida (solo números y guiones) */}
+        {showInvalidIdentificationToast && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <p className="text-sm font-medium text-red-800">
+                La identificación solo puede contener números y guiones.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Toast específico para nombre requerido */}
+        {showNameRequiredToast && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <p className="text-sm font-medium text-red-800">
+                El nombre tiene que estar presente.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Toast de éxito para vendedores */}
+        {showSalespersonSuccessToast && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <p className="text-sm font-medium text-green-800">
+                {salespersonSuccessMessage}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Toast de advertencia de stock */}
+        {showStockWarningToast && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+              <AlertCircle className="h-5 w-5 text-orange-600" />
+              <p className="text-sm font-medium text-orange-800">
+                {stockWarningMessage}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Toast de error de stock insuficiente al guardar */}
+        {showStockErrorToast && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <p className="text-sm font-medium text-red-800">
+                {stockErrorMessage}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowStockErrorToast(false)}
+                className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Toast de error de descuento */}
+        {showDiscountErrorToast && (
+          <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <p className="text-sm font-medium text-red-800">
+                El porcentaje de descuento no puede ser mayor que el permitido: 100%
               </p>
             </div>
           </div>

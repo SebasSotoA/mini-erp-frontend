@@ -217,13 +217,13 @@ export default function InventoryValue() {
             ) : (
               <>
                 <InventoryTable products={products} />
-                {/* Paginación */}
+            {/* Paginación */}
                 {pagination.totalPages > 0 && (
-                  <PaginationControls
-                    pagination={pagination}
-                    onPageChange={handlePageChange}
-                    onItemsPerPageChange={handleItemsPerPageChange}
-                  />
+            <PaginationControls
+              pagination={pagination}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
                 )}
               </>
             )}

@@ -107,3 +107,28 @@ th:hover {
 tr.hover\:bg-camouflage-green-50\/30:hover {
   background-color: rgba(244, 246, 243, 0.3) !important;
 }
+
+/* Estilos personalizados para la scrollbar del sidebar */
+.sidebar-nav {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(91, 117, 84, 0.5) rgba(37, 59, 42, 0.3);
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+  background: rgba(37, 59, 42, 0.3);
+  border-radius: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: rgba(91, 117, 84, 0.5);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: rgba(91, 117, 84, 0.7);
+}

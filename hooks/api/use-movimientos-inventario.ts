@@ -3,15 +3,30 @@
  */
 
 import { useQuery } from "@tanstack/react-query"
-import { movimientosInventarioService } from "@/lib/api/services/movimientos-inventario.service"
+import { movimientosInventarioService, type MovimientosQueryParams } from "@/lib/api/services/movimientos-inventario.service"
 import type { StockMovement } from "@/contexts/inventory-context"
+import type { PaginatedResponse } from "@/lib/api/types"
 
 /**
  * Query key factory para movimientos
  */
 export const movimientosKeys = {
   all: ["movimientos-inventario"] as const,
+  lists: () => [...movimientosKeys.all, "list"] as const,
+  list: (params?: MovimientosQueryParams) => [...movimientosKeys.lists(), params] as const,
   byProducto: (productoId: string) => [...movimientosKeys.all, "producto", productoId] as const,
+}
+
+/**
+ * Hook para obtener movimientos con filtros, paginación y ordenamiento
+ */
+export function useMovimientos(params?: MovimientosQueryParams) {
+  return useQuery<PaginatedResponse<StockMovement>>({
+    queryKey: movimientosKeys.list(params),
+    queryFn: async () => {
+      return await movimientosInventarioService.getMovimientos(params)
+    },
+  })
 }
 
 /**

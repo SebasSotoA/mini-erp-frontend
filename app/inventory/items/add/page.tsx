@@ -751,8 +751,8 @@ export default function AddInventoryItemPage() {
     }
 
     setImageFile(file)
-    const url = URL.createObjectURL(file)
-    setImagePreview(url)
+      const url = URL.createObjectURL(file)
+      setImagePreview(url)
     setUploadedImageUrl(null) // Resetear URL subida hasta que se suba nuevamente
   }
 
@@ -1098,9 +1098,9 @@ export default function AddInventoryItemPage() {
         description: `Los campos obligatorios deben tener un valor: ${missingRequiredFields.join(", ")}. Por favor, completa estos campos antes de guardar.`,
         variant: "destructive",
       })
-      return
-    }
-
+        return
+      }
+      
     // Validar campos extra opcionales seleccionados
     // Si un campo opcional está seleccionado, también debe tener un valor
     const camposOpcionalesSeleccionados = extraFields.filter(field => 
@@ -1250,7 +1250,7 @@ export default function AddInventoryItemPage() {
 
       // Iniciar la creación (el hook maneja optimistic updates automáticamente)
       const createPromise = createMutation.mutateAsync(createDto)
-      
+
       // Si es "Guardar y crear otro", esperar la creación, mostrar éxito y resetear
       if (createAnother) {
         // Esperar la creación antes de resetear
@@ -1311,7 +1311,7 @@ export default function AddInventoryItemPage() {
         })
         .catch((error) => {
           console.error("Error al mover imagen a carpeta del producto:", error)
-        })
+      })
     } catch (error: any) {
       // Los errores ya se manejan en el hook, pero agregar toast adicional si es necesario
       console.error("Error al crear producto:", error)

@@ -190,7 +190,7 @@ export default function Warehouses() {
 
     try {
       await Promise.all(promises)
-      clearSelection()
+    clearSelection()
     } catch (error: any) {
       // Detectar error específico de regla de negocio solo al desactivar
       if (!isActive && error?.message && error.message.includes("productos asignados")) {
@@ -209,7 +209,7 @@ export default function Warehouses() {
 
     try {
       await Promise.all(promises)
-      clearSelection()
+    clearSelection()
       setSuccessMessage(`${selectedIds.size} bodega(s) eliminada(s) exitosamente.`)
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -289,7 +289,7 @@ export default function Warehouses() {
     try {
       await createMutation.mutateAsync(newWarehouseData)
       setNewWarehouseData({ nombre: "", direccion: null, descripcion: null })
-      setIsNewWarehouseModalOpen(false)
+    setIsNewWarehouseModalOpen(false)
       setSuccessMessage("Bodega creada exitosamente.")
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -320,8 +320,8 @@ export default function Warehouses() {
 
     try {
       await updateMutation.mutateAsync({ id: editingWarehouse.id, data: updateData })
-      setIsEditModalOpen(false)
-      setEditingWarehouse(null)
+    setIsEditModalOpen(false)
+    setEditingWarehouse(null)
       setSuccessMessage("Bodega actualizada exitosamente.")
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -438,8 +438,8 @@ export default function Warehouses() {
               disabled={isLoadingData}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Nueva Bodega
-            </Button>
+            Nueva Bodega
+          </Button>
           </div>
         </div>
 
@@ -454,9 +454,9 @@ export default function Warehouses() {
                   <>
                     Bodegas Registradas ({pagination.totalItems.toLocaleString()})
                     {searchTerm && warehouses.length !== pagination.totalItems && (
-                      <span className="ml-2 text-sm font-normal text-camouflage-green-600">
+                  <span className="ml-2 text-sm font-normal text-camouflage-green-600">
                         de {pagination.totalItems.toLocaleString()} total
-                      </span>
+                  </span>
                     )}
                   </>
                 )}
@@ -567,68 +567,68 @@ export default function Warehouses() {
               </div>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-camouflage-green-200 hover:bg-transparent">
-                      <TableHead className="w-[36px]">
-                        <div className="pl-3">
-                          <Checkbox
+            <Table>
+              <TableHeader>
+                <TableRow className="border-camouflage-green-200 hover:bg-transparent">
+                  <TableHead className="w-[36px]">
+                    <div className="pl-3">
+                      <Checkbox
                             checked={selectedCount === warehouses.length && warehouses.length > 0}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
+                        onCheckedChange={(checked) => {
+                          if (checked) {
                                 setSelectedIds(new Set(warehouses.map((w) => w.id)))
-                              } else {
+                          } else {
                                 clearSelection()
-                              }
-                            }}
-                            aria-label="Seleccionar todos"
+                          }
+                        }}
+                        aria-label="Seleccionar todos"
                             disabled={isLoadingData}
+                      />
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[200px] font-semibold text-camouflage-green-700">
+                    <div>
+                      <button
+                            onClick={() => handleSort("nombre")}
+                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
+                            disabled={isLoadingData}
+                      >
+                        Nombre
+                        <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
+                          <ChevronUp
+                                className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}
+                          />
+                          <ChevronDown
+                                className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
                           />
                         </div>
-                      </TableHead>
-                      <TableHead className="w-[200px] font-semibold text-camouflage-green-700">
-                        <div>
-                          <button
-                            onClick={() => handleSort("nombre")}
-                            className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
-                            disabled={isLoadingData}
-                          >
-                            Nombre
-                            <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
-                              <ChevronUp
-                                className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}
-                              />
-                              <ChevronDown
-                                className={`h-3 w-3 ${sortField === "nombre" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
-                              />
-                            </div>
-                          </button>
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-[300px] font-semibold text-camouflage-green-700">
-                        <div>
-                          <button
+                      </button>
+                    </div>
+                  </TableHead>
+                  <TableHead className="w-[300px] font-semibold text-camouflage-green-700">
+                    <div>
+                      <button
                             onClick={() => handleSort("direccion")}
-                            className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
+                        className="group flex items-center gap-1 transition-colors hover:text-camouflage-green-900"
                             disabled={isLoadingData}
-                          >
-                            Dirección
-                            <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
-                              <ChevronUp
+                      >
+                        Dirección
+                        <div className="flex flex-col opacity-0 transition-opacity group-hover:opacity-100">
+                          <ChevronUp
                                 className={`h-3 w-3 ${sortField === "direccion" && sortDirection === "asc" ? "text-camouflage-green-900" : ""}`}
-                              />
-                              <ChevronDown
+                          />
+                          <ChevronDown
                                 className={`h-3 w-3 ${sortField === "direccion" && sortDirection === "desc" ? "text-camouflage-green-900" : ""}`}
-                              />
-                            </div>
-                          </button>
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-[300px] font-semibold text-camouflage-green-700">Observaciones</TableHead>
-                      <TableHead className="w-[160px] font-semibold text-camouflage-green-700">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                          />
+              </div>
+                      </button>
+              </div>
+                  </TableHead>
+                  <TableHead className="w-[300px] font-semibold text-camouflage-green-700">Observaciones</TableHead>
+                  <TableHead className="w-[160px] font-semibold text-camouflage-green-700">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                     {warehouses.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={5} className="py-8 text-center text-camouflage-green-600">
@@ -639,109 +639,109 @@ export default function Warehouses() {
                       </TableRow>
                     ) : (
                       warehouses.map((warehouse) => (
-                        <TableRow
-                          key={warehouse.id}
-                          className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
-                        >
-                          <TableCell className="w-[36px]">
-                            <div className="pl-3">
-                              <Checkbox
-                                checked={isSelected(warehouse.id)}
+                  <TableRow
+                    key={warehouse.id}
+                    className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
+                  >
+                    <TableCell className="w-[36px]">
+                      <div className="pl-3">
+                        <Checkbox
+                          checked={isSelected(warehouse.id)}
                                 onCheckedChange={() => toggleSelect(warehouse.id)}
                                 aria-label={`Seleccionar ${warehouse.nombre}`}
                                 disabled={isLoadingData}
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell className="w-[200px]">
-                            <button
-                              onClick={() => router.push(`/inventory/warehouses/${warehouse.id}`)}
-                              className="text-left font-medium text-camouflage-green-900 transition-colors hover:text-camouflage-green-700 hover:underline"
+                        />
+              </div>
+                    </TableCell>
+                    <TableCell className="w-[200px]">
+                      <button
+                        onClick={() => router.push(`/inventory/warehouses/${warehouse.id}`)}
+                        className="text-left font-medium text-camouflage-green-900 transition-colors hover:text-camouflage-green-700 hover:underline"
                               disabled={isLoadingData}
-                            >
+                      >
                               {warehouse.nombre}
-                            </button>
-                          </TableCell>
-                          <TableCell className="w-[300px]">
+                      </button>
+                    </TableCell>
+                    <TableCell className="w-[300px]">
                             <div className="text-sm text-camouflage-green-600">{warehouse.direccion || "-"}</div>
-                          </TableCell>
-                          <TableCell className="w-[300px]">
-                            <div
-                              className="max-w-[280px] truncate text-sm text-camouflage-green-600"
+                    </TableCell>
+                    <TableCell className="w-[300px]">
+                      <div
+                        className="max-w-[280px] truncate text-sm text-camouflage-green-600"
                               title={warehouse.descripcion || ""}
-                            >
+                      >
                               {warehouse.descripcion || "-"}
-                            </div>
-                          </TableCell>
-                          <TableCell className="w-[160px]">
-                            <div className="flex items-center justify-start gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                                title="Ver detalles"
-                                onClick={() => router.push(`/inventory/warehouses/${warehouse.id}`)}
+              </div>
+                    </TableCell>
+                    <TableCell className="w-[160px]">
+                      <div className="flex items-center justify-start gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                          title="Ver detalles"
+                          onClick={() => router.push(`/inventory/warehouses/${warehouse.id}`)}
                                 disabled={isLoadingData}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                                title="Editar"
-                                onClick={() => handleEditWarehouse(warehouse)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                          title="Editar"
+                          onClick={() => handleEditWarehouse(warehouse)}
                                 disabled={isLoadingData}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                                 title={warehouse.activo ? "Desactivar" : "Activar"}
-                                onClick={() => toggleWarehouseStatus(warehouse.id)}
+                          onClick={() => toggleWarehouseStatus(warehouse.id)}
                                 disabled={isLoadingData}
-                              >
+                        >
                                 {warehouse.activo ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                                    title="Eliminar"
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
+                              title="Eliminar"
                                     disabled={isLoadingData}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Eliminar bodega</AlertDialogTitle>
-                                    <AlertDialogDescription>
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Eliminar bodega</AlertDialogTitle>
+                              <AlertDialogDescription>
                                       Esta acción no se puede deshacer. Se eliminará "{warehouse.nombre}".
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-red-600 hover:bg-red-700"
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-red-600 hover:bg-red-700"
                                       onClick={() => deleteWarehouse(warehouse.id)}
-                                    >
-                                      Eliminar
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                              >
+                                Eliminar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+              </div>
+                    </TableCell>
+                  </TableRow>
                       ))
                     )}
-                  </TableBody>
-                </Table>
+              </TableBody>
+            </Table>
                 {/* Paginación */}
                 {pagination.totalPages > 0 && (
                   <PaginationControls
@@ -752,92 +752,92 @@ export default function Warehouses() {
                 )}
               </>
             )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Modal para nueva bodega */}
-        <Modal isOpen={isNewWarehouseModalOpen} onClose={handleCancelNewWarehouse} title="Nueva Bodega" size="lg">
-          <div className="space-y-4">
-            <div className="space-y-1 pt-2.5">
-              <Label htmlFor="warehouse-name" className="font-medium text-camouflage-green-700">
-                Nombre <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="warehouse-name"
-                type="text"
-                placeholder="Ingresa el nombre de la bodega"
+      {/* Modal para nueva bodega */}
+      <Modal isOpen={isNewWarehouseModalOpen} onClose={handleCancelNewWarehouse} title="Nueva Bodega" size="lg">
+        <div className="space-y-4">
+          <div className="space-y-1 pt-2.5">
+            <Label htmlFor="warehouse-name" className="font-medium text-camouflage-green-700">
+              Nombre <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="warehouse-name"
+              type="text"
+              placeholder="Ingresa el nombre de la bodega"
                 value={newWarehouseData.nombre}
                 onChange={(e) => handleNewWarehouseInputChange("nombre", e.target.value)}
-                className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
                 disabled={createMutation.isPending}
-              />
-            </div>
+            />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="warehouse-location" className="font-medium text-camouflage-green-700">
-                Dirección
-              </Label>
-              <Input
-                id="warehouse-location"
-                type="text"
-                placeholder="Ingresa la dirección de la bodega"
+          <div className="space-y-2">
+            <Label htmlFor="warehouse-location" className="font-medium text-camouflage-green-700">
+              Dirección
+            </Label>
+            <Input
+              id="warehouse-location"
+              type="text"
+              placeholder="Ingresa la dirección de la bodega"
                 value={newWarehouseData.direccion || ""}
                 onChange={(e) => handleNewWarehouseInputChange("direccion", e.target.value || null)}
-                className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
                 disabled={createMutation.isPending}
-              />
-            </div>
+            />
+                </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="warehouse-observations" className="font-medium text-camouflage-green-700">
-                Observaciones
-              </Label>
-              <Textarea
-                id="warehouse-observations"
-                placeholder="Ingresa observaciones adicionales sobre la bodega"
+                <div className="space-y-2">
+            <Label htmlFor="warehouse-observations" className="font-medium text-camouflage-green-700">
+              Observaciones
+            </Label>
+            <Textarea
+              id="warehouse-observations"
+              placeholder="Ingresa observaciones adicionales sobre la bodega"
                 value={newWarehouseData.descripcion || ""}
                 onChange={(e) => handleNewWarehouseInputChange("descripcion", e.target.value || null)}
-                className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
-                style={{
-                  outline: "none",
-                  boxShadow: "none",
-                }}
-                onFocus={(e) => {
-                  e.target.style.outline = "none"
-                  e.target.style.boxShadow = "none"
-                }}
+              className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+              style={{
+                outline: "none",
+                boxShadow: "none",
+              }}
+              onFocus={(e) => {
+                e.target.style.outline = "none"
+                e.target.style.boxShadow = "none"
+              }}
                 disabled={createMutation.isPending}
-              />
-            </div>
+                    />
+                  </div>
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={handleCancelNewWarehouse}
-                className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={handleCancelNewWarehouse}
+              className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
                 disabled={createMutation.isPending}
-              >
-                Cancelar
-              </Button>
+            >
+              Cancelar
+            </Button>
               <Button onClick={handleSaveNewWarehouse} variant="primary" disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Guardando..." : "Guardar"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
+            </Button>
+                  </div>
+        </div>
+      </Modal>
 
-        {/* Modal para editar bodega */}
-        {editingWarehouse && (
-          <EditWarehouseModal
-            isOpen={isEditModalOpen}
-            onClose={handleCancelEditWarehouse}
+      {/* Modal para editar bodega */}
+      {editingWarehouse && (
+        <EditWarehouseModal
+          isOpen={isEditModalOpen}
+          onClose={handleCancelEditWarehouse}
             warehouse={{
               id: editingWarehouse.id,
               name: editingWarehouse.nombre,
               location: editingWarehouse.direccion || "",
               observations: editingWarehouse.descripcion || "",
             }}
-            onSave={handleSaveEditWarehouse}
+          onSave={handleSaveEditWarehouse}
             isLoading={updateMutation.isPending}
           />
         )}

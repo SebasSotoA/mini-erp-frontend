@@ -1,9 +1,8 @@
 "use client"
 
 import {
-  Building2,
+  Users,
   Plus,
-  Mail,
   Edit,
   Power,
   PowerOff,
@@ -32,7 +31,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { EditProviderModal } from "@/components/modals/EditProviderModal"
+import { EditSalespersonModal } from "@/components/modals/EditSalespersonModal"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Modal } from "@/components/ui/modal"
@@ -42,17 +41,17 @@ import { Textarea } from "@/components/ui/textarea"
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 import { useToast } from "@/hooks/use-toast"
 import {
-  useProveedores,
-  useCreateProveedor,
-  useUpdateProveedor,
-  useActivateProveedor,
-  useDeactivateProveedor,
-} from "@/hooks/api/use-proveedores"
-import type { ProveedorBackend, CreateProveedorDto, UpdateProveedorDto } from "@/lib/api/types"
+  useVendedores,
+  useCreateVendedor,
+  useUpdateVendedor,
+  useActivateVendedor,
+  useDeactivateVendedor,
+} from "@/hooks/api/use-vendedores"
+import type { VendedorBackend, CreateVendedorDto, UpdateVendedorDto } from "@/lib/api/types"
 import { PaginationConfig } from "@/lib/types/inventory-value"
 import { ApiError, NetworkError } from "@/lib/api/errors"
 
-export default function Providers() {
+export default function Salespersons() {
   const router = useRouter()
   const { toast } = useToast()
 
@@ -70,9 +69,9 @@ export default function Providers() {
   const [sortField, setSortField] = useState<"nombre" | "identificacion" | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  // Estado para el modal de nuevo proveedor
-  const [isNewProviderModalOpen, setIsNewProviderModalOpen] = useState(false)
-  const [newProviderData, setNewProviderData] = useState<CreateProveedorDto>({
+  // Estado para el modal de nuevo vendedor
+  const [isNewSalespersonModalOpen, setIsNewSalespersonModalOpen] = useState(false)
+  const [newSalespersonData, setNewSalespersonData] = useState<CreateVendedorDto>({
     nombre: "",
     identificacion: "",
     correo: null,
@@ -81,7 +80,7 @@ export default function Providers() {
 
   // Estado para el modal de edición
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
-  const [editingProvider, setEditingProvider] = useState<ProveedorBackend | null>(null)
+  const [editingSalesperson, setEditingSalesperson] = useState<VendedorBackend | null>(null)
 
   // Estado para selección múltiple
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -95,47 +94,47 @@ export default function Providers() {
   const [showSuccessToast, setShowSuccessToast] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
 
-  // Estado para toast de validación (proveedor con facturas)
+  // Estado para toast de validación (vendedor con facturas)
   const [showValidationToast, setShowValidationToast] = useState(false)
   const [validationMessage, setValidationMessage] = useState("")
 
   // Estado para toast de identificación duplicada
-  const [showDuplicateSupplierToast, setShowDuplicateSupplierToast] = useState(false)
-  const [duplicateSupplierMessage, setDuplicateSupplierMessage] = useState("")
+  const [showDuplicateSalespersonToast, setShowDuplicateSalespersonToast] = useState(false)
+  const [duplicateSalespersonMessage, setDuplicateSalespersonMessage] = useState("")
 
   // Estado para toast de identificación inválida
   const [showInvalidTaxIdToast, setShowInvalidTaxIdToast] = useState(false)
   const [hasInvalidTaxIdError, setHasInvalidTaxIdError] = useState(false)
   const [hasInvalidTaxIdErrorEdit, setHasInvalidTaxIdErrorEdit] = useState(false)
 
-  // Obtener proveedores del backend (sin filtros, luego filtramos en frontend)
-  const { data: allProviders = [], isLoading, error } = useProveedores()
+  // Obtener vendedores del backend (sin filtros, luego filtramos en frontend)
+  const { data: allSalespersons = [], isLoading, error } = useVendedores()
 
   // Mutaciones
-  const createMutation = useCreateProveedor()
-  const updateMutation = useUpdateProveedor()
-  const activateMutation = useActivateProveedor()
-  const deactivateMutation = useDeactivateProveedor()
+  const createMutation = useCreateVendedor()
+  const updateMutation = useUpdateVendedor()
+  const activateMutation = useActivateVendedor()
+  const deactivateMutation = useDeactivateVendedor()
 
-  // Filtrar y ordenar proveedores en el frontend
-  const filteredProviders = useMemo(() => {
-    let filtered = [...allProviders]
+  // Filtrar y ordenar vendedores en el frontend
+  const filteredSalespersons = useMemo(() => {
+    let filtered = [...allSalespersons]
 
     // Filtrar por búsqueda (nombre o identificación)
     if (searchTerm.trim()) {
       const searchLower = searchTerm.toLowerCase().trim()
       filtered = filtered.filter(
-        (p) =>
-          p.nombre.toLowerCase().includes(searchLower) ||
-          p.identificacion.toLowerCase().includes(searchLower),
+        (s) =>
+          s.nombre.toLowerCase().includes(searchLower) ||
+          s.identificacion.toLowerCase().includes(searchLower),
       )
     }
 
     // Filtrar por estado
     if (statusFilter === "active") {
-      filtered = filtered.filter((p) => p.activo)
+      filtered = filtered.filter((s) => s.activo)
     } else if (statusFilter === "inactive") {
-      filtered = filtered.filter((p) => !p.activo)
+      filtered = filtered.filter((s) => !s.activo)
     }
 
     // Ordenar
@@ -158,17 +157,17 @@ export default function Providers() {
     }
 
     return filtered
-  }, [allProviders, searchTerm, statusFilter, sortField, sortDirection])
+  }, [allSalespersons, searchTerm, statusFilter, sortField, sortDirection])
 
   // Paginación frontend
-  const paginatedProviders = useMemo(() => {
+  const paginatedSalespersons = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage
     const endIndex = startIndex + itemsPerPage
-    return filteredProviders.slice(startIndex, endIndex)
-  }, [filteredProviders, currentPage, itemsPerPage])
+    return filteredSalespersons.slice(startIndex, endIndex)
+  }, [filteredSalespersons, currentPage, itemsPerPage])
 
   const pagination: PaginationConfig = useMemo(() => {
-    const totalItems = filteredProviders.length
+    const totalItems = filteredSalespersons.length
     const totalPages = Math.ceil(totalItems / itemsPerPage)
 
     return {
@@ -177,7 +176,7 @@ export default function Providers() {
       totalItems,
       totalPages,
     }
-  }, [filteredProviders.length, currentPage, itemsPerPage])
+  }, [filteredSalespersons.length, currentPage, itemsPerPage])
 
   // Funciones de selección
   const isSelected = (id: string) => selectedIds.has(id)
@@ -195,9 +194,9 @@ export default function Providers() {
   const clearSelection = () => setSelectedIds(new Set())
 
   // Lógica para determinar el estado de los botones de acciones masivas
-  const selectedProviders = filteredProviders.filter((p) => selectedIds.has(p.id))
-  const allSelectedActive = selectedProviders.length > 0 && selectedProviders.every((p) => p.activo)
-  const allSelectedInactive = selectedProviders.length > 0 && selectedProviders.every((p) => !p.activo)
+  const selectedSalespersons = filteredSalespersons.filter((s) => selectedIds.has(s.id))
+  const allSelectedActive = selectedSalespersons.length > 0 && selectedSalespersons.every((s) => s.activo)
+  const allSelectedInactive = selectedSalespersons.length > 0 && selectedSalespersons.every((s) => !s.activo)
 
   // Manejar ordenamiento
   const handleSort = (field: "nombre" | "identificacion") => {
@@ -238,7 +237,7 @@ export default function Providers() {
       
       if (
         lowerMsg.includes("no se puede desactivar") ||
-        lowerMsg.includes("facturas de compra registradas") ||
+        lowerMsg.includes("facturas de venta registradas") ||
         lowerMsg.includes("historial contable") ||
         lowerMsg.includes("trazabilidad")
       ) {
@@ -250,13 +249,13 @@ export default function Providers() {
     }
   }
 
-  // Función para cambiar estado de un proveedor
-  const toggleProviderStatus = async (id: string) => {
-    const provider = allProviders.find((p) => p.id === id)
-    if (!provider) return
+  // Función para cambiar estado de un vendedor
+  const toggleSalespersonStatus = async (id: string) => {
+    const salesperson = allSalespersons.find((s) => s.id === id)
+    if (!salesperson) return
 
     try {
-      if (provider.activo) {
+      if (salesperson.activo) {
         await deactivateMutation.mutateAsync(id)
       } else {
         await activateMutation.mutateAsync(id)
@@ -277,7 +276,7 @@ export default function Providers() {
       
       if (
         lowerMsg.includes("no se puede desactivar") ||
-        lowerMsg.includes("facturas de compra registradas") ||
+        lowerMsg.includes("facturas de venta registradas") ||
         lowerMsg.includes("historial contable") ||
         lowerMsg.includes("trazabilidad")
       ) {
@@ -289,9 +288,9 @@ export default function Providers() {
     }
   }
 
-  // Funciones para el modal de nuevo proveedor
-  const handleNewProviderInputChange = (field: keyof CreateProveedorDto, value: string) => {
-    setNewProviderData((prev) => {
+  // Funciones para el modal de nuevo vendedor
+  const handleNewSalespersonInputChange = (field: keyof CreateVendedorDto, value: string) => {
+    setNewSalespersonData((prev) => {
       // Para campos requeridos (nombre, identificacion), asegurar que sean string
       if (field === "nombre" || field === "identificacion") {
         // Si se está editando la identificación, limpiar el error cuando el usuario empiece a escribir
@@ -305,20 +304,20 @@ export default function Providers() {
     })
   }
 
-  const handleSaveNewProvider = async () => {
-    if (!newProviderData.nombre.trim()) {
+  const handleSaveNewSalesperson = async () => {
+    if (!newSalespersonData.nombre.trim()) {
       toast({
         title: "Campo obligatorio",
-        description: "El nombre del proveedor es obligatorio.",
+        description: "El nombre del vendedor es obligatorio.",
         variant: "destructive",
       })
       return
     }
 
-    if (!newProviderData.identificacion.trim()) {
+    if (!newSalespersonData.identificacion.trim()) {
       toast({
         title: "Campo obligatorio",
-        description: "La identificación del proveedor es obligatoria.",
+        description: "La identificación del vendedor es obligatoria.",
         variant: "destructive",
       })
       return
@@ -326,7 +325,7 @@ export default function Providers() {
 
     // Validar formato de identificación antes de enviar
     const taxIdRegex = /^[0-9-]+$/
-    if (!taxIdRegex.test(newProviderData.identificacion.trim())) {
+    if (!taxIdRegex.test(newSalespersonData.identificacion.trim())) {
       setHasInvalidTaxIdError(true)
       setShowInvalidTaxIdToast(true)
       setTimeout(() => setShowInvalidTaxIdToast(false), 5000)
@@ -338,20 +337,20 @@ export default function Providers() {
 
     try {
       // Preparar los datos para enviar, asegurando que los campos opcionales vacíos sean null
-      const dataToSend: CreateProveedorDto = {
-        nombre: newProviderData.nombre.trim(),
-        identificacion: newProviderData.identificacion.trim(),
-        correo: (newProviderData.correo && typeof newProviderData.correo === 'string' && newProviderData.correo.trim() !== "") ? newProviderData.correo.trim() : null,
-        observaciones: (newProviderData.observaciones && typeof newProviderData.observaciones === 'string' && newProviderData.observaciones.trim() !== "") ? newProviderData.observaciones.trim() : null,
+      const dataToSend: CreateVendedorDto = {
+        nombre: newSalespersonData.nombre.trim(),
+        identificacion: newSalespersonData.identificacion.trim(),
+        correo: (newSalespersonData.correo && typeof newSalespersonData.correo === 'string' && newSalespersonData.correo.trim() !== "") ? newSalespersonData.correo.trim() : null,
+        observaciones: (newSalespersonData.observaciones && typeof newSalespersonData.observaciones === 'string' && newSalespersonData.observaciones.trim() !== "") ? newSalespersonData.observaciones.trim() : null,
       }
 
       await createMutation.mutateAsync(dataToSend)
-      setNewProviderData({ nombre: "", identificacion: "", correo: null, observaciones: null })
-      setIsNewProviderModalOpen(false)
+      setNewSalespersonData({ nombre: "", identificacion: "", correo: null, observaciones: null })
+      setIsNewSalespersonModalOpen(false)
       setHasInvalidTaxIdError(false)
       setShowInvalidTaxIdToast(false)
-      setShowDuplicateSupplierToast(false)
-      setSuccessMessage(`El proveedor "${dataToSend.nombre}" ha sido creado exitosamente.`)
+      setShowDuplicateSalespersonToast(false)
+      setSuccessMessage(`El vendedor "${dataToSend.nombre}" ha sido creado exitosamente.`)
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
     } catch (error: any) {
@@ -368,18 +367,18 @@ export default function Providers() {
       
       const lowerMsg = errorMessage.toLowerCase()
       
-      // Verificar si es el error de proveedor duplicado
+      // Verificar si es el error de vendedor duplicado
       if (
         lowerMsg.includes("ya existe") || 
         lowerMsg.includes("duplicado") ||
         (lowerMsg.includes("identificación") && lowerMsg.includes("ya existe"))
       ) {
         const duplicateMsg = lowerMsg.includes("identificación") 
-          ? (errorMessage || "Ya existe un proveedor con esta identificación.")
-          : "Ya existe un proveedor con este nombre o identificación."
-        setDuplicateSupplierMessage(duplicateMsg)
-        setShowDuplicateSupplierToast(true)
-        setTimeout(() => setShowDuplicateSupplierToast(false), 5000)
+          ? (errorMessage || "Ya existe un vendedor con esta identificación.")
+          : "Ya existe un vendedor con este nombre o identificación."
+        setDuplicateSalespersonMessage(duplicateMsg)
+        setShowDuplicateSalespersonToast(true)
+        setTimeout(() => setShowDuplicateSalespersonToast(false), 5000)
       } else if (lowerMsg.includes("solo puede contener números y guiones")) {
         // Mostrar toast visual personalizado para identificación inválida
         setHasInvalidTaxIdError(true)
@@ -390,27 +389,26 @@ export default function Providers() {
     }
   }
 
-  const handleCancelNewProvider = () => {
-    setNewProviderData({ nombre: "", identificacion: "", correo: null, observaciones: null })
-    setIsNewProviderModalOpen(false)
+  const handleCancelNewSalesperson = () => {
+    setNewSalespersonData({ nombre: "", identificacion: "", correo: null, observaciones: null })
+    setIsNewSalespersonModalOpen(false)
     setHasInvalidTaxIdError(false)
     setShowInvalidTaxIdToast(false)
-    setShowDuplicateSupplierToast(false)
+    setShowDuplicateSalespersonToast(false)
   }
 
   // Funciones para el modal de edición
-  const handleEditProvider = (provider: ProveedorBackend) => {
-    setEditingProvider(provider)
+  const handleEditSalesperson = (salesperson: VendedorBackend) => {
+    setEditingSalesperson(salesperson)
     setIsEditModalOpen(true)
   }
 
-  const handleSaveEditProvider = async (data: { name: string; identificacion: string; correo: string; observaciones: string }) => {
-    if (!editingProvider) return
+  const handleSaveEditSalesperson = async (data: { name: string; identificacion: string; correo: string; observaciones: string }) => {
+    if (!editingSalesperson) return
 
     // Validar formato de identificación antes de enviar
     const taxIdRegex = /^[0-9-]+$/
-    const identificacionTrimmed = data.identificacion.trim()
-    if (!taxIdRegex.test(identificacionTrimmed)) {
+    if (!taxIdRegex.test(data.identificacion.trim())) {
       setHasInvalidTaxIdErrorEdit(true)
       setShowInvalidTaxIdToast(true)
       setTimeout(() => setShowInvalidTaxIdToast(false), 5000)
@@ -420,7 +418,7 @@ export default function Providers() {
     // Si llegamos aquí, la validación pasó
     setHasInvalidTaxIdErrorEdit(false)
 
-    const updateData: UpdateProveedorDto = {
+    const updateData: UpdateVendedorDto = {
       nombre: data.name,
       identificacion: data.identificacion,
       correo: data.correo || null,
@@ -428,13 +426,13 @@ export default function Providers() {
     }
 
     try {
-      await updateMutation.mutateAsync({ id: editingProvider.id, data: updateData })
+      await updateMutation.mutateAsync({ id: editingSalesperson.id, data: updateData })
       setIsEditModalOpen(false)
-      setEditingProvider(null)
+      setEditingSalesperson(null)
       setHasInvalidTaxIdErrorEdit(false)
       setShowInvalidTaxIdToast(false)
-      setShowDuplicateSupplierToast(false)
-      setSuccessMessage(`El proveedor "${data.name}" ha sido actualizado exitosamente.`)
+      setShowDuplicateSalespersonToast(false)
+      setSuccessMessage(`El vendedor "${data.name}" ha sido actualizado exitosamente.`)
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
     } catch (error: any) {
@@ -477,18 +475,18 @@ export default function Providers() {
         return // Salir temprano para evitar que el hook muestre otro toast
       }
       
-      // Verificar si es el error de proveedor duplicado
+      // Verificar si es el error de vendedor duplicado
       if (
         lowerMsg.includes("ya existe") || 
         lowerMsg.includes("duplicado") ||
         (lowerMsg.includes("identificación") && lowerMsg.includes("ya existe"))
       ) {
         const duplicateMsg = lowerMsg.includes("identificación") 
-          ? (errorMessage || "Ya existe un proveedor con esta identificación.")
-          : "Ya existe un proveedor con este nombre o identificación."
-        setDuplicateSupplierMessage(duplicateMsg)
-        setShowDuplicateSupplierToast(true)
-        setTimeout(() => setShowDuplicateSupplierToast(false), 5000)
+          ? (errorMessage || "Ya existe un vendedor con esta identificación.")
+          : "Ya existe un vendedor con este nombre o identificación."
+        setDuplicateSalespersonMessage(duplicateMsg)
+        setShowDuplicateSalespersonToast(true)
+        setTimeout(() => setShowDuplicateSalespersonToast(false), 5000)
         return // Salir temprano para evitar que el hook muestre otro toast
       }
       
@@ -527,12 +525,12 @@ export default function Providers() {
     }
   }
 
-  const handleCancelEditProvider = () => {
+  const handleCancelEditSalesperson = () => {
     setIsEditModalOpen(false)
-    setEditingProvider(null)
+    setEditingSalesperson(null)
     setHasInvalidTaxIdErrorEdit(false)
     setShowInvalidTaxIdToast(false)
-    setShowDuplicateSupplierToast(false)
+    setShowDuplicateSalespersonToast(false)
   }
 
   // Manejar cambio de página
@@ -593,11 +591,11 @@ export default function Providers() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="flex items-center text-3xl font-bold text-camouflage-green-900">
-              <Building2 className="mr-3 h-8 w-8 text-camouflage-green-700" />
-              Proveedores
+              <Users className="mr-3 h-8 w-8 text-camouflage-green-700" />
+              Vendedores
             </h1>
             <p className="mt-1 text-camouflage-green-600">
-              Gestiona los proveedores que suministran productos a tu inventario.
+              Gestiona los vendedores que realizan ventas en tu inventario.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -633,28 +631,28 @@ export default function Providers() {
               size="md2"
               variant="primary"
               className="pl-4 pr-4"
-              onClick={() => setIsNewProviderModalOpen(true)}
+              onClick={() => setIsNewSalespersonModalOpen(true)}
               disabled={isLoadingData}
             >
               <Plus className="mr-2 h-4 w-4" />
-              Nuevo Proveedor
+              Nuevo Vendedor
             </Button>
           </div>
         </div>
 
-        {/* Tabla de Proveedores */}
+        {/* Tabla de Vendedores */}
         <Card className="border-camouflage-green-200">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-camouflage-green-900">
                 {isLoading ? (
-                  "Cargando proveedores..."
+                  "Cargando vendedores..."
                 ) : (
                   <>
-                    Proveedores Registrados ({pagination.totalItems.toLocaleString()})
-                    {searchTerm && paginatedProviders.length !== pagination.totalItems && (
+                    Vendedores Registrados ({pagination.totalItems.toLocaleString()})
+                    {searchTerm && paginatedSalespersons.length !== pagination.totalItems && (
                       <span className="ml-2 text-sm font-normal text-camouflage-green-600">
-                        mostrando {paginatedProviders.length} de {pagination.totalItems.toLocaleString()} total
+                        mostrando {paginatedSalespersons.length} de {pagination.totalItems.toLocaleString()} total
                       </span>
                     )}
                   </>
@@ -705,8 +703,8 @@ export default function Providers() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Activar proveedores seleccionados</AlertDialogTitle>
-                            <AlertDialogDescription>Se activarán {selectedCount} proveedor(es).</AlertDialogDescription>
+                            <AlertDialogTitle>Activar vendedores seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>Se activarán {selectedCount} vendedor(es).</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -728,8 +726,8 @@ export default function Providers() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Desactivar proveedores seleccionados</AlertDialogTitle>
-                            <AlertDialogDescription>Se desactivarán {selectedCount} proveedor(es).</AlertDialogDescription>
+                            <AlertDialogTitle>Desactivar vendedores seleccionados</AlertDialogTitle>
+                            <AlertDialogDescription>Se desactivarán {selectedCount} vendedor(es).</AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -748,12 +746,12 @@ export default function Providers() {
               <div className="flex items-center justify-center py-12">
                 <div className="flex flex-col items-center gap-4">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-camouflage-green-300 border-t-camouflage-green-600"></div>
-                  <p className="text-sm text-camouflage-green-600">Cargando proveedores...</p>
+                  <p className="text-sm text-camouflage-green-600">Cargando vendedores...</p>
                 </div>
               </div>
             ) : error ? (
               <div className="py-8 text-center text-red-600">
-                <p>Error al cargar los proveedores. Por favor, intenta nuevamente.</p>
+                <p>Error al cargar los vendedores. Por favor, intenta nuevamente.</p>
               </div>
             ) : (
               <>
@@ -763,10 +761,10 @@ export default function Providers() {
                       <TableHead className="w-[36px]">
                         <div className="pl-3">
                           <Checkbox
-                            checked={selectedCount === paginatedProviders.length && paginatedProviders.length > 0}
+                            checked={selectedCount === paginatedSalespersons.length && paginatedSalespersons.length > 0}
                             onCheckedChange={(checked) => {
                               if (checked) {
-                                setSelectedIds(new Set(paginatedProviders.map((p) => p.id)))
+                                setSelectedIds(new Set(paginatedSalespersons.map((s) => s.id)))
                               } else {
                                 clearSelection()
                               }
@@ -821,68 +819,68 @@ export default function Providers() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedProviders.length === 0 ? (
+                    {paginatedSalespersons.length === 0 ? (
                       <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={8} className="py-12 text-center">
                           <div className="flex flex-col items-center gap-3">
-                            <Building2 className="h-12 w-12 text-camouflage-green-300" />
+                            <Users className="h-12 w-12 text-camouflage-green-300" />
                             <div>
                               <p className="font-medium text-camouflage-green-600">
                                 {searchTerm || statusFilter !== "all"
-                                  ? "No se encontraron proveedores con los filtros aplicados"
-                                  : "No hay proveedores registrados"}
+                                  ? "No se encontraron vendedores con los filtros aplicados"
+                                  : "No hay vendedores registrados"}
                               </p>
                               <p className="mt-1 text-sm text-camouflage-green-500">
                                 {searchTerm || statusFilter !== "all"
                                   ? "Intenta ajustar los filtros de búsqueda"
-                                  : "Crea tu primer proveedor para comenzar"}
+                                  : "Crea tu primer vendedor para comenzar"}
                               </p>
                             </div>
                           </div>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      paginatedProviders.map((provider) => (
+                      paginatedSalespersons.map((salesperson) => (
                         <TableRow
-                          key={provider.id}
+                          key={salesperson.id}
                           className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
                         >
                           <TableCell className="w-[36px]">
                             <div className="pl-3">
                               <Checkbox
-                                checked={isSelected(provider.id)}
-                                onCheckedChange={() => toggleSelect(provider.id)}
-                                aria-label={`Seleccionar ${provider.nombre}`}
+                                checked={isSelected(salesperson.id)}
+                                onCheckedChange={() => toggleSelect(salesperson.id)}
+                                aria-label={`Seleccionar ${salesperson.nombre}`}
                                 disabled={isLoadingData}
                               />
                             </div>
                           </TableCell>
                           <TableCell className="w-[200px] font-medium text-camouflage-green-900">
-                            {provider.nombre}
+                            {salesperson.nombre}
                           </TableCell>
                           <TableCell className="w-[150px] text-camouflage-green-600">
-                            {provider.identificacion}
+                            {salesperson.identificacion}
                           </TableCell>
                           <TableCell className="w-[200px] text-camouflage-green-600">
-                            {provider.correo || "-"}
+                            {salesperson.correo || "-"}
                           </TableCell>
                           <TableCell className="w-[250px]">
                             <div
                               className="max-w-[230px] truncate text-sm text-camouflage-green-600"
-                              title={provider.observaciones || undefined}
+                              title={salesperson.observaciones || undefined}
                             >
-                              {provider.observaciones || "-"}
+                              {salesperson.observaciones || "-"}
                             </div>
                           </TableCell>
                           <TableCell className="w-[100px]">
                             <span
                               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                                provider.activo
+                                salesperson.activo
                                   ? "bg-camouflage-green-100 text-camouflage-green-800"
                                   : "bg-gray-100 text-gray-600"
                               }`}
                             >
-                              {provider.activo ? "Activo" : "Inactivo"}
+                              {salesperson.activo ? "Activo" : "Inactivo"}
                             </span>
                           </TableCell>
                           <TableCell className="w-[180px]">
@@ -892,7 +890,7 @@ export default function Providers() {
                                 variant="outline"
                                 className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
                                 title="Editar"
-                                onClick={() => handleEditProvider(provider)}
+                                onClick={() => handleEditSalesperson(salesperson)}
                                 disabled={isLoadingData}
                               >
                                 <Edit className="h-4 w-4" />
@@ -901,11 +899,11 @@ export default function Providers() {
                                 size="sm"
                                 variant="outline"
                                 className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                                title={provider.activo ? "Desactivar" : "Activar"}
-                                onClick={() => toggleProviderStatus(provider.id)}
+                                title={salesperson.activo ? "Desactivar" : "Activar"}
+                                onClick={() => toggleSalespersonStatus(salesperson.id)}
                                 disabled={isLoadingData}
                               >
-                                {provider.activo ? (
+                                {salesperson.activo ? (
                                   <Power className="h-4 w-4" />
                                 ) : (
                                   <PowerOff className="h-4 w-4" />
@@ -932,39 +930,39 @@ export default function Providers() {
         </Card>
       </div>
 
-      {/* Modal para nuevo proveedor */}
+      {/* Modal para nuevo vendedor */}
       <Modal
-        isOpen={isNewProviderModalOpen}
-        onClose={handleCancelNewProvider}
-        title="Nuevo Proveedor"
+        isOpen={isNewSalespersonModalOpen}
+        onClose={handleCancelNewSalesperson}
+        title="Nuevo Vendedor"
         size="lg"
       >
         <div className="space-y-4">
           <div className="space-y-1 pt-2.5">
-            <Label htmlFor="new-provider-name" className="font-medium text-camouflage-green-700">
+            <Label htmlFor="new-salesperson-name" className="font-medium text-camouflage-green-700">
               Nombre <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="new-provider-name"
+              id="new-salesperson-name"
               type="text"
-              placeholder="Ingresa el nombre del proveedor"
-              value={newProviderData.nombre}
-              onChange={(e) => handleNewProviderInputChange("nombre", e.target.value)}
+              placeholder="Ingresa el nombre del vendedor"
+              value={newSalespersonData.nombre}
+              onChange={(e) => handleNewSalespersonInputChange("nombre", e.target.value)}
               className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
               disabled={isLoadingData}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="new-provider-identificacion" className="font-medium text-camouflage-green-700">
+            <Label htmlFor="new-salesperson-identificacion" className="font-medium text-camouflage-green-700">
               Identificación <span className="text-red-500">*</span>
             </Label>
             <Input
-              id="new-provider-identificacion"
+              id="new-salesperson-identificacion"
               type="text"
-              placeholder="Ingresa la identificación del proveedor"
-              value={newProviderData.identificacion}
-              onChange={(e) => handleNewProviderInputChange("identificacion", e.target.value)}
+              placeholder="Ingresa la identificación del vendedor"
+              value={newSalespersonData.identificacion}
+              onChange={(e) => handleNewSalespersonInputChange("identificacion", e.target.value)}
               className={
                 hasInvalidTaxIdError
                   ? "border-red-500 bg-white placeholder:text-gray-400 focus:border-red-500 focus:ring-red-500"
@@ -975,29 +973,29 @@ export default function Providers() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="new-provider-correo" className="font-medium text-camouflage-green-700">
+            <Label htmlFor="new-salesperson-correo" className="font-medium text-camouflage-green-700">
               Correo
             </Label>
             <Input
-              id="new-provider-correo"
+              id="new-salesperson-correo"
               type="email"
-              placeholder="Ingresa el correo del proveedor"
-              value={newProviderData.correo || ""}
-              onChange={(e) => handleNewProviderInputChange("correo", e.target.value)}
+              placeholder="Ingresa el correo del vendedor"
+              value={newSalespersonData.correo || ""}
+              onChange={(e) => handleNewSalespersonInputChange("correo", e.target.value)}
               className="border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
               disabled={isLoadingData}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="new-provider-observaciones" className="font-medium text-camouflage-green-700">
+            <Label htmlFor="new-salesperson-observaciones" className="font-medium text-camouflage-green-700">
               Observaciones
             </Label>
             <Textarea
-              id="new-provider-observaciones"
-              placeholder="Ingresa observaciones adicionales sobre el proveedor"
-              value={newProviderData.observaciones || ""}
-              onChange={(e) => handleNewProviderInputChange("observaciones", e.target.value)}
+              id="new-salesperson-observaciones"
+              placeholder="Ingresa observaciones adicionales sobre el vendedor"
+              value={newSalespersonData.observaciones || ""}
+              onChange={(e) => handleNewSalespersonInputChange("observaciones", e.target.value)}
               className="scrollbar-thin scrollbar-thumb-camouflage-green-300 scrollbar-track-gray-100 min-h-[80px] resize-none border-camouflage-green-300 bg-white placeholder:text-gray-400 focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
               style={{
                 outline: "none",
@@ -1014,36 +1012,36 @@ export default function Providers() {
           <div className="flex justify-end gap-3 pt-4">
             <Button
               variant="outline"
-              onClick={handleCancelNewProvider}
+              onClick={handleCancelNewSalesperson}
               className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
               disabled={isLoadingData}
             >
               Cancelar
             </Button>
             <Button
-              onClick={handleSaveNewProvider}
+              onClick={handleSaveNewSalesperson}
               className="bg-camouflage-green-700 text-white hover:bg-camouflage-green-800"
-              disabled={isLoadingData || !newProviderData.nombre.trim() || !newProviderData.identificacion.trim()}
+              disabled={isLoadingData || !newSalespersonData.nombre.trim() || !newSalespersonData.identificacion.trim()}
             >
-              {isLoadingData ? "Guardando..." : "Crear Proveedor"}
+              {isLoadingData ? "Guardando..." : "Crear Vendedor"}
             </Button>
           </div>
         </div>
       </Modal>
 
       {/* Modal de edición */}
-      {editingProvider && (
-        <EditProviderModal
+      {editingSalesperson && (
+        <EditSalespersonModal
           isOpen={isEditModalOpen}
-          onClose={handleCancelEditProvider}
-          provider={{
-            id: editingProvider.id,
-            name: editingProvider.nombre,
-            identificacion: editingProvider.identificacion,
-            correo: editingProvider.correo,
-            observaciones: editingProvider.observaciones,
+          onClose={handleCancelEditSalesperson}
+          salesperson={{
+            id: editingSalesperson.id,
+            name: editingSalesperson.nombre,
+            identificacion: editingSalesperson.identificacion,
+            correo: editingSalesperson.correo,
+            observaciones: editingSalesperson.observaciones,
           }}
-          onSave={handleSaveEditProvider}
+          onSave={handleSaveEditSalesperson}
           isLoading={updateMutation.isPending}
         />
       )}
@@ -1084,7 +1082,7 @@ export default function Providers() {
         </div>
       )}
 
-      {/* Toast de validación (proveedor con facturas asociadas) */}
+      {/* Toast de validación (vendedor con facturas asociadas) */}
       {showValidationToast && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
           <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300 max-w-md">
@@ -1102,18 +1100,18 @@ export default function Providers() {
         </div>
       )}
 
-      {/* Toast específico para identificación duplicada de proveedor */}
-      {showDuplicateSupplierToast && (
+      {/* Toast específico para identificación duplicada de vendedor */}
+      {showDuplicateSalespersonToast && (
         <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
           <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
             <AlertCircle className="h-5 w-5 text-red-600" />
             <p className="text-sm font-medium text-red-800">
-              {duplicateSupplierMessage}
+              {duplicateSalespersonMessage}
             </p>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowDuplicateSupplierToast(false)}
+              onClick={() => setShowDuplicateSalespersonToast(false)}
               className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
             >
               <X className="h-4 w-4" />
@@ -1144,6 +1142,4 @@ export default function Providers() {
     </MainLayout>
   )
 }
-
-
 

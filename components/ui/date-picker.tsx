@@ -51,7 +51,7 @@ export function DatePicker({
           type="button"
           variant="outline"
           className={cn(
-            "w-full justify-start border-camouflage-green-300 text-left font-normal text-camouflage-green-700 hover:bg-camouflage-green-50",
+            "w-full justify-start border-camouflage-green-300 text-left font-normal text-camouflage-green-700 hover:bg-camouflage-green-50 whitespace-nowrap overflow-hidden text-ellipsis",
             !displayValue && "text-camouflage-green-500",
             className,
           )}

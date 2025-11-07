@@ -34,6 +34,10 @@ const createApiClient = (): AxiosInstance => {
       // if (token) {
       //   config.headers.Authorization = `Bearer ${token}`
       // }
+      // Debug: Log del request data para POST/PUT/PATCH
+      if (config.method && ['post', 'put', 'patch'].includes(config.method.toLowerCase()) && config.data) {
+        console.log(`[API Request] ${config.method.toUpperCase()} ${config.url}`, config.data)
+      }
       return config
     },
     (error) => {

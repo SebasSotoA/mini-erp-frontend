@@ -308,7 +308,11 @@ export function useBodegaProductos(bodegaId: string | undefined, params?: Produc
           // Si viene cantidadEnBodega (cantidad específica en esta bodega), usarla en lugar de stockActual
           if (producto.cantidadEnBodega !== undefined) {
             mapped.stock = producto.cantidadEnBodega
+            // Preservar cantidadEnBodega directamente en el objeto para acceso directo
+            ;(mapped as any).cantidadEnBodega = producto.cantidadEnBodega
           }
+          // También preservar el objeto original del backend para acceso a campos adicionales
+          ;(mapped as any).productoBackend = producto
           return mapped
         }),
         page: response.data.page,

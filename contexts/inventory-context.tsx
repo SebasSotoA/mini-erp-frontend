@@ -66,9 +66,15 @@ export interface StockMovement {
   reason: string
   date: string
   cost?: number // Costo unitario del movimiento
+  price?: number // Precio unitario del movimiento (para ventas)
   reference?: string // Número de factura, orden, etc.
   warehouseId?: string // ID de la bodega donde ocurrió el movimiento
+  warehouseName?: string // Nombre de la bodega donde ocurrió el movimiento
   userId?: string // ID del usuario que realizó el movimiento
+  observation?: string // Observaciones del movimiento
+  isReversal?: boolean // Indica si es una reversión (anulación de factura)
+  facturaVentaId?: string | null
+  facturaCompraId?: string | null
 }
 
 export interface Sale {

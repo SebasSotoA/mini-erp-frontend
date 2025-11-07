@@ -294,7 +294,7 @@ export default function CategoryDetailsPage() {
       let finalImageUrl: string | null = editCategoryData.currentImageUrl || null
 
       // Si hay una nueva imagen, subirla
-      if (editCategoryData.image) {
+    if (editCategoryData.image) {
         try {
           setIsUploadingEditImage(true)
           // Subir a carpeta temporal primero
@@ -311,7 +311,7 @@ export default function CategoryDetailsPage() {
             })
           }
         } catch (error: any) {
-          toast({
+    toast({
             title: "Error al subir imagen",
             description: error.message || "No se pudo subir la imagen. Intenta nuevamente.",
             variant: "destructive",
@@ -339,7 +339,7 @@ export default function CategoryDetailsPage() {
       }
 
       await updateMutation.mutateAsync({ id: category.id, data: updateData })
-      setIsEditModalOpen(false)
+    setIsEditModalOpen(false)
       setEditCategoryData({ name: "", description: "", image: null, currentImageUrl: null })
       setEditImagePreview(null)
       setUploadedEditImageUrl(null)
@@ -592,7 +592,7 @@ export default function CategoryDetailsPage() {
                   )}
                 </div>
               </div>
-
+              
               {/* Información de la categoría */}
               <div className="flex-1">
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -604,13 +604,13 @@ export default function CategoryDetailsPage() {
                     <div className="text-base text-camouflage-green-600">Estado</div>
                     <div className="font-medium text-camouflage-green-900">
                       {category.activo ? "Activa" : "Inactiva"}
-                    </div>
+                  </div>
                   </div>
                   {category.descripcion && (
-                    <div className="space-y-1 sm:col-span-2">
-                      <div className="text-base text-camouflage-green-600">Descripción</div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <div className="text-base text-camouflage-green-600">Descripción</div>
                       <div className="font-medium text-camouflage-green-900">{category.descripcion}</div>
-                    </div>
+                  </div>
                   )}
                 </div>
               </div>
@@ -653,14 +653,14 @@ export default function CategoryDetailsPage() {
                     <div className="flex items-center gap-2">
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
                             disabled={allSelectedActive}
-                          >
-                            Activar
-                          </Button>
+                      >
+                        Activar
+                      </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
@@ -676,14 +676,14 @@ export default function CategoryDetailsPage() {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-camouflage-green-300 px-2 text-camouflage-green-700 hover:bg-camouflage-green-100"
                             disabled={allSelectedInactive}
-                          >
-                            Desactivar
-                          </Button>
+                      >
+                        Desactivar
+                      </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
@@ -699,13 +699,13 @@ export default function CategoryDetailsPage() {
 
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
-                          >
-                            Eliminar
-                          </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 border-camouflage-green-300 px-2 text-red-700 hover:border-red-300 hover:bg-red-50"
+                      >
+                        Eliminar
+                      </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
@@ -1105,10 +1105,10 @@ export default function CategoryDetailsPage() {
                                   onClick={() => {
                                     deleteProductoMutation.mutate(product.id, {
                                       onSuccess: () => {
-                                        setSelectedIds((prev) => {
-                                          const next = new Set(prev)
-                                          next.delete(product.id)
-                                          return next
+                                    setSelectedIds((prev) => {
+                                      const next = new Set(prev)
+                                      next.delete(product.id)
+                                      return next
                                         })
                                         setSuccessMessage("Item eliminado exitosamente.")
                                         setShowSuccessToast(true)
@@ -1148,18 +1148,18 @@ export default function CategoryDetailsPage() {
 
           {/* Paginación */}
           {totalPages > 0 && (
-            <PaginationControls
-              pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
+          <PaginationControls
+            pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
               onPageChange={(page) => {
                 setCurrentPage(page)
                 clearSelection()
               }}
-              onItemsPerPageChange={(n) => {
-                setItemsPerPage(n)
-                setCurrentPage(1)
+            onItemsPerPageChange={(n) => {
+              setItemsPerPage(n)
+              setCurrentPage(1)
                 clearSelection()
-              }}
-            />
+            }}
+          />
           )}
         </Card>
       </div>
@@ -1223,17 +1223,17 @@ export default function CategoryDetailsPage() {
                     <div className="relative h-32 w-32 overflow-hidden rounded-lg">
                       <Image
                         src={editImagePreview || editCategoryData.currentImageUrl || ""}
-                        alt="Vista previa"
+                      alt="Vista previa"
                         fill
                         className="object-cover"
-                      />
-                    </div>
+                    />
+                  </div>
                   </div>
                   {editCategoryData.image && (
-                    <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
-                      <ImageIcon className="h-4 w-4" />
-                      <span className="text-sm font-medium">{editCategoryData.image.name}</span>
-                    </div>
+                  <div className="flex items-center justify-center gap-2 text-camouflage-green-700">
+                    <ImageIcon className="h-4 w-4" />
+                    <span className="text-sm font-medium">{editCategoryData.image.name}</span>
+                  </div>
                   )}
                   <Button
                     variant="outline"

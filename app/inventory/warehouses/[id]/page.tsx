@@ -211,7 +211,7 @@ export default function WarehouseDetailsPage() {
 
     try {
       await updateMutation.mutateAsync({ id: warehouse.id, data: updateData })
-      setIsEditModalOpen(false)
+    setIsEditModalOpen(false)
       setSuccessMessage("Bodega actualizada exitosamente.")
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -936,10 +936,10 @@ export default function WarehouseDetailsPage() {
                                   onClick={() => {
                                     deleteProductoMutation.mutate(product.id, {
                                       onSuccess: () => {
-                                        setSelectedIds((prev) => {
-                                          const next = new Set(prev)
-                                          next.delete(product.id)
-                                          return next
+                                    setSelectedIds((prev) => {
+                                      const next = new Set(prev)
+                                      next.delete(product.id)
+                                      return next
                                         })
                                         setSuccessMessage("Item eliminado exitosamente.")
                                         setShowSuccessToast(true)
@@ -986,18 +986,18 @@ export default function WarehouseDetailsPage() {
 
           {/* Paginación */}
           {totalPages > 0 && (
-            <PaginationControls
-              pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
+          <PaginationControls
+            pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
               onPageChange={(page) => {
                 setCurrentPage(page)
                 clearSelection()
               }}
-              onItemsPerPageChange={(n) => {
-                setItemsPerPage(n)
-                setCurrentPage(1)
+            onItemsPerPageChange={(n) => {
+              setItemsPerPage(n)
+              setCurrentPage(1)
                 clearSelection()
-              }}
-            />
+            }}
+          />
           )}
         </Card>
       </div>

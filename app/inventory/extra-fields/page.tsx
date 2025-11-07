@@ -284,13 +284,32 @@ export default function ExtraFields() {
 
     try {
       await Promise.all(promises)
-      clearSelection()
+    clearSelection()
     } catch (error: any) {
-      // Detectar error específico de regla de negocio solo al desactivar
-      if (!isActive && error?.message && error.message.includes("productos")) {
-        setErrorMessage(error.message)
-        setShowErrorToast(true)
-        setTimeout(() => setShowErrorToast(false), 5000)
+      // Detectar error específico de campo requerido con productos asociados solo al desactivar
+      if (!isActive) {
+        const errorMsg = error?.message || ""
+        if (errorMsg.includes("productos") || errorMsg.includes("producto")) {
+          // Extraer información del mensaje
+          const fieldNameMatch = errorMsg.match(/campo extra requerido '([^']+)'/i) || errorMsg.match(/campo requerido '([^']+)'/i)
+          const productCountMatch = errorMsg.match(/(\d+)\s*producto/i)
+          
+          const fieldName = fieldNameMatch ? fieldNameMatch[1] : "seleccionado"
+          const productCount = productCountMatch ? productCountMatch[1] : ""
+          
+          // Crear mensaje más corto y claro
+          let shortMessage = `No se puede desactivar el campo requerido "${fieldName}"`
+          if (productCount) {
+            shortMessage += ` porque está asignado a ${productCount} producto(s).`
+          } else {
+            shortMessage += ` porque tiene productos asociados.`
+          }
+          shortMessage += ` Para desactivarlo: 1) Cambia "EsRequerido" a false, o 2) Elimina el campo de todos los productos.`
+          
+          setErrorMessage(shortMessage)
+          setShowErrorToast(true)
+          setTimeout(() => setShowErrorToast(false), 8000)
+        }
       }
       // Los demás errores se manejan en los hooks
     }
@@ -303,7 +322,7 @@ export default function ExtraFields() {
 
     try {
       await Promise.all(promises)
-      clearSelection()
+    clearSelection()
       setSuccessMessage(`${selectedIds.size} campo(s) eliminado(s) exitosamente.`)
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -391,9 +410,9 @@ export default function ExtraFields() {
 
       await createMutation.mutateAsync(createData)
 
-      // Limpiar el formulario y cerrar el modal
-      setNewFieldData({ name: "", type: "texto", defaultValue: "", description: "", isRequired: false })
-      setIsNewFieldModalOpen(false)
+    // Limpiar el formulario y cerrar el modal
+    setNewFieldData({ name: "", type: "texto", defaultValue: "", description: "", isRequired: false })
+    setIsNewFieldModalOpen(false)
       setSuccessMessage("Campo creado exitosamente.")
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -426,8 +445,8 @@ export default function ExtraFields() {
       }
 
       await updateMutation.mutateAsync({ id: editingField.id, data: updateData })
-      setIsEditModalOpen(false)
-      setEditingField(null)
+    setIsEditModalOpen(false)
+    setEditingField(null)
       setSuccessMessage("Campo actualizado exitosamente.")
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -560,18 +579,18 @@ export default function ExtraFields() {
                   <>
                     Campos Registrados ({pagination.totalItems.toLocaleString()})
                     {searchTerm && extraFields.length !== pagination.totalItems && (
-                      <span className="ml-2 text-sm font-normal text-camouflage-green-600">
+                  <span className="ml-2 text-sm font-normal text-camouflage-green-600">
                         de {pagination.totalItems.toLocaleString()} total
-                      </span>
+                  </span>
                     )}
                   </>
                 )}
-              </CardTitle>
+                  </CardTitle>
               <div className="flex items-center gap-2">
                 {selectedCount > 0 && (
                   <div className="flex items-center gap-2 rounded-lg border border-camouflage-green-200 bg-camouflage-green-50/60 px-2 py-1 text-sm text-camouflage-green-800">
                     <span>{selectedCount} seleccionado(s)</span>
-                      <Button
+                    <Button
                       size="sm"
                       variant="outline"
                       className="h-6 w-6 p-0 text-camouflage-green-600 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
@@ -675,7 +694,7 @@ export default function ExtraFields() {
               </div>
             ) : (
               <>
-                <Table>
+            <Table>
               <TableHeader>
                 <TableRow className="border-camouflage-green-200 hover:bg-transparent">
                   <TableHead className="w-[36px]">
@@ -758,7 +777,7 @@ export default function ExtraFields() {
                         title={field.descripcion || ""}
                       >
                         {field.descripcion || "-"}
-                      </div>
+                </div>
                     </TableCell>
                     <TableCell className="w-[150px]">
                       <span className="rounded-full bg-camouflage-green-100 px-2 py-1 text-sm font-medium text-camouflage-green-800 capitalize">
@@ -811,10 +830,10 @@ export default function ExtraFields() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                            <AlertDialogTitle>Eliminar campo</AlertDialogTitle>
-                            <AlertDialogDescription>
+                              <AlertDialogTitle>Eliminar campo</AlertDialogTitle>
+                              <AlertDialogDescription>
                               Esta acción no se puede deshacer. Se eliminará "{field.nombre}".
-                            </AlertDialogDescription>
+                              </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -949,7 +968,7 @@ export default function ExtraFields() {
               disabled={createMutation.isPending}
             >
               {createMutation.isPending ? "Guardando..." : "Guardar"}
-            </Button>
+                </Button>
           </div>
         </div>
       </Modal>
@@ -974,17 +993,17 @@ export default function ExtraFields() {
 
       {/* Toast de error personalizado */}
       {showErrorToast && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <p className="text-sm font-medium text-red-800">
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300 max-w-md">
+          <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm font-medium text-red-800 flex-1">
               {errorMessage || "No se puede desactivar/eliminar el campo porque está siendo usado en productos."}
             </p>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowErrorToast(false)}
-              className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
+              className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800 flex-shrink-0"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -1009,7 +1028,7 @@ export default function ExtraFields() {
               <X className="h-4 w-4" />
             </Button>
           </div>
-        </div>
+            </div>
       )}
     </MainLayout>
   )

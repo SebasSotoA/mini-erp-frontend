@@ -26,6 +26,7 @@ export default function ItemDetailsPage() {
   
   // Estado para mostrar toast de éxito cuando se viene de una edición
   const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [showAllMovements, setShowAllMovements] = useState(false)
   
   // Verificar si viene de una edición exitosa
   useEffect(() => {
@@ -39,8 +40,12 @@ export default function ItemDetailsPage() {
     }
   }, [searchParams])
 
-  // Movimientos recientes (primeros 10)
-  const recentMovements = movimientos?.slice(0, 10) || []
+  // Movimientos a mostrar (todos o solo los primeros 10)
+  const totalMovements = movimientos?.length || 0
+  const hasMoreMovements = totalMovements > 10
+  const displayedMovements = showAllMovements 
+    ? movimientos || [] 
+    : movimientos?.slice(0, 10) || []
 
   // Derivados y placeholders para campos que aún no están en el modelo
   const itemType = product?.category === "Servicios" ? "Servicio" : "Producto"
@@ -336,7 +341,26 @@ export default function ItemDetailsPage() {
         {/* Historial de movimientos */}
         <Card className="border-camouflage-green-200">
           <CardHeader>
-            <CardTitle className="text-xl text-camouflage-green-900">Historial de movimientos</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl text-camouflage-green-900">
+                Historial de movimientos
+                {totalMovements > 0 && (
+                  <span className="ml-2 text-sm font-normal text-camouflage-green-600">
+                    ({totalMovements} {totalMovements === 1 ? "movimiento" : "movimientos"})
+                  </span>
+                )}
+              </CardTitle>
+              {hasMoreMovements && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAllMovements(!showAllMovements)}
+                  className="border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
+                >
+                  {showAllMovements ? "Ver menos" : `Ver todos (${totalMovements})`}
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {isLoadingMovimientos ? (
@@ -347,7 +371,7 @@ export default function ItemDetailsPage() {
               <div className="text-sm text-red-600">
                 {errorMovimientos instanceof Error ? errorMovimientos.message : "Error al cargar movimientos"}
               </div>
-            ) : recentMovements.length === 0 ? (
+            ) : displayedMovements.length === 0 ? (
               <div className="text-sm text-camouflage-green-600">No hay movimientos registrados para este ítem.</div>
             ) : (
               <div className="-mx-2 overflow-x-auto sm:mx-0">
@@ -357,39 +381,82 @@ export default function ItemDetailsPage() {
                       <TableHead className="font-semibold text-camouflage-green-700">Fecha</TableHead>
                       <TableHead className="text-center font-semibold text-camouflage-green-700">Tipo</TableHead>
                       <TableHead className="text-center font-semibold text-camouflage-green-700">Cantidad</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Bodega</TableHead>
                       <TableHead className="text-center font-semibold text-camouflage-green-700">Referencia</TableHead>
-                      <TableHead className="text-center font-semibold text-camouflage-green-700">Costo</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Costo Unit.</TableHead>
+                      <TableHead className="text-center font-semibold text-camouflage-green-700">Precio Unit.</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentMovements.map((m) => (
+                    {displayedMovements.map((m) => (
                       <TableRow key={m.id} className="border-camouflage-green-100">
                         <TableCell className="text-camouflage-green-900">
-                          {new Date(m.date).toLocaleString()}
+                          {new Date(m.date).toLocaleString("es-CO", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </TableCell>
                         <TableCell className="text-center">
                           <span
                             className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                              m.type === "in"
-                                ? "bg-camouflage-green-100 text-camouflage-green-800"
-                                : m.type === "out"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
+                              m.isReversal
+                                ? "bg-orange-100 text-orange-800 border border-orange-300"
+                                : m.type === "in"
+                                  ? "bg-camouflage-green-100 text-camouflage-green-800"
+                                  : m.type === "out"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-gray-100 text-gray-800"
                             }`}
+                            title={m.isReversal ? "Reversión (Anulación)" : m.reason}
                           >
-                            {m.type === "in"
-                              ? "Compra"
-                              : m.type === "out"
-                                ? "Venta"
-                                : m.type === "return"
-                                  ? "Devolución"
-                                  : "Ajuste"}
+                            {m.reason}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center text-camouflage-green-900">{m.quantity}</TableCell>
-                        <TableCell className="text-center text-camouflage-green-700">{m.reference || "-"}</TableCell>
+                        <TableCell className={`text-center font-semibold ${
+                          m.isReversal 
+                            ? "text-orange-700" 
+                            : m.type === "in" 
+                              ? "text-camouflage-green-700" 
+                              : "text-red-700"
+                        }`}>
+                          {m.type === "in" ? "+" : "-"}{m.quantity}
+                        </TableCell>
+                        <TableCell className="text-center text-camouflage-green-700 text-sm">
+                          {m.warehouseName || "-"}
+                        </TableCell>
+                        <TableCell className="text-center text-camouflage-green-700">
+                          {m.reference ? (
+                            m.facturaVentaId ? (
+                              <button
+                                onClick={() => router.push(`/invoices/sales/${m.facturaVentaId}`)}
+                                className="font-medium text-camouflage-green-700 hover:text-camouflage-green-900 hover:underline"
+                                title="Ver factura de venta"
+                              >
+                                {m.reference}
+                              </button>
+                            ) : m.facturaCompraId ? (
+                              <button
+                                onClick={() => router.push(`/invoices/purchase/${m.facturaCompraId}`)}
+                                className="font-medium text-camouflage-green-700 hover:text-camouflage-green-900 hover:underline"
+                                title="Ver factura de compra"
+                              >
+                                {m.reference}
+                              </button>
+                            ) : (
+                              <span className="font-medium">{m.reference}</span>
+                            )
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
                         <TableCell className="text-center text-camouflage-green-900">
-                          {m.cost != null ? `$${m.cost.toLocaleString()}` : "-"}
+                          {m.cost != null ? `$${m.cost.toLocaleString("es-CO")}` : "-"}
+                        </TableCell>
+                        <TableCell className="text-center text-camouflage-green-900">
+                          {m.price != null ? `$${m.price.toLocaleString("es-CO")}` : "-"}
                         </TableCell>
                       </TableRow>
                     ))}

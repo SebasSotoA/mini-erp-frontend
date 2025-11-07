@@ -23,8 +23,11 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DatePicker } from "@/components/ui/date-picker"
-import { useInventory } from "@/contexts/inventory-context"
 import { PaginationConfig } from "@/lib/types/inventory-value"
+import { useMovimientos } from "@/hooks/api/use-movimientos-inventario"
+import { useBodegasActive } from "@/hooks/api/use-bodegas"
+import { useDebounce } from "@/hooks/use-debounce"
+import type { MovimientosQueryParams } from "@/lib/api/services/movimientos-inventario.service"
 
 interface MovementFilters {
   productSearch: string
@@ -34,7 +37,9 @@ interface MovementFilters {
 }
 
 export default function StockMovementsHistory() {
-  const { stockMovements, warehouses, products } = useInventory()
+  // Obtener bodegas activas para el dropdown
+  const { data: warehousesData } = useBodegasActive(true)
+  const warehouses = warehousesData || []
   
   // Estado para filtros
   const [filters, setFilters] = useState<MovementFilters>({
@@ -54,6 +59,9 @@ export default function StockMovementsHistory() {
   // Estado para ordenamiento
   const [sortField, setSortField] = useState<"date" | "productName" | "quantity" | "type" | null>(null)
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc")
+
+  // Debounce para búsqueda de producto
+  const debouncedProductSearch = useDebounce(filters.productSearch || "", 500)
 
   const handleFilterChange = (field: keyof MovementFilters, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }))
@@ -79,87 +87,87 @@ export default function StockMovementsHistory() {
     }
   }
 
-  // Filtrar y ordenar movimientos
-  const filteredAndSortedMovements = useMemo(() => {
-    let filtered = stockMovements
+  // Mapear ordenamiento del frontend al backend
+  const orderByMap: Record<string, "fecha" | "cantidad" | "tipoMovimiento" | "productoNombre" | "bodegaNombre"> = {
+    date: "fecha",
+    productName: "productoNombre",
+    quantity: "cantidad",
+    type: "tipoMovimiento",
+  }
 
-    // Filtro por búsqueda de producto
-    if (filters.productSearch.trim()) {
-      filtered = filtered.filter(movement =>
-        movement.productName.toLowerCase().includes(filters.productSearch.toLowerCase())
-      )
+  // Construir parámetros para la API
+  const apiParams = useMemo<MovimientosQueryParams>(() => {
+    const params: MovimientosQueryParams = {
+      page: currentPage,
+      pageSize: itemsPerPage,
     }
 
-    // Filtro por tipo de movimiento
-    if (filters.movementType && filters.movementType !== "all") {
-      filtered = filtered.filter(movement => movement.type === filters.movementType)
+    // Filtro por búsqueda de producto
+    if (debouncedProductSearch.trim()) {
+      params.productoNombre = debouncedProductSearch.trim()
     }
 
     // Filtro por bodega
     if (filters.warehouseId && filters.warehouseId !== "all") {
-      filtered = filtered.filter(movement => movement.warehouseId === filters.warehouseId)
+      params.bodegaId = filters.warehouseId
+    }
+
+    // Filtro por tipo de movimiento (mapear in/out a COMPRA/VENTA)
+    if (filters.movementType && filters.movementType !== "all") {
+      if (filters.movementType === "in") {
+        params.tipoMovimiento = "COMPRA"
+      } else if (filters.movementType === "out") {
+        params.tipoMovimiento = "VENTA"
+      }
+      // Para "adjustment" y "return" no enviamos filtro (mostrar todos)
     }
 
     // Filtro por fecha desde
     if (filters.dateFrom) {
-      filtered = filtered.filter(movement => movement.date >= filters.dateFrom)
+      params.fechaDesde = filters.dateFrom
     }
 
     // Ordenamiento
     if (sortField) {
-      filtered = [...filtered].sort((a, b) => {
-        let aValue: any
-        let bValue: any
-
-        switch (sortField) {
-          case "date":
-            aValue = new Date(a.date)
-            bValue = new Date(b.date)
-            break
-          case "productName":
-            aValue = a.productName.toLowerCase()
-            bValue = b.productName.toLowerCase()
-            break
-          case "quantity":
-            aValue = Math.abs(a.quantity)
-            bValue = Math.abs(b.quantity)
-            break
-          case "type":
-            aValue = a.type
-            bValue = b.type
-            break
-          default:
-            return 0
-        }
-
-        if (aValue < bValue) return sortDirection === "asc" ? -1 : 1
-        if (aValue > bValue) return sortDirection === "asc" ? 1 : -1
-        return 0
-      })
+      const backendOrderBy = orderByMap[sortField]
+      if (backendOrderBy) {
+        params.orderBy = backendOrderBy
+        params.orderDesc = sortDirection === "desc"
+      }
+    } else {
+      // Por defecto, ordenar por fecha descendente
+      params.orderBy = "fecha"
+      params.orderDesc = true
     }
 
-    return filtered
-  }, [stockMovements, filters, sortField, sortDirection])
+    return params
+  }, [currentPage, itemsPerPage, debouncedProductSearch, filters.warehouseId, filters.movementType, filters.dateFrom, sortField, sortDirection])
+
+  // Obtener movimientos del backend
+  const { data: movimientosResponse, isLoading, error } = useMovimientos(apiParams)
+
+  // Extraer datos de la respuesta
+  const movimientos = movimientosResponse?.data?.items || []
+  const paginationData = movimientosResponse?.data
 
   // Configuración de paginación
   const pagination: PaginationConfig = useMemo(() => {
-    const totalItems = filteredAndSortedMovements.length
-    const totalPages = Math.ceil(totalItems / itemsPerPage)
+    if (!paginationData) {
+      return {
+        currentPage: 1,
+        itemsPerPage: 20,
+        totalItems: 0,
+        totalPages: 0,
+      }
+    }
 
     return {
-      currentPage,
-      itemsPerPage,
-      totalItems,
-      totalPages,
+      currentPage: paginationData.page,
+      itemsPerPage: paginationData.pageSize,
+      totalItems: paginationData.totalCount,
+      totalPages: paginationData.totalPages,
     }
-  }, [filteredAndSortedMovements.length, currentPage, itemsPerPage])
-
-  // Movimientos para mostrar en la página actual
-  const currentMovements = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    return filteredAndSortedMovements.slice(startIndex, endIndex)
-  }, [filteredAndSortedMovements, currentPage, itemsPerPage])
+  }, [paginationData])
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
     setItemsPerPage(newItemsPerPage)
@@ -196,7 +204,8 @@ export default function StockMovementsHistory() {
     }
   }
 
-  const activeWarehouses = warehouses.filter(w => w.isActive)
+  // Los movimientos ya vienen del backend con toda la información necesaria
+  const currentMovements = movimientos
 
   return (
     <MainLayout>
@@ -282,9 +291,9 @@ export default function StockMovementsHistory() {
                           </SelectTrigger>
                           <SelectContent className="rounded-3xl">
                             <SelectItem value="all">Bodega</SelectItem>
-                            {activeWarehouses.map((warehouse) => (
+                            {warehouses.map((warehouse) => (
                               <SelectItem key={warehouse.id} value={warehouse.id}>
-                                {warehouse.name}
+                                {warehouse.nombre}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -403,79 +412,101 @@ export default function StockMovementsHistory() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentMovements.map((movement) => {
-                  const product = products.find(p => p.id === movement.productId)
-                  const warehouse = warehouses.find(w => w.id === movement.warehouseId)
-                  
-                  return (
-                    <TableRow
-                      key={movement.id}
-                      className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
-                    >
-                      <TableCell className="w-[200px] pl-3">
-                        <div className="text-sm text-camouflage-green-900">
-                          {format(new Date(movement.date), "dd/MM/yyyy", { locale: es })}
-                        </div>
-                        <div className="text-xs text-camouflage-green-500">
-                          {format(new Date(movement.date), "HH:mm", { locale: es })}
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-[150px] pl-3">
-                        <span
-                          className={`rounded-full px-2 py-1 text-xs font-semibold ${getMovementTypeColor(movement.type)}`}
-                        >
-                          {getMovementTypeLabel(movement.type)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="w-[150px] pl-4">
-                        <div className="text-sm text-camouflage-green-700">
-                          {warehouse?.name || "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-[200px] pl-5">
-                        <div className="text-sm font-medium text-camouflage-green-900">
-                          {movement.productName}
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-[120px] pl-2">
-                        <div className="">
-                          <span
-                            className={`min-w-[50px] rounded-full px-4 py-2 text-center text-sm font-semibold ${
-                              movement.quantity > 0
-                                ? "bg-camouflage-green-100 text-camouflage-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}
-                          >
-                            {Math.abs(movement.quantity).toLocaleString()}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="w-[250px]">
-                        <div className="text-sm text-camouflage-green-700">
-                          {movement.reason || "-"}
-                        </div>                        
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-                {currentMovements.length === 0 && (
+                {isLoading ? (
                   <TableRow className="hover:bg-transparent">
-                    <TableCell colSpan={6} className="py-12 text-center">
+                    <TableCell colSpan={7} className="py-12 text-center">
                       <div className="flex flex-col items-center gap-4">
-                        <Package className="h-12 w-12 text-camouflage-green-300" />
-                        <div>
-                          <p className="font-medium text-camouflage-green-600">
-                            {filteredAndSortedMovements.length === 0 ? "No hay movimientos registrados" : "No se encontraron movimientos"}
-                          </p>
-                          <p className="mt-1 text-sm text-camouflage-green-500">
-                            {filteredAndSortedMovements.length === 0
-                              ? "Los movimientos aparecerán aquí cuando se registren compras o ventas"
-                              : "Intenta ajustar los filtros de búsqueda"}
-                          </p>
-                        </div>
+                        <Package className="h-12 w-12 text-camouflage-green-300 animate-pulse" />
+                        <p className="font-medium text-camouflage-green-600">Cargando movimientos...</p>
                       </div>
                     </TableCell>
                   </TableRow>
+                ) : error ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={7} className="py-12 text-center">
+                      <div className="flex flex-col items-center gap-4">
+                        <Package className="h-12 w-12 text-red-300" />
+                        <p className="font-medium text-red-600">Error al cargar movimientos</p>
+                        <p className="mt-1 text-sm text-red-500">
+                          {error instanceof Error ? error.message : "Ocurrió un error desconocido"}
+                        </p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  <>
+                    {currentMovements.map((movement) => {
+                      return (
+                        <TableRow
+                          key={movement.id}
+                          className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"
+                        >
+                          <TableCell className="w-[200px] pl-3">
+                            <div className="text-sm text-camouflage-green-900">
+                              {format(new Date(movement.date), "dd/MM/yyyy", { locale: es })}
+                            </div>
+                            <div className="text-xs text-camouflage-green-500">
+                              {format(new Date(movement.date), "HH:mm", { locale: es })}
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[150px] pl-3">
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-semibold ${getMovementTypeColor(movement.type)}`}
+                            >
+                              {getMovementTypeLabel(movement.type)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="w-[150px] pl-4">
+                            <div className="text-sm text-camouflage-green-700">
+                              {movement.warehouseName || "N/A"}
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[200px] pl-5">
+                            <div className="text-sm font-medium text-camouflage-green-900">
+                              {movement.productName}
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[120px] pl-2">
+                            <div className="">
+                              <span
+                                className={`min-w-[50px] rounded-full px-4 py-2 text-center text-sm font-semibold ${
+                                  movement.quantity > 0
+                                    ? "bg-camouflage-green-100 text-camouflage-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {Math.abs(movement.quantity).toLocaleString()}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="w-[250px]">
+                            <div className="text-sm text-camouflage-green-700">
+                              {movement.observation || movement.reason || "-"}
+                            </div>                        
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {currentMovements.length === 0 && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={7} className="py-12 text-center">
+                          <div className="flex flex-col items-center gap-4">
+                            <Package className="h-12 w-12 text-camouflage-green-300" />
+                            <div>
+                              <p className="font-medium text-camouflage-green-600">
+                                {pagination.totalItems === 0 ? "No hay movimientos registrados" : "No se encontraron movimientos"}
+                              </p>
+                              <p className="mt-1 text-sm text-camouflage-green-500">
+                                {pagination.totalItems === 0
+                                  ? "Los movimientos aparecerán aquí cuando se registren compras o ventas"
+                                  : "Intenta ajustar los filtros de búsqueda"}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 )}
               </TableBody>
             </Table>

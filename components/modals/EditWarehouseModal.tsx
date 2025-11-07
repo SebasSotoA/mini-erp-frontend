@@ -89,7 +89,7 @@ export function EditWarehouseModal({ isOpen, onClose, warehouse, onSave, isLoadi
           <Label htmlFor="edit-warehouse-name" className="font-medium text-camouflage-green-700">
             Nombre <span className="text-red-500">*</span>
           </Label>
-            <Input
+          <Input
             id="edit-warehouse-name"
             type="text"
             placeholder="Ingresa el nombre de la bodega"

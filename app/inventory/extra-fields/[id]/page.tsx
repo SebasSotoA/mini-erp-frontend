@@ -179,18 +179,18 @@ export default function ExtraFieldDetailsPage() {
   const toggleSelectAllCurrent = () => {
     if (allCurrentSelected) {
       // Deseleccionar todos los productos de la página actual
-      setSelectedIds((prev) => {
-        const next = new Set(prev)
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
         currentProducts.forEach((p) => next.delete(p.id))
         return next
       })
-    } else {
+      } else {
       // Seleccionar todos los productos de la página actual
       setSelectedIds((prev) => {
         const next = new Set(prev)
         currentProducts.forEach((p) => next.add(p.id))
-        return next
-      })
+      return next
+    })
     }
   }
 
@@ -204,10 +204,10 @@ export default function ExtraFieldDetailsPage() {
 
     try {
       await Promise.all(promises)
-      clearSelection()
+    clearSelection()
     } catch (error) {
       // Los errores ya se manejan en los hooks
-    }
+  }
   }
 
   const bulkDelete = async () => {
@@ -217,7 +217,7 @@ export default function ExtraFieldDetailsPage() {
 
     try {
       await Promise.all(promises)
-      clearSelection()
+    clearSelection()
       setSuccessMessage(`${selectedIds.size} item(s) eliminado(s) exitosamente.`)
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -245,7 +245,7 @@ export default function ExtraFieldDetailsPage() {
       }
 
       await updateMutation.mutateAsync({ id: extraField.id, data: updateData })
-      setIsEditModalOpen(false)
+    setIsEditModalOpen(false)
       setSuccessMessage("Campo actualizado exitosamente.")
       setShowSuccessToast(true)
       setTimeout(() => setShowSuccessToast(false), 5000)
@@ -272,12 +272,30 @@ export default function ExtraFieldDetailsPage() {
     try {
       await deactivateMutation.mutateAsync(extraField.id)
     } catch (error: any) {
-      // Detectar error específico de regla de negocio
-      if (error?.message && error.message.includes("productos")) {
+      // Detectar error específico de campo requerido con productos asociados
+      const errorMsg = error?.message || ""
+      if (errorMsg.includes("productos") || errorMsg.includes("producto")) {
+        // Extraer el número de productos del mensaje si está disponible
+        const productCountMatch = errorMsg.match(/(\d+)\s*producto/i)
+        const productCount = productCountMatch ? productCountMatch[1] : ""
+        
+        // Crear mensaje más corto y claro
+        let shortMessage = `No se puede desactivar el campo requerido "${extraField.nombre}"`
+        if (productCount) {
+          shortMessage += ` porque está asignado a ${productCount} producto(s).`
+        } else {
+          shortMessage += ` porque tiene productos asociados.`
+        }
+        shortMessage += ` Para desactivarlo: 1) Cambia "EsRequerido" a false, o 2) Elimina el campo de todos los productos.`
+        
         setBusinessError({
-          title: "No se puede desactivar el campo",
-          message: error.message || "No se puede desactivar el campo porque está siendo usado en productos.",
+          title: "No se puede desactivar el campo requerido",
+          message: shortMessage,
         })
+        // También mostrar toast
+        setErrorMessage(shortMessage)
+        setShowErrorToast(true)
+        setTimeout(() => setShowErrorToast(false), 8000)
       }
       // Los demás errores se manejan en los hooks
     }
@@ -337,13 +355,13 @@ export default function ExtraFieldDetailsPage() {
           <Layers className="h-16 w-16 text-camouflage-green-300" />
           <h2 className="mt-4 text-xl font-semibold text-camouflage-green-900">Campo no encontrado</h2>
           <p className="mt-2 text-camouflage-green-600">El campo solicitado no existe o fue eliminado.</p>
-          <Button
-            variant="outline"
-            onClick={() => router.push("/inventory/extra-fields")}
+                <Button
+                  variant="outline"
+                  onClick={() => router.push("/inventory/extra-fields")}
             className="mt-4 border-camouflage-green-300 text-camouflage-green-700 hover:bg-camouflage-green-50"
-          >
-            Volver a Campos Extra
-          </Button>
+                >
+                  Volver a Campos Extra
+                </Button>
         </div>
       </MainLayout>
     )
@@ -472,14 +490,14 @@ export default function ExtraFieldDetailsPage() {
                 <div className="text-base text-camouflage-green-600">Estado</div>
                 <div className="font-medium text-camouflage-green-900">
                   {extraField.activo ? "Activo" : "Inactivo"} {extraField.esRequerido ? "• Requerido" : "• Opcional"}
-                </div>
               </div>
             </div>
+            </div>
             {extraField.descripcion && (
-              <div className="mt-4 space-y-1">
-                <div className="text-base text-camouflage-green-600">Descripción</div>
+            <div className="mt-4 space-y-1">
+              <div className="text-base text-camouflage-green-600">Descripción</div>
                 <div className="font-medium text-camouflage-green-900">{extraField.descripcion}</div>
-              </div>
+            </div>
             )}
           </CardContent>
         </Card>
@@ -1021,11 +1039,11 @@ export default function ExtraFieldDetailsPage() {
           </CardContent>
           {/* Paginación */}
           {totalPages > 0 && (
-            <PaginationControls
-              pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
+          <PaginationControls
+            pagination={{ currentPage, itemsPerPage, totalItems, totalPages }}
               onPageChange={handlePageChange}
               onItemsPerPageChange={handleItemsPerPageChange}
-            />
+          />
           )}
         </Card>
       </div>
@@ -1050,17 +1068,17 @@ export default function ExtraFieldDetailsPage() {
 
       {/* Toast de error personalizado */}
       {showErrorToast && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <p className="text-sm font-medium text-red-800">
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300 max-w-md">
+          <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm font-medium text-red-800 flex-1">
               {errorMessage || "No se puede eliminar el campo porque está siendo usado en productos."}
             </p>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowErrorToast(false)}
-              className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800"
+              className="h-6 w-6 p-0 text-red-600 hover:bg-red-100 hover:text-red-800 flex-shrink-0"
             >
               <X className="h-4 w-4" />
             </Button>

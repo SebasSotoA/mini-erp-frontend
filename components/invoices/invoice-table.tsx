@@ -2,7 +2,6 @@
 
 import {
   Eye,
-  Edit,
   XCircle,
   ChevronUp,
   ChevronDown,
@@ -49,6 +48,7 @@ interface InvoiceTableProps<T extends { id: string }> {
   filterConfig: FilterConfig
   pagination: PaginationConfig
   onPageChange: (page: number) => void
+  onItemsPerPageChange?: (itemsPerPage: number) => void
 }
 
 export function InvoiceTable<T extends { id: string }>({
@@ -70,6 +70,7 @@ export function InvoiceTable<T extends { id: string }>({
   filterConfig,
   pagination,
   onPageChange,
+  onItemsPerPageChange,
 }: InvoiceTableProps<T>) {
   const renderSortButton = (column: InvoiceColumn<T>) => {
     if (!column.sortable) {
@@ -117,32 +118,32 @@ export function InvoiceTable<T extends { id: string }>({
           {/* Fila de filtros */}
           {showFilters && (
             <TableRow className="border-camouflage-green-200 bg-camouflage-green-50/30 hover:bg-camouflage-green-50/30">
-              {/* Campo de búsqueda */}
-              <TableHead className="w-[200px]">
+              {/* Número de factura */}
+              <TableHead className="w-[180px]">
                 <div className="flex items-center gap-1 py-3 hover:bg-transparent">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-camouflage-green-400" />
                     <input
                       type="text"
-                      placeholder={filterConfig.searchPlaceholder}
-                      value={filters.search}
-                      onChange={(e) => onFilterChange("search", e.target.value)}
+                      placeholder="Número factura"
+                      value={filters.numeroFactura || ""}
+                      onChange={(e) => onFilterChange("numeroFactura", e.target.value)}
                       className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white pl-10 pr-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                     />
                   </div>
                 </div>
               </TableHead>
 
-              {/* Dropdown filter si está configurado */}
+              {/* Bodega (dropdown) */}
               {filterConfig.dropdownField && filterConfig.dropdownOptions && (
-                <TableHead className="w-[200px]">
+                <TableHead className="w-[180px]">
                   <div className="flex items-center gap-1 py-3 hover:bg-transparent">
                     <Select
-                      value={filters.dropdown}
-                      onValueChange={(value) => onFilterChange("dropdown", value)}
+                      value={filters.bodegaId || "all"}
+                      onValueChange={(value) => onFilterChange("bodegaId", value)}
                     >
                       <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
-                        <SelectValue placeholder={filterConfig.dropdownPlaceholder} />
+                        <SelectValue placeholder="Bodega" />
                       </SelectTrigger>
                       <SelectContent className="rounded-3xl">
                         {filterConfig.dropdownOptions.map((option) => (
@@ -156,31 +157,76 @@ export function InvoiceTable<T extends { id: string }>({
                 </TableHead>
               )}
 
-              {/* Filtro de fecha */}
-              <TableHead className="w-[150px]">
+              {/* Proveedor (dropdown) */}
+              {filterConfig.supplierOptions && (
+                <TableHead className="w-[180px]">
+                  <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                    <Select
+                      value={filters.proveedorId || "all"}
+                      onValueChange={(value) => onFilterChange("proveedorId", value)}
+                    >
+                      <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
+                        <SelectValue placeholder="Proveedor" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-3xl">
+                        {filterConfig.supplierOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TableHead>
+              )}
+
+              {/* Vendedor (dropdown) */}
+              {filterConfig.salespersonOptions && (
+                <TableHead className="w-[180px]">
+                  <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                    <Select
+                      value={filters.vendedorId || "all"}
+                      onValueChange={(value) => onFilterChange("vendedorId", value)}
+                    >
+                      <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
+                        <SelectValue placeholder="Vendedor" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-3xl">
+                        {filterConfig.salespersonOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TableHead>
+              )}
+
+              {/* Fecha de creación */}
+              <TableHead className="w-[140px]">
                 <div className="flex items-center gap-1 py-3 hover:bg-transparent">
                   <DatePicker
-                    value={filters.dateFrom ? new Date(filters.dateFrom) : null}
-                    onChange={(date) => onFilterChange("dateFrom", date ? date.toISOString().split('T')[0] : "")}
-                    placeholder="Fecha de creación"
-                    className="w-full"
+                    value={filters.date ? new Date(filters.date) : null}
+                    onChange={(date) => onFilterChange("date", date ? date.toISOString().split('T')[0] : "")}
+                    placeholder="Fecha"
+                    className="w-full text-sm h-9"
                   />
                 </div>
               </TableHead>
 
               {/* Filtro de estado */}
-              <TableHead className="w-[120px]">
+              <TableHead className="w-[140px]">
                 <div className="flex items-center gap-1 py-3 hover:bg-transparent">
                   <Select
-                    value={filters.status}
+                    value={filters.status || "all"}
                     onValueChange={(value) => onFilterChange("status", value)}
                   >
                     <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
                       <SelectValue placeholder="Estado" />
                     </SelectTrigger>
                     <SelectContent className="rounded-3xl">
-                      <SelectItem value="all">Estado</SelectItem>
-                      <SelectItem value="draft">Borrador</SelectItem>
+                      <SelectItem value="all">Todos</SelectItem>
                       <SelectItem value="completed">Completada</SelectItem>
                       <SelectItem value="cancelled">Anulada</SelectItem>
                     </SelectContent>
@@ -188,8 +234,52 @@ export function InvoiceTable<T extends { id: string }>({
                 </div>
               </TableHead>
 
+              {/* Filtro de forma de pago */}
+              {filters.formaPago !== undefined && (
+                <TableHead className="w-[140px]">
+                  <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                    <Select
+                      value={filters.formaPago || "all"}
+                      onValueChange={(value) => onFilterChange("formaPago", value)}
+                    >
+                      <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
+                        <SelectValue placeholder="Forma pago" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-3xl">
+                        <SelectItem value="all">Todas</SelectItem>
+                        <SelectItem value="cash">Contado</SelectItem>
+                        <SelectItem value="credit">Crédito</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TableHead>
+              )}
+
+              {/* Filtro de medio de pago */}
+              {filters.medioPago !== undefined && (
+                <TableHead className="w-[140px]">
+                  <div className="flex items-center gap-1 py-3 hover:bg-transparent">
+                    <Select
+                      value={filters.medioPago || "all"}
+                      onValueChange={(value) => onFilterChange("medioPago", value)}
+                    >
+                      <SelectTrigger className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500">
+                        <SelectValue placeholder="Medio pago" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-3xl">
+                        <SelectItem value="all">Todos</SelectItem>
+                        <SelectItem value="Efectivo">Efectivo</SelectItem>
+                        <SelectItem value="Tarjeta">Tarjeta</SelectItem>
+                        <SelectItem value="Transferencia">Transferencia</SelectItem>
+                        <SelectItem value="Cheque">Cheque</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TableHead>
+              )}
+
               {/* Botón limpiar filtros */}
-              <TableHead className="w-[120px]">
+              <TableHead className="w-[100px]">
                 <div className="flex items-center gap-1 py-3 hover:bg-transparent">
                   <Button
                     onClick={onClearFilters}
@@ -259,17 +349,6 @@ export function InvoiceTable<T extends { id: string }>({
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 border-camouflage-green-300 p-0 text-camouflage-green-600 hover:border-camouflage-green-400 hover:bg-camouflage-green-100 hover:text-camouflage-green-800"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onEdit(invoice.id)
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
                     {getInvoiceStatus(invoice) !== "cancelled" && (
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -315,7 +394,7 @@ export function InvoiceTable<T extends { id: string }>({
           <PaginationControls
             pagination={pagination}
             onPageChange={onPageChange}
-            onItemsPerPageChange={() => {}}
+            onItemsPerPageChange={onItemsPerPageChange || (() => {})}
           />
         </div>
       )}

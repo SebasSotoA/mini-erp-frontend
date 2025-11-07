@@ -315,18 +315,18 @@ export default function EditInventoryItemPage() {
       // Solo establecer bodega principal si realmente necesita cambiar
       const targetBodegaId = principalBodegaId || null
       const currentBodegaId = selectedBodegaId || lastSelectedBodegaIdRef.current
-      
-      if (productoBodegas.length === 0) {
-        setInventoryByWarehouse([])
+    
+    if (productoBodegas.length === 0) {
+      setInventoryByWarehouse([])
         // Solo establecer si hay un target y es diferente al actual
         if (targetBodegaId && targetBodegaId !== currentBodegaId) {
           lastSelectedBodegaIdRef.current = targetBodegaId
           setSelectedBodegaId(targetBodegaId)
         }
         lastProcessedBodegasRef.current = currentBodegasSignature
-        return
-      }
-      
+      return
+    }
+    
       // Establecer bodega principal y sus cantidades
       // IMPORTANTE: Usar la cantidad inicial de la bodega principal específica, NO el stock total
       if (bodegaPrincipal && targetBodegaId) {
@@ -380,13 +380,13 @@ export default function EditInventoryItemPage() {
       
       // Mapear solo bodegas adicionales a inventoryByWarehouse
       const bodegasAdicionalesMapeadas: WarehouseEntry[] = bodegasAdicionales.map((b: ProductoBodegaBackend) => ({
-        bodegaId: b.bodegaId,
-        bodegaNombre: b.bodegaNombre,
-        qtyInit: b.cantidadInicial,
-        qtyMin: b.cantidadMinima,
-        qtyMax: b.cantidadMaxima,
-      }))
-      
+      bodegaId: b.bodegaId,
+      bodegaNombre: b.bodegaNombre,
+      qtyInit: b.cantidadInicial,
+      qtyMin: b.cantidadMinima,
+      qtyMax: b.cantidadMaxima,
+    }))
+    
       // Solo actualizar si hay cambios reales
       setInventoryByWarehouse(prev => {
         // Verificar si hay cambios comparando ambos arrays
@@ -439,8 +439,8 @@ export default function EditInventoryItemPage() {
       const requiredFieldIds = extraFields
         .filter(f => f.isRequired && f.isActive)
         .map(f => f.id)
-      
-      if (productoCamposExtra.length === 0) {
+    
+    if (productoCamposExtra.length === 0) {
         // Si no hay campos extra del producto, al menos incluir los campos requeridos
         setSelectedExtraFields(requiredFieldIds)
         
@@ -455,10 +455,10 @@ export default function EditInventoryItemPage() {
         setExtraFieldValues(defaultValues)
         
         lastProcessedCamposExtraRef.current = currentCamposSignature
-        return
-      }
-      
-      const camposExtraIds = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId)
+      return
+    }
+    
+    const camposExtraIds = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId)
       
       // Combinar campos del producto con campos requeridos (sin duplicados)
       const allSelectedFields = Array.from(new Set([...camposExtraIds, ...requiredFieldIds]))
@@ -470,7 +470,7 @@ export default function EditInventoryItemPage() {
       setExtraFieldValues(prev => {
         const valores: Record<string, string> = { ...prev } // Preservar valores existentes
         
-        productoCamposExtra.forEach((ce: ProductoCampoExtraBackend) => {
+    productoCamposExtra.forEach((ce: ProductoCampoExtraBackend) => {
           const campoExtra = extraFields.find(f => f.id === ce.campoExtraId)
           if (!campoExtra) return
           
@@ -710,12 +710,12 @@ export default function EditInventoryItemPage() {
 
       // También validar en inventoryByWarehouse (estado local)
       if (inventoryByWarehouse.some(w => w.bodegaId === mwWarehouseId)) {
-        toast({
-          title: "⚠️ Bodega duplicada",
-          description: `La bodega "${bodega.nombre}" ya está agregada en la lista de bodegas adicionales.`,
-          variant: "destructive",
-        })
-        return
+      toast({
+        title: "⚠️ Bodega duplicada",
+        description: `La bodega "${bodega.nombre}" ya está agregada en la lista de bodegas adicionales.`,
+        variant: "destructive",
+      })
+      return
       }
     }
 
@@ -770,7 +770,7 @@ export default function EditInventoryItemPage() {
     }
 
     setIsSavingBodega(true)
-    
+
     try {
       if (editingWarehouseId) {
         // Actualizar bodega existente
@@ -812,8 +812,8 @@ export default function EditInventoryItemPage() {
       // (El hook ya invalida, pero lo hacemos aquí también para asegurar)
       queryClient.invalidateQueries({ queryKey: productoKeys.bodegas(id) })
 
-      setIsWarehouseModalOpen(false)
-      resetWarehouseModal()
+    setIsWarehouseModalOpen(false)
+    resetWarehouseModal()
     } catch (error: any) {
       console.error("Error al guardar bodega:", error)
       console.error("Error completo:", JSON.stringify(error, null, 2))
@@ -857,7 +857,7 @@ export default function EditInventoryItemPage() {
       })
       return
     }
-
+    
     const warehouse = inventoryByWarehouse.find(w => w.bodegaId === bodegaId)
     if (!warehouse) {
       toast({
@@ -1108,7 +1108,7 @@ export default function EditInventoryItemPage() {
         [fieldId]: value // Guardar el valor tal cual (puede estar vacío)
       }
       return newValues
-    })
+      })
   }
 
   // Función para renderizar inputs de campos adicionales
@@ -1198,9 +1198,9 @@ export default function EditInventoryItemPage() {
       // Actualizar estados locales primero
       setBasePrice(bp)
       setTax(t)
-      const base = parseFloat(bp || "0")
-      const taxP = parseFloat(t || "0")
-      const total = base + (base * taxP) / 100
+    const base = parseFloat(bp || "0")
+    const taxP = parseFloat(t || "0")
+    const total = base + (base * taxP) / 100
       const newTotal = total > 0 ? total.toFixed(2) : ""
       setTotalPrice(newTotal)
       
@@ -1208,7 +1208,7 @@ export default function EditInventoryItemPage() {
       setValue("basePrice", bp, { shouldValidate: false, shouldDirty: true })
       setValue("tax", t, { shouldValidate: false, shouldDirty: true })
       setValue("totalPrice", newTotal, { shouldValidate: false, shouldDirty: true })
-      setBasePriceError(false)
+    setBasePriceError(false)
     } finally {
       // Usar setTimeout para asegurar que el flag se resetee después del render
       setTimeout(() => {
@@ -1223,28 +1223,28 @@ export default function EditInventoryItemPage() {
     isUpdatingPriceRef.current = true
     
     try {
-      setTotalPrice(total)
-      const t = parseFloat(tax || "0")
-      const tot = parseFloat(total || "0")
+    setTotalPrice(total)
+    const t = parseFloat(tax || "0")
+    const tot = parseFloat(total || "0")
       let newBase = ""
-      if (t > 0) {
-        const base = tot / (1 + t / 100)
+    if (t > 0) {
+      const base = tot / (1 + t / 100)
         newBase = base > 0 ? base.toFixed(2) : ""
-      } else {
+    } else {
         newBase = tot > 0 ? tot.toFixed(2) : ""
-      }
+    }
       setBasePrice(newBase)
       
       // Actualizar React Hook Form sin disparar validación que cause bucles
       setValue("totalPrice", total, { shouldValidate: false, shouldDirty: true })
       setValue("basePrice", newBase, { shouldValidate: false, shouldDirty: true })
-      setTotalPriceError(false)
+    setTotalPriceError(false)
     } finally {
       // Usar setTimeout para asegurar que el flag se resetee después del render
       setTimeout(() => {
         isUpdatingPriceRef.current = false
       }, 0)
-    }
+  }
   }, [tax, setValue])
 
   const priceToShow = useMemo(() => totalPrice || basePrice || "0.00", [totalPrice, basePrice])
@@ -1737,9 +1737,9 @@ export default function EditInventoryItemPage() {
         description: `Los campos obligatorios deben tener un valor: ${missingRequiredFields.join(", ")}. Por favor, completa estos campos antes de guardar.`,
         variant: "destructive",
       })
-      return
-    }
-
+        return
+      }
+      
     console.log("🔵 Validando campos extra opcionales seleccionados...")
     // Validar campos extra opcionales seleccionados
     // Si un campo opcional está seleccionado, también debe tener un valor
@@ -1766,7 +1766,7 @@ export default function EditInventoryItemPage() {
         missingOptionalFields.push(field.name)
       }
     })
-    
+
     console.log("🔵 missingOptionalFields:", missingOptionalFields)
 
     if (missingOptionalFields.length > 0) {
@@ -1863,7 +1863,7 @@ export default function EditInventoryItemPage() {
       // El hook maneja optimistic updates automáticamente
       console.log("🔵 Iniciando actualización en background...")
       const updatePromise = updateMutation.mutateAsync({ id, data: updateDto })
-      
+
       // Navegar inmediatamente sin esperar (optimistic navigation)
       // Pasar parámetro en URL para mostrar toast de éxito en la página destino
       console.log("🔵 Navegando optimísticamente... createAnother:", createAnother)
@@ -2007,8 +2007,8 @@ export default function EditInventoryItemPage() {
         errorMessage = error.message
       }
       
-      toast({
-        title: "❌ Error al actualizar producto",
+        toast({
+          title: "❌ Error al actualizar producto",
         description: errorMessage,
         variant: "destructive",
       })
@@ -2090,9 +2090,9 @@ export default function EditInventoryItemPage() {
                   <Label className="text-sm text-gray-700" htmlFor="name">
                     Nombre <span className="text-red-500">*</span>
                   </Label>
-                    <Input
-                      id="name"
-                      value={name}
+                  <Input
+                    id="name"
+                    value={name}
                       onChange={(e) => {
                         setName(e.target.value)
                         setValue("name", e.target.value, { shouldValidate: true })
@@ -2335,15 +2335,15 @@ export default function EditInventoryItemPage() {
                         // Actualizar ref para prevenir bucles
                         if (bodegaId !== lastSelectedBodegaIdRef.current) {
                           lastSelectedBodegaIdRef.current = bodegaId
-                          setSelectedBodegaId(bodegaId)
-                          setBodegaPrincipalError(false)
+                        setSelectedBodegaId(bodegaId)
+                        setBodegaPrincipalError(false)
                           // Buscar la bodega en productoBodegas para obtener sus cantidades
                           const bodega = productoBodegas.find((b: ProductoBodegaBackend) => b.bodegaId === bodegaId)
-                          if (bodega) {
+                        if (bodega) {
                             // Si la bodega existe en productoBodegas, mostrar sus cantidades
-                            setQuantity(String(bodega.cantidadInicial))
-                            setQuantityMin(bodega.cantidadMinima?.toString() || "")
-                            setQuantityMax(bodega.cantidadMaxima?.toString() || "")
+                          setQuantity(String(bodega.cantidadInicial))
+                          setQuantityMin(bodega.cantidadMinima?.toString() || "")
+                          setQuantityMax(bodega.cantidadMaxima?.toString() || "")
                           } else {
                             // Si la bodega no existe en productoBodegas (nueva bodega), limpiar los campos
                             setQuantity("")
@@ -2546,57 +2546,57 @@ export default function EditInventoryItemPage() {
                         qtyMax: b.cantidadMaxima,
                       }))
                     return bodegasAdicionalesFiltradas.length > 0 ? (
-                      <div className="overflow-hidden rounded-lg border border-camouflage-green-200">
-                        <div className="grid grid-cols-5 bg-camouflage-green-50/50 px-4 py-2 text-sm font-semibold text-camouflage-green-800">
-                          <div>Bodega</div>
-                          <div className="text-right">Cant. inicial</div>
-                          <div className="text-right">Cant. mínima</div>
-                          <div className="text-right">Cant. máxima</div>
-                          <div className="text-center">Acciones</div>
-                        </div>
-                        <div>
+                    <div className="overflow-hidden rounded-lg border border-camouflage-green-200">
+                      <div className="grid grid-cols-5 bg-camouflage-green-50/50 px-4 py-2 text-sm font-semibold text-camouflage-green-800">
+                        <div>Bodega</div>
+                        <div className="text-right">Cant. inicial</div>
+                        <div className="text-right">Cant. mínima</div>
+                        <div className="text-right">Cant. máxima</div>
+                        <div className="text-center">Acciones</div>
+                      </div>
+                      <div>
                           {bodegasAdicionalesFiltradas.map((w) => (
-                            <div
-                              key={w.bodegaId}
-                              className="grid grid-cols-5 border-t border-camouflage-green-100 px-4 py-2 text-sm items-center"
-                            >
-                              <div className="text-camouflage-green-900">{w.bodegaNombre}</div>
-                              <div className="text-right">{w.qtyInit}</div>
-                              <div className="text-right">{w.qtyMin ?? "-"}</div>
-                              <div className="text-right">{w.qtyMax ?? "-"}</div>
-                              <div className="flex items-center justify-center gap-2">
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openEditWarehouseModal(w)}
-                                  className="h-8 w-8 p-0 text-camouflage-green-600 hover:text-camouflage-green-700 hover:bg-camouflage-green-50"
-                                  title="Editar bodega"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeWarehouseEntry(w.bodegaId)}
-                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  title="Eliminar bodega"
+                          <div
+                            key={w.bodegaId}
+                            className="grid grid-cols-5 border-t border-camouflage-green-100 px-4 py-2 text-sm items-center"
+                          >
+                            <div className="text-camouflage-green-900">{w.bodegaNombre}</div>
+                            <div className="text-right">{w.qtyInit}</div>
+                            <div className="text-right">{w.qtyMin ?? "-"}</div>
+                            <div className="text-right">{w.qtyMax ?? "-"}</div>
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditWarehouseModal(w)}
+                                className="h-8 w-8 p-0 text-camouflage-green-600 hover:text-camouflage-green-700 hover:bg-camouflage-green-50"
+                                title="Editar bodega"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeWarehouseEntry(w.bodegaId)}
+                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Eliminar bodega"
                                   disabled={isDeletingWarehouse[w.bodegaId] || deleteBodegaMutation.isPending}
-                                >
+                              >
                                   {isDeletingWarehouse[w.bodegaId] ? (
                                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-red-600 border-t-transparent" />
                                   ) : (
-                                    <X className="h-4 w-4" />
+                                <X className="h-4 w-4" />
                                   )}
-                                </Button>
-                              </div>
+                              </Button>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    ) : (
-                      <div className="text-sm text-camouflage-green-600">Aún no has agregado bodegas adicionales.</div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-camouflage-green-600">Aún no has agregado bodegas adicionales.</div>
                     )
                   })()}
 
@@ -2728,7 +2728,7 @@ export default function EditInventoryItemPage() {
                         <>
                           <div className="px-3 py-4 text-center text-sm text-gray-500 mb-2">
                             No hay campos adicionales opcionales disponibles
-                          </div>
+                        </div>
                           <div className="border-t border-gray-200 pt-2">
                             <Button
                               type="button"
@@ -2754,7 +2754,7 @@ export default function EditInventoryItemPage() {
                   <div className="space-y-4">
                     <div className="text-xs font-semibold uppercase tracking-wider text-camouflage-green-700">
                       Campos obligatorios
-                    </div>
+                  </div>
                     {extraFields
                       .filter(f => f.isRequired && f.isActive)
                       .map((field) => {
@@ -2764,7 +2764,7 @@ export default function EditInventoryItemPage() {
                               {field.name} <span className="text-red-500">*</span>
                             </Label>
                             {renderExtraFieldInput(field)}
-                          </div>
+                  </div>
                         )
                       })}
                   </div>
@@ -2787,15 +2787,15 @@ export default function EditInventoryItemPage() {
                         return field && !field.isRequired
                       })
                       .map((fieldId) => {
-                        const field = extraFields.find(f => f.id === fieldId)
-                        if (!field) return null
+                      const field = extraFields.find(f => f.id === fieldId)
+                      if (!field) return null
                         
-                        return (
-                          <div key={fieldId} className="space-y-2">
+                      return (
+                        <div key={fieldId} className="space-y-2">
                             <div className="flex items-center justify-between">
                               <Label className="text-sm font-medium text-gray-700">
-                                {field.name}
-                              </Label>
+                            {field.name}
+                          </Label>
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -2806,10 +2806,10 @@ export default function EditInventoryItemPage() {
                                 ×
                               </Button>
                             </div>
-                            {renderExtraFieldInput(field)}
-                          </div>
-                        )
-                      })}
+                          {renderExtraFieldInput(field)}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
                 

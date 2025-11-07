@@ -80,12 +80,18 @@ export interface MovimientoInventarioBackend {
   productoCodigoSku: string
   bodegaId: string
   bodegaNombre: string
-  cantidad: number // Positiva para entradas, negativa para salidas
+  cantidad: number // Positiva para entradas, negativa para salidas (reversiones)
   tipoMovimiento: "VENTA" | "COMPRA"
   fecha: string
-  facturaId?: string | null
-  facturaNumero?: string | null
   costoUnitario?: number | null
+  precioUnitario?: number | null
+  observacion?: string | null
+  facturaId?: string | null // Deprecated: usar facturaVentaId o facturaCompraId
+  facturaNumero?: string | null // Deprecated: usar facturaVentaNumero o facturaCompraNumero
+  facturaVentaId?: string | null
+  facturaVentaNumero?: string | null
+  facturaCompraId?: string | null
+  facturaCompraNumero?: string | null
 }
 
 /**
@@ -299,5 +305,167 @@ export interface InventarioResumenDto {
   productos: InventarioProductoDto[]
   filtrosAplicados: InventarioFiltrosAplicadosDto
   fechaGeneracion: string
+}
+
+/**
+ * Tipos para Proveedores del backend
+ */
+export interface ProveedorBackend {
+  id: string
+  nombre: string
+  identificacion: string
+  correo?: string | null
+  observaciones?: string | null
+  activo: boolean
+  fechaCreacion: string
+}
+
+/**
+ * DTOs para crear/actualizar proveedores
+ */
+export interface CreateProveedorDto {
+  nombre: string
+  identificacion: string
+  correo?: string | null
+  observaciones?: string | null
+}
+
+export interface UpdateProveedorDto {
+  nombre: string
+  identificacion: string
+  correo?: string | null
+  observaciones?: string | null
+}
+
+/**
+ * Tipos para Facturas de Compra del backend
+ */
+export interface FacturaCompraItemBackend {
+  id: string
+  productoId: string
+  productoNombre: string
+  productoSku: string
+  cantidad: number
+  costoUnitario: number
+  descuento: number
+  impuesto: number
+  totalLinea: number
+}
+
+export interface FacturaCompraBackend {
+  id: string
+  numeroFactura: string
+  bodegaId: string
+  bodegaNombre: string
+  proveedorId: string
+  proveedorNombre: string
+  fecha: string
+  observaciones?: string | null
+  estado: "Completada" | "Anulada"
+  total: number
+  items: FacturaCompraItemBackend[]
+}
+
+/**
+ * DTOs para crear facturas de compra
+ */
+export interface CreateFacturaCompraItemDto {
+  productoId: string
+  cantidad: number
+  costoUnitario: number
+  descuento: number
+  impuesto: number
+}
+
+export interface CreateFacturaCompraDto {
+  bodegaId: string
+  proveedorId: string
+  fecha: string
+  observaciones?: string | null
+  items: CreateFacturaCompraItemDto[]
+}
+
+/**
+ * Tipos para Vendedores del backend
+ */
+export interface VendedorBackend {
+  id: string
+  nombre: string
+  identificacion: string
+  correo?: string | null
+  observaciones?: string | null
+  activo: boolean
+  fechaCreacion: string
+}
+
+/**
+ * DTOs para crear/actualizar vendedores
+ */
+export interface CreateVendedorDto {
+  nombre: string
+  identificacion: string
+  correo?: string | null
+  observaciones?: string | null
+}
+
+export interface UpdateVendedorDto {
+  nombre: string
+  identificacion: string
+  correo?: string | null
+  observaciones?: string | null
+}
+
+/**
+ * Tipos para Facturas de Venta del backend
+ */
+export interface FacturaVentaItemBackend {
+  id: string
+  productoId: string
+  productoNombre: string
+  productoSku: string
+  cantidad: number
+  precioUnitario: number
+  descuento: number
+  impuesto: number
+  totalLinea: number
+}
+
+export interface FacturaVentaBackend {
+  id: string
+  numeroFactura: string
+  bodegaId: string
+  bodegaNombre: string
+  vendedorId: string
+  vendedorNombre: string
+  fecha: string
+  formaPago: "Contado" | "Credito"
+  plazoPago?: number | null
+  medioPago: "Efectivo" | "Tarjeta" | "Transferencia" | "Cheque"
+  observaciones?: string | null
+  estado: "Completada" | "Anulada"
+  total: number
+  items: FacturaVentaItemBackend[]
+}
+
+/**
+ * DTOs para crear facturas de venta
+ */
+export interface CreateFacturaVentaItemDto {
+  productoId: string
+  cantidad: number
+  precioUnitario: number
+  descuento: number
+  impuesto: number
+}
+
+export interface CreateFacturaVentaDto {
+  bodegaId: string
+  vendedorId: string
+  fecha: string
+  formaPago: "Contado" | "Credito"
+  plazoPago?: number | null
+  medioPago: "Efectivo" | "Tarjeta" | "Transferencia" | "Cheque"
+  observaciones?: string | null
+  items: CreateFacturaVentaItemDto[]
 }
 
