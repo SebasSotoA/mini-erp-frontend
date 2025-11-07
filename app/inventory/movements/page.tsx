@@ -449,9 +449,6 @@ export default function StockMovementsHistory() {
                             <div className="text-sm text-camouflage-green-900">
                               {format(new Date(movement.date), "dd/MM/yyyy", { locale: es })}
                             </div>
-                            <div className="text-xs text-camouflage-green-500">
-                              {format(new Date(movement.date), "HH:mm", { locale: es })}
-                            </div>
                           </TableCell>
                           <TableCell className="w-[150px] pl-3">
                             <span

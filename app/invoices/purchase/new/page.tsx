@@ -707,16 +707,12 @@ export default function NewPurchaseInvoice() {
     })
 
     // Crear el DTO para el backend
-    // Formatear la fecha correctamente: convertir a UTC con hora a medianoche
-    // PostgreSQL requiere DateTime con Kind=UTC para timestamp with time zone
-    const fechaDate = new Date(data.date + 'T00:00:00') // Crear fecha local a medianoche
-    // Convertir a UTC manteniendo la misma fecha (medianoche UTC)
-    const fechaUTC = new Date(Date.UTC(
-      fechaDate.getFullYear(),
-      fechaDate.getMonth(),
-      fechaDate.getDate(),
-      0, 0, 0, 0
-    ))
+    // Formatear la fecha correctamente: parsear directamente desde el string YYYY-MM-DD
+    // para evitar problemas de zona horaria que cambien el día
+    // El formato de data.date es YYYY-MM-DD (del input type="date")
+    const [year, month, day] = data.date.split('-').map(Number)
+    // Crear fecha UTC directamente con los valores del string, sin pasar por hora local
+    const fechaUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
     const fechaISO = fechaUTC.toISOString() // Formato: YYYY-MM-DDTHH:mm:ss.sssZ
 
     const facturaData: CreateFacturaCompraDto = {

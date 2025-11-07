@@ -659,6 +659,29 @@ export default function NewSalesInvoice() {
     })
   }
 
+  // Función helper para obtener el stock disponible de un producto
+  const getStockDisponible = (productId: string): number => {
+    const product = products.find((p: any) => p.id === productId) as any
+    if (!product) return 0
+    
+    // Obtener stock disponible en la bodega seleccionada
+    // Prioridad: cantidadEnBodega (stock específico de la bodega) > stock (ya mapeado) > stockActual
+    if ((product as any).cantidadEnBodega !== undefined) {
+      return (product as any).cantidadEnBodega
+    } else if (formData.warehouseId && bodegaProductosData?.items) {
+      return product.stock || 0
+    } else {
+      return (product as any).stockActual || product.stock || 0
+    }
+  }
+
+  // Función helper para calcular la cantidad total de un producto en todas las filas (excluyendo la fila actual)
+  const getCantidadTotalEnOtrasFilas = (productId: string, excludeItemId: string, items: SalesInvoiceItem[]): number => {
+    return items
+      .filter(item => item.id !== excludeItemId && item.productId === productId && item.productId !== "")
+      .reduce((sum, item) => sum + (item.quantity || 0), 0)
+  }
+
   const updateItem = (itemId: string, field: keyof SalesInvoiceItem, value: any) => {
     setFormData(prev => {
       const updatedItems = prev.items.map(item => {
@@ -675,32 +698,56 @@ export default function NewSalesInvoice() {
             if (product && precioBase > 0 && updatedItem.price === 0) {
               updatedItem.price = precioBase
             }
-            // Si se selecciona un producto, asegurar que la cantidad sea al menos 1
-            if (updatedItem.quantity === 0) {
-              updatedItem.quantity = 1
-            }
           }
           
           // Validar stock cuando se actualiza cantidad o producto
           if (field === 'quantity' || field === 'productId') {
-            if (updatedItem.productId && updatedItem.quantity > 0) {
+            if (updatedItem.productId && updatedItem.productId !== "") {
               const product = products.find((p: any) => p.id === updatedItem.productId) as any
               if (product) {
-                // Obtener stock disponible en la bodega seleccionada
-                // Prioridad: cantidadEnBodega (stock específico de la bodega) > stock (ya mapeado) > stockActual
-                let stockDisponible = 0
-                if ((product as any).cantidadEnBodega !== undefined) {
-                  // Si viene cantidadEnBodega directamente del backend (preservado en el hook)
-                  stockDisponible = (product as any).cantidadEnBodega
-                } else if (formData.warehouseId && bodegaProductosData?.items) {
-                  // Cuando viene de useBodegaProductos, el campo 'stock' ya tiene cantidadEnBodega
-                  stockDisponible = product.stock || 0
-                } else {
-                  // Cuando viene de useProductos (todos los productos), usar stockActual
-                  stockDisponible = (product as any).stockActual || product.stock || 0
+                const stockDisponible = getStockDisponible(updatedItem.productId)
+                // Calcular la cantidad total de este producto en otras filas (excluyendo la fila actual)
+                const cantidadEnOtrasFilas = getCantidadTotalEnOtrasFilas(updatedItem.productId, itemId, prev.items)
+                // Calcular la cantidad disponible para esta fila
+                const cantidadDisponibleEnFila = Math.max(0, stockDisponible - cantidadEnOtrasFilas)
+                
+                // Si se está seleccionando un producto nuevo, establecer cantidad inicial
+                if (field === 'productId') {
+                  // Si hay stock disponible, establecer cantidad en 1, sino en 0
+                  if (cantidadDisponibleEnFila > 0 && updatedItem.quantity === 0) {
+                    updatedItem.quantity = 1
+                  } else if (cantidadDisponibleEnFila === 0) {
+                    updatedItem.quantity = 0
+                  }
                 }
                 
-                if (updatedItem.quantity > stockDisponible) {
+                // Calcular la cantidad total si se aplica este cambio
+                const cantidadTotal = cantidadEnOtrasFilas + updatedItem.quantity
+                
+                // Validar que la cantidad total no exceda el stock disponible
+                if (cantidadTotal > stockDisponible) {
+                  
+                  setStockErrorMessage(
+                    `Error: No hay stock suficiente para "${product.nombre || product.name}". ` +
+                    `Stock disponible: ${stockDisponible} unidades. ` +
+                    (cantidadEnOtrasFilas > 0 
+                      ? `Ya hay ${cantidadEnOtrasFilas} unidades en otras filas. ` 
+                      : '') +
+                    `Cantidad máxima permitida en esta fila: ${cantidadDisponibleEnFila} unidades.`
+                  )
+                  setShowStockErrorToast(true)
+                  setTimeout(() => setShowStockErrorToast(false), 7000)
+                  
+                  // Limitar la cantidad al máximo disponible solo cuando se cambia la cantidad manualmente
+                  if (field === 'quantity') {
+                    updatedItem.quantity = cantidadDisponibleEnFila > 0 ? cantidadDisponibleEnFila : 0
+                  }
+                  // Si se está seleccionando el producto y ya no hay stock disponible, mantener cantidad en 0
+                  else if (field === 'productId' && cantidadDisponibleEnFila === 0) {
+                    updatedItem.quantity = 0
+                  }
+                } else if (updatedItem.quantity > stockDisponible && cantidadEnOtrasFilas === 0) {
+                  // Si no hay otras filas pero la cantidad excede el stock
                   setStockWarningMessage(
                     `Advertencia: La cantidad vendida de "${product.nombre || product.name}" es mayor a la disponible en el inventario. Cantidad actual: ${stockDisponible}`
                   )
@@ -786,6 +833,33 @@ export default function NewSalesInvoice() {
     }
 
     // Validar que todos los items tengan datos válidos y stock suficiente
+    // Primero, agrupar items por producto para validar stock total
+    const itemsPorProducto = new Map<string, number>()
+    validItems.forEach(item => {
+      if (item.productId && item.productId.trim() !== "") {
+        const cantidadActual = itemsPorProducto.get(item.productId) || 0
+        itemsPorProducto.set(item.productId, cantidadActual + (item.quantity || 0))
+      }
+    })
+    
+    // Validar stock para cada producto considerando todas las filas
+    itemsPorProducto.forEach((cantidadTotal, productId) => {
+      const product = products.find((p: any) => p.id === productId) as any
+      if (product) {
+        const stockDisponible = getStockDisponible(productId)
+        if (cantidadTotal > stockDisponible) {
+          const errorMsg = `No hay stock suficiente para "${product.nombre || product.name}". ` +
+            `Stock disponible: ${stockDisponible} unidades. ` +
+            `Cantidad solicitada en todas las filas: ${cantidadTotal} unidades. ` +
+            `Por favor, reduce la cantidad en alguna fila.`
+          setStockErrorMessage(errorMsg)
+          setShowStockErrorToast(true)
+          setTimeout(() => setShowStockErrorToast(false), 7000)
+          throw new Error(errorMsg)
+        }
+      }
+    })
+    
     let stockError: Error | null = null
     const items: CreateFacturaVentaItemDto[] = validItems.map(item => {
       // Validar que el productoId sea un GUID válido
@@ -804,28 +878,8 @@ export default function NewSalesInvoice() {
         throw new Error("El precio unitario debe ser mayor o igual a 0")
       }
       
-      // Validar stock disponible
-      const product = products.find((p: any) => p.id === item.productId) as any
-      if (product) {
-        // Obtener stock disponible en la bodega seleccionada
-        // Prioridad: cantidadEnBodega (stock específico de la bodega) > stock (ya mapeado) > stockActual
-        let stockDisponible = 0
-        if ((product as any).cantidadEnBodega !== undefined) {
-          // Si viene cantidadEnBodega directamente del backend (preservado en el hook)
-          stockDisponible = (product as any).cantidadEnBodega
-        } else if (formData.warehouseId && bodegaProductosData?.items) {
-          // Cuando viene de useBodegaProductos, el campo 'stock' ya tiene cantidadEnBodega
-          stockDisponible = product.stock || 0
-        } else {
-          // Cuando viene de useProductos (todos los productos), usar stockActual
-          stockDisponible = (product as any).stockActual || product.stock || 0
-        }
-        
-        if (cantidad > stockDisponible) {
-          stockError = new Error(`No hay stock suficiente para "${product.nombre || product.name}". Stock disponible: ${stockDisponible}`)
-          throw stockError
-        }
-      }
+      // La validación de stock ya se hizo arriba agrupando todos los items
+      // Aquí solo validamos que cada item individual tenga un producto válido
       
       return {
         productoId: item.productId.trim(),
@@ -837,16 +891,12 @@ export default function NewSalesInvoice() {
     })
 
     // Crear el DTO para el backend
-    // Formatear la fecha correctamente: convertir a UTC con hora a medianoche
-    // PostgreSQL requiere DateTime con Kind=UTC para timestamp with time zone
-    const fechaDate = new Date(data.date + 'T00:00:00') // Crear fecha local a medianoche
-    // Convertir a UTC manteniendo la misma fecha (medianoche UTC)
-    const fechaUTC = new Date(Date.UTC(
-      fechaDate.getFullYear(),
-      fechaDate.getMonth(),
-      fechaDate.getDate(),
-      0, 0, 0, 0
-    ))
+    // Formatear la fecha correctamente: parsear directamente desde el string YYYY-MM-DD
+    // para evitar problemas de zona horaria que cambien el día
+    // El formato de data.date es YYYY-MM-DD (del input type="date")
+    const [year, month, day] = data.date.split('-').map(Number)
+    // Crear fecha UTC directamente con los valores del string, sin pasar por hora local
+    const fechaUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
     const fechaISO = fechaUTC.toISOString() // Formato: YYYY-MM-DDTHH:mm:ss.sssZ
 
     const facturaData: CreateFacturaVentaDto = {
@@ -864,14 +914,58 @@ export default function NewSalesInvoice() {
       await createFacturaMutation.mutateAsync(facturaData)
       router.push("/invoices/sales?created=true")
     } catch (error: any) {
-      // Verificar si es un error de stock insuficiente
-      const errorMessage = error?.message || error?.toString() || ""
-      if (errorMessage.includes("No hay stock suficiente") || errorMessage.includes("stock suficiente")) {
-        setStockErrorMessage(errorMessage)
+      // Manejar diferentes tipos de errores
+      let errorMessage = error?.message || error?.toString() || ""
+      const errorStatus = error?.status || error?.statusCode || error?.response?.status
+      
+      // Si es un error 500, puede ser un error de stock u otro error del servidor
+      if (errorStatus === 500 || error?.response?.status === 500) {
+        // Intentar extraer un mensaje más descriptivo
+        if (error?.response?.data?.message) {
+          errorMessage = error.response.data.message
+        } else if (error?.response?.data?.error) {
+          errorMessage = error.response.data.error
+        } else if (!errorMessage || errorMessage === "[object Object]") {
+          errorMessage = "Error interno del servidor. Por favor, verifica que no haya stock insuficiente o contacta al administrador."
+        }
+        
+        // Verificar si el error está relacionado con stock
+        const lowerMsg = errorMessage.toLowerCase()
+        if (
+          lowerMsg.includes("stock") || 
+          lowerMsg.includes("cantidad") || 
+          lowerMsg.includes("disponible") ||
+          lowerMsg.includes("insuficiente") ||
+          lowerMsg.includes("no hay suficiente")
+        ) {
+          setStockErrorMessage(
+            `Error de stock: ${errorMessage}. Por favor, verifica las cantidades en todas las filas de la factura.`
+          )
+          setShowStockErrorToast(true)
+          setTimeout(() => setShowStockErrorToast(false), 7000)
+        } else {
+          // Error 500 genérico
+          toast({
+            title: "Error del servidor",
+            description: errorMessage || "Ocurrió un error al crear la factura. Por favor, intenta nuevamente.",
+            variant: "destructive",
+          })
+        }
+      } else if (errorMessage.includes("No hay stock suficiente") || errorMessage.includes("stock suficiente")) {
+        // Error de stock con mensaje claro
+        setStockErrorMessage(
+          `Error de stock: ${errorMessage}. Por favor, verifica las cantidades en todas las filas de la factura.`
+        )
         setShowStockErrorToast(true)
-        setTimeout(() => setShowStockErrorToast(false), 5000)
+        setTimeout(() => setShowStockErrorToast(false), 7000)
+      } else {
+        // Otros errores (ya se manejan en los hooks, pero mostramos un mensaje aquí también)
+        toast({
+          title: "Error al crear factura",
+          description: errorMessage || "Ocurrió un error al crear la factura. Por favor, intenta nuevamente.",
+          variant: "destructive",
+        })
       }
-      // Los demás errores ya se manejan en los hooks
     }
   }
 
