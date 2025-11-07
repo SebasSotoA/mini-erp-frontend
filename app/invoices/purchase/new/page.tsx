@@ -193,7 +193,7 @@ export default function NewPurchaseInvoice() {
   // Sincronizar el estado inicial del formulario con React Hook Form
   useEffect(() => {
     setValue("items", formData.items, { shouldValidate: false })
-  }, []) // Solo al montar el componente
+  }, [formData.items, setValue]) // Solo al montar el componente
 
   const handleInputChange = (field: keyof InvoiceFormData, value: string) => {
     // Si se cambia la bodega, limpiar los productos seleccionados en los items

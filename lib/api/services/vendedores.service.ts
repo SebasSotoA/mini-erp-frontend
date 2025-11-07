@@ -3,7 +3,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiPatch } from "../client"
-import type { ApiResponse, PaginatedResponse, VendedorBackend, CreateVendedorDto, UpdateVendedorDto } from "../types"
+import type { ApiResponse, PaginatedData, VendedorBackend, CreateVendedorDto, UpdateVendedorDto } from "../types"
 
 /**
  * Servicio de Vendedores
@@ -20,7 +20,7 @@ export const vendedoresService = {
       ? `?${new URLSearchParams(queryParams as any).toString()}`
       : ""
 
-    const response = await apiGet<PaginatedResponse<VendedorBackend>>(`/vendedores${queryString}`)
+    const response = await apiGet<PaginatedData<VendedorBackend>>(`/vendedores${queryString}`)
     // El backend devuelve un objeto paginado, extraemos el array de items
     return {
       ...response,

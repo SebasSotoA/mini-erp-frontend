@@ -59,13 +59,13 @@ export function useFacturasVenta(params?: {
     queryFn: async () => {
       const response = await facturasVentaService.getFacturasVenta(params)
       return {
-        items: response.data.items,
-        page: response.data.page,
-        pageSize: response.data.pageSize,
-        totalCount: response.data.totalCount,
-        totalPages: response.data.totalPages,
-        hasPreviousPage: response.data.hasPreviousPage,
-        hasNextPage: response.data.hasNextPage,
+        items: response.data?.items || [],
+        page: response.data?.page || 1,
+        pageSize: response.data?.pageSize || 20,
+        totalCount: response.data?.totalCount || 0,
+        totalPages: response.data?.totalPages || 0,
+        hasPreviousPage: response.data?.hasPreviousPage || false,
+        hasNextPage: response.data?.hasNextPage || false,
       }
     },
   })

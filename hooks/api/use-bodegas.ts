@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { bodegasService } from "@/lib/api/services/bodegas.service"
-import type { BodegaBackend, CreateBodegaDto, UpdateBodegaDto, ProductosQueryParams } from "@/lib/api/types"
+import type { BodegaBackend, CreateBodegaDto, UpdateBodegaDto, ProductosQueryParams, ProductoBackend } from "@/lib/api/types"
 import { useToast } from "@/hooks/use-toast"
 import { NetworkError, ApiError } from "@/lib/api/errors"
 import { mapProductoToProduct } from "@/lib/api/services/productos.service"
@@ -38,13 +38,13 @@ export function useBodegas(params?: {
     queryFn: async () => {
       const response = await bodegasService.getBodegas(params)
       return {
-        items: response.data.items,
-        page: response.data.page,
-        pageSize: response.data.pageSize,
-        totalCount: response.data.totalCount,
-        totalPages: response.data.totalPages,
-        hasPreviousPage: response.data.hasPreviousPage,
-        hasNextPage: response.data.hasNextPage,
+        items: response.data?.items || [],
+        page: response.data?.page || 1,
+        pageSize: response.data?.pageSize || 20,
+        totalCount: response.data?.totalCount || 0,
+        totalPages: response.data?.totalPages || 0,
+        hasPreviousPage: response.data?.hasPreviousPage || false,
+        hasNextPage: response.data?.hasNextPage || false,
       }
     },
   })
@@ -55,14 +55,16 @@ export function useBodegas(params?: {
  */
 export function useBodegasActive(onlyActive: boolean = true) {
   return useQuery({
-    queryKey: bodegasKeys.list({ activas: onlyActive }),
+    queryKey: bodegasKeys.list({ activo: onlyActive ? true : undefined }),
     queryFn: async () => {
       const response = await bodegasService.getBodegas({
         activo: onlyActive ? true : undefined,
         pageSize: 100,
       })
-      return response.data.items
+      return response.data?.items || []
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
   })
 }
 
@@ -302,7 +304,7 @@ export function useBodegaProductos(bodegaId: string | undefined, params?: Produc
       if (!bodegaId) throw new Error("Bodega ID is required")
       const response = await bodegasService.getBodegaProductos(bodegaId, params)
       return {
-        items: response.data.items.map((producto) => {
+        items: (response.data?.items || []).map((producto: ProductoBackend) => {
           // Mapear usando cantidad específica de la bodega si está disponible
           const mapped = mapProductoToProduct(producto)
           // Si viene cantidadEnBodega (cantidad específica en esta bodega), usarla en lugar de stockActual
@@ -315,12 +317,12 @@ export function useBodegaProductos(bodegaId: string | undefined, params?: Produc
           ;(mapped as any).productoBackend = producto
           return mapped
         }),
-        page: response.data.page,
-        pageSize: response.data.pageSize,
-        totalCount: response.data.totalCount,
-        totalPages: response.data.totalPages,
-        hasPreviousPage: response.data.hasPreviousPage,
-        hasNextPage: response.data.hasNextPage,
+        page: response.data?.page || 1,
+        pageSize: response.data?.pageSize || 20,
+        totalCount: response.data?.totalCount || 0,
+        totalPages: response.data?.totalPages || 0,
+        hasPreviousPage: response.data?.hasPreviousPage || false,
+        hasNextPage: response.data?.hasNextPage || false,
       }
     },
     enabled: !!bodegaId,

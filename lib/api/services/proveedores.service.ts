@@ -3,7 +3,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiPatch } from "../client"
-import type { ApiResponse, PaginatedResponse, ProveedorBackend, CreateProveedorDto, UpdateProveedorDto } from "../types"
+import type { ApiResponse, PaginatedData, ProveedorBackend, CreateProveedorDto, UpdateProveedorDto } from "../types"
 
 /**
  * Servicio de Proveedores
@@ -20,7 +20,7 @@ export const proveedoresService = {
       ? `?${new URLSearchParams(queryParams as any).toString()}`
       : ""
 
-    const response = await apiGet<PaginatedResponse<ProveedorBackend>>(`/proveedores${queryString}`)
+    const response = await apiGet<PaginatedData<ProveedorBackend>>(`/proveedores${queryString}`)
     // El backend devuelve un objeto paginado, extraemos el array de items
     return {
       ...response,

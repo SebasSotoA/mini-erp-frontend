@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { camposExtraService } from "@/lib/api/services/campos-extra.service"
-import type { CampoExtraBackend, CreateCampoExtraDto, UpdateCampoExtraDto, ProductosQueryParams } from "@/lib/api/types"
+import type { CampoExtraBackend, CreateCampoExtraDto, UpdateCampoExtraDto, ProductosQueryParams, ProductoBackend } from "@/lib/api/types"
 import { useToast } from "@/hooks/use-toast"
 import { NetworkError, ApiError } from "@/lib/api/errors"
 import { mapProductoToProduct } from "@/lib/api/services/productos.service"
@@ -82,15 +82,17 @@ export function mapCampoExtraToFrontend(campo: CampoExtraBackend) {
  */
 export function useCamposExtraRequeridos() {
   return useQuery({
-    queryKey: camposExtraKeys.list({ activos: true, requeridos: true }),
+    queryKey: camposExtraKeys.list({ activo: true, esRequerido: true }),
     queryFn: async () => {
       const response = await camposExtraService.getCamposExtra({
         activo: true,
         esRequerido: true,
         pageSize: 100,
       })
-      return response.data.items.map(mapCampoExtraToFrontend)
+      return (response.data?.items || []).map(mapCampoExtraToFrontend)
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
   })
 }
 
@@ -112,13 +114,13 @@ export function useCamposExtra(params?: {
     queryFn: async () => {
       const response = await camposExtraService.getCamposExtra(params)
       return {
-        items: response.data.items,
-        page: response.data.page,
-        pageSize: response.data.pageSize,
-        totalCount: response.data.totalCount,
-        totalPages: response.data.totalPages,
-        hasPreviousPage: response.data.hasPreviousPage,
-        hasNextPage: response.data.hasNextPage,
+        items: response.data?.items || [],
+        page: response.data?.page || 1,
+        pageSize: response.data?.pageSize || 20,
+        totalCount: response.data?.totalCount || 0,
+        totalPages: response.data?.totalPages || 0,
+        hasPreviousPage: response.data?.hasPreviousPage || false,
+        hasNextPage: response.data?.hasNextPage || false,
       }
     },
   })
@@ -135,8 +137,10 @@ export function useCamposExtraActive(onlyActive: boolean = true) {
         activo: onlyActive ? true : undefined,
         pageSize: 100,
       })
-      return response.data.items.map(mapCampoExtraToFrontend)
+      return (response.data?.items || []).map(mapCampoExtraToFrontend)
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
   })
 }
 
@@ -377,7 +381,7 @@ export function useCampoExtraProductos(campoExtraId: string | undefined, params?
       if (!campoExtraId) throw new Error("Campo Extra ID is required")
       const response = await camposExtraService.getCampoExtraProductos(campoExtraId, params)
       return {
-        items: response.data.items.map((producto) => {
+        items: (response.data?.items || []).map((producto: ProductoBackend) => {
           const mapped = mapProductoToProduct(producto)
           // Si viene cantidadEnCampo, usarla (aunque siempre es igual a stockActual para campos extra)
           if ((producto as any).cantidadEnCampo !== undefined) {
@@ -389,12 +393,12 @@ export function useCampoExtraProductos(campoExtraId: string | undefined, params?
           }
           return mapped
         }),
-        page: response.data.page,
-        pageSize: response.data.pageSize,
-        totalCount: response.data.totalCount,
-        totalPages: response.data.totalPages,
-        hasPreviousPage: response.data.hasPreviousPage,
-        hasNextPage: response.data.hasNextPage,
+        page: response.data?.page || 1,
+        pageSize: response.data?.pageSize || 20,
+        totalCount: response.data?.totalCount || 0,
+        totalPages: response.data?.totalPages || 0,
+        hasPreviousPage: response.data?.hasPreviousPage || false,
+        hasNextPage: response.data?.hasNextPage || false,
       }
     },
     enabled: !!campoExtraId,

@@ -519,7 +519,6 @@ export default function EditInventoryItemPage() {
     const requiredFields = extraFields.filter(f => f.isRequired && f.isActive)
     const requiredFieldIds = requiredFields.map(f => f.id)
     
-    console.log("🔵 useEffect campos requeridos: requiredFieldIds=", requiredFieldIds)
     
     // Actualizar campos seleccionados para incluir requeridos (siempre asegurar que estén)
     setSelectedExtraFields(prev => {
@@ -531,7 +530,6 @@ export default function EditInventoryItemPage() {
         // Si faltan algunos, agregarlos
         return Array.from(new Set([...prev, ...requiredFieldIds]))
       }
-      console.log("🔵 Agregando campos requeridos a selectedExtraFields:", newIds)
       return Array.from(new Set([...prev, ...newIds]))
     })
     
@@ -549,7 +547,6 @@ export default function EditInventoryItemPage() {
       })
       
       if (Object.keys(defaultValues).length === 0) return prev // No hay cambios
-      console.log("🔵 Aplicando valores por defecto a campos requeridos:", defaultValues)
       return { ...prev, ...defaultValues }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -604,14 +601,7 @@ export default function EditInventoryItemPage() {
   }
 
   const saveWarehouseEntry = async () => {
-    console.log("🔵 saveWarehouseEntry llamado")
-    console.log("🔵 id:", id)
-    console.log("🔵 mwWarehouseId:", mwWarehouseId)
-    console.log("🔵 mwQtyInit:", mwQtyInit)
-    console.log("🔵 editingWarehouseId:", editingWarehouseId)
-    
     if (!id) {
-      console.error("❌ No hay ID de producto")
       return
     }
     
@@ -814,10 +804,6 @@ export default function EditInventoryItemPage() {
     setIsWarehouseModalOpen(false)
     resetWarehouseModal()
     } catch (error: any) {
-      console.error("Error al guardar bodega:", error)
-      console.error("Error completo:", JSON.stringify(error, null, 2))
-      console.error("Error response:", error?.response)
-      console.error("Error response data:", error?.response?.data)
       
       // El hook ya maneja los errores y muestra toasts, pero agregamos uno adicional
       // para asegurar que el usuario vea el error con más detalles
@@ -887,7 +873,6 @@ export default function EditInventoryItemPage() {
         description: `La bodega "${warehouse.bodegaNombre}" ha sido eliminada exitosamente.`,
       })
     } catch (error: any) {
-      console.error("Error al eliminar bodega:", error)
       toast({
         title: "❌ Error al eliminar bodega",
         description: error?.message || "Ha ocurrido un error al intentar eliminar la bodega. Por favor, intenta nuevamente.",
@@ -933,7 +918,6 @@ export default function EditInventoryItemPage() {
       setNewWarehouseData({ name: "", location: "", observations: "" })
       setIsNewWarehouseModalOpen(false)
     } catch (error) {
-      console.error("Error al crear bodega:", error)
       // El error ya se maneja en el hook con toast
     }
   }
@@ -981,7 +965,6 @@ export default function EditInventoryItemPage() {
       setNewFieldData({ name: "", type: "texto", defaultValue: "", description: "", isRequired: false })
       setIsNewFieldModalOpen(false)
     } catch (error) {
-      console.error("Error al crear campo extra:", error)
       // El error ya se maneja en el hook con toast
     }
   }
@@ -1471,21 +1454,11 @@ export default function EditInventoryItemPage() {
   }
 
   const doSubmit = async (createAnother: boolean = false) => {
-    console.log("🔵 doSubmit llamado, createAnother:", createAnother)
-    console.log("🔵 id:", id)
-    console.log("🔵 product:", product)
-    console.log("🔵 productoOriginal:", productoOriginal)
-    
     if (!id || !product || !productoOriginal) {
-      console.error("❌ Faltan datos requeridos:", { id, product: !!product, productoOriginal: !!productoOriginal })
       return
     }
-
-    console.log("🔵 Datos disponibles - name:", name, "unit:", unit, "basePrice:", basePrice, "totalPrice:", totalPrice, "initialCost:", initialCost, "selectedBodegaId:", selectedBodegaId, "quantity:", quantity)
-    console.log("🔵 Validando nombre...")
     // Validar nombre
     if (!name.trim()) {
-      console.error("❌ Validación falló: nombre vacío")
       setErrorMessage("El nombre del producto es obligatorio.")
       setShowErrorToast(true)
       setTimeout(() => setShowErrorToast(false), 5000)
@@ -1497,10 +1470,8 @@ export default function EditInventoryItemPage() {
       return
     }
 
-    console.log("🔵 Validando unidad de medida...")
     // Validar unidad de medida
     if (!unit || unit.trim() === "") {
-      console.error("❌ Validación falló: unidad de medida vacía")
       setErrorMessage("Debes seleccionar una unidad de medida para el producto.")
       setShowErrorToast(true)
       setTimeout(() => setShowErrorToast(false), 5000)
@@ -1512,11 +1483,9 @@ export default function EditInventoryItemPage() {
       return
     }
 
-    console.log("🔵 Validando precio base...")
     // Validar precio base
     const basePriceValue = parseFloat(basePrice || "0")
     if (!basePrice || basePrice.trim() === "" || isNaN(basePriceValue) || basePriceValue <= 0) {
-      console.error("❌ Validación falló: precio base inválido", { basePrice, basePriceValue })
       setBasePriceError(true)
       setErrorMessage("El precio base debe ser un número mayor a 0.")
       setShowErrorToast(true)
@@ -1529,11 +1498,9 @@ export default function EditInventoryItemPage() {
       return
     }
 
-    console.log("🔵 Validando precio total...")
     // Validar precio total
     const totalPriceValue = parseFloat(totalPrice || "0")
     if (!totalPrice || totalPrice.trim() === "" || isNaN(totalPriceValue) || totalPriceValue <= 0) {
-      console.error("❌ Validación falló: precio total inválido", { totalPrice, totalPriceValue })
       setTotalPriceError(true)
       setErrorMessage("El precio total debe ser un número mayor a 0.")
       setShowErrorToast(true)
@@ -1546,11 +1513,9 @@ export default function EditInventoryItemPage() {
       return
     }
 
-    console.log("🔵 Validando costo inicial...")
     // Validar costo inicial
     const initialCostValue = parseFloat(initialCost || "0")
     if (!initialCost || initialCost.trim() === "" || isNaN(initialCostValue) || initialCostValue < 0) {
-      console.error("❌ Validación falló: costo inicial inválido", { initialCost, initialCostValue })
       setInitialCostError(true)
       setErrorMessage("El costo inicial es obligatorio y debe ser un número mayor o igual a 0.")
       setShowErrorToast(true)
@@ -1563,10 +1528,8 @@ export default function EditInventoryItemPage() {
       return
     }
 
-    console.log("🔵 Validando bodega principal...")
     // Validar bodega principal
     if (!selectedBodegaId || selectedBodegaId.trim() === "") {
-      console.error("❌ Validación falló: bodega principal no seleccionada")
       setBodegaPrincipalError(true)
       setErrorMessage("Debes seleccionar una bodega principal para el producto.")
       setShowErrorToast(true)
@@ -1579,10 +1542,8 @@ export default function EditInventoryItemPage() {
       return
     }
 
-    console.log("🔵 Validando cantidad inicial de bodega principal...")
     // Validar cantidad inicial de bodega principal
     if (quantity && (quantity.includes(".") || quantity.includes(","))) {
-      console.error("❌ Validación falló: cantidad tiene decimales", { quantity })
       setQuantityError(true)
       setErrorMessage("La cantidad inicial debe ser un número entero (sin decimales).")
       setShowErrorToast(true)
@@ -1596,7 +1557,6 @@ export default function EditInventoryItemPage() {
     }
     const quantityValue = parseInt(quantity || "0")
     if (!quantity || quantity.trim() === "" || isNaN(quantityValue) || quantityValue < 0) {
-      console.error("❌ Validación falló: cantidad inicial inválida", { quantity, quantityValue })
       setQuantityError(true)
       setErrorMessage("La cantidad inicial es obligatoria y debe ser un número entero mayor o igual a 0.")
       setShowErrorToast(true)
@@ -1608,7 +1568,6 @@ export default function EditInventoryItemPage() {
       })
       return
     }
-    console.log("🔵 Cantidad inicial válida:", quantityValue)
 
     // Validar que cantidad mínima y máxima sean enteros si están definidas
     if (quantityMin && (quantityMin.includes(".") || quantityMin.includes(","))) {
@@ -1695,12 +1654,8 @@ export default function EditInventoryItemPage() {
       return
     }
 
-    console.log("🔵 Validando campos extra requeridos...")
     // Validar campos extra requeridos
     const camposExtraRequeridos = extraFields.filter(field => field.isRequired && field.isActive)
-    console.log("🔵 camposExtraRequeridos:", camposExtraRequeridos.map(f => ({ name: f.name, id: f.id })))
-    console.log("🔵 selectedExtraFields:", selectedExtraFields)
-    console.log("🔵 extraFieldValues:", extraFieldValues)
     
     const missingRequiredFields: string[] = []
     
@@ -1711,21 +1666,16 @@ export default function EditInventoryItemPage() {
       const defaultValue = field.defaultValue || ""
       const finalValue = userValue || defaultValue
       
-      console.log(`🔵 Campo requerido "${field.name}" (${field.id}): userValue="${userValue}", defaultValue="${defaultValue}", finalValue="${finalValue}"`)
       
       // Validar que el campo tenga un valor final (no vacío)
       // Si el usuario borró el valor por defecto y no ingresó uno nuevo, debe fallar
       // Pero si hay defaultValue, lo usamos como fallback
       if (!finalValue || finalValue.trim() === "") {
-        console.log(`❌ Campo requerido "${field.name}" no tiene valor`)
         missingRequiredFields.push(field.name)
       }
     })
-    
-    console.log("🔵 missingRequiredFields:", missingRequiredFields)
 
     if (missingRequiredFields.length > 0) {
-      console.error("❌ Validación falló: campos extra requeridos incompletos", missingRequiredFields)
       setErrorMessage(`Los campos obligatorios deben tener un valor: ${missingRequiredFields.join(", ")}. Por favor, completa estos campos antes de guardar.`)
       setShowErrorToast(true)
       setTimeout(() => setShowErrorToast(false), 5000)
@@ -1737,7 +1687,6 @@ export default function EditInventoryItemPage() {
         return
       }
       
-    console.log("🔵 Validando campos extra opcionales seleccionados...")
     // Validar campos extra opcionales seleccionados
     // Si un campo opcional está seleccionado, también debe tener un valor
     const camposOpcionalesSeleccionados = extraFields.filter(field => 
@@ -1755,19 +1704,14 @@ export default function EditInventoryItemPage() {
       const defaultValue = field.defaultValue || ""
       const finalValue = userValue || defaultValue
       
-      console.log(`🔵 Campo opcional "${field.name}" (${field.id}): userValue="${userValue}", defaultValue="${defaultValue}", finalValue="${finalValue}"`)
       
       // Si el campo está seleccionado, debe tener un valor (no puede estar vacío)
       if (!finalValue || finalValue.trim() === "") {
-        console.log(`❌ Campo opcional seleccionado "${field.name}" no tiene valor`)
         missingOptionalFields.push(field.name)
       }
     })
 
-    console.log("🔵 missingOptionalFields:", missingOptionalFields)
-
     if (missingOptionalFields.length > 0) {
-      console.error("❌ Validación falló: campos opcionales seleccionados incompletos", missingOptionalFields)
       setErrorMessage(`Los campos opcionales seleccionados deben tener un valor: ${missingOptionalFields.join(", ")}. Por favor, completa estos campos o deselecciónalos.`)
       setShowErrorToast(true)
       setTimeout(() => setShowErrorToast(false), 5000)
@@ -1778,10 +1722,8 @@ export default function EditInventoryItemPage() {
       })
       return
     }
-    console.log("🔵 Todas las validaciones pasaron, procediendo a actualizar...")
 
     try {
-      console.log("🔵 Iniciando actualización del producto...")
       
       // Manejar imagen: subir nueva o eliminar si se quitó
       let finalImageUrl: string | undefined | null = null
@@ -1790,15 +1732,12 @@ export default function EditInventoryItemPage() {
         // Hay una nueva imagen para subir
         setIsUploadingImage(true)
         try {
-          console.log("🔵 Subiendo nueva imagen a Supabase...")
           finalImageUrl = await uploadProductImage(imageFile, id)
           setUploadedImageUrl(finalImageUrl)
           
           // Si había una imagen original diferente, eliminarla
           if (originalImageUrl && originalImageUrl !== finalImageUrl) {
-            console.log("🔵 Eliminando imagen anterior...")
             deleteProductImage(originalImageUrl).catch((error) => {
-              console.error("Error al eliminar imagen anterior:", error)
               // No es crítico, continuar
             })
           }
@@ -1808,7 +1747,6 @@ export default function EditInventoryItemPage() {
             description: "La imagen se ha subido exitosamente.",
           })
         } catch (error: any) {
-          console.error("Error al subir imagen:", error)
           setIsUploadingImage(false)
           toast({
             title: "❌ Error al subir imagen",
@@ -1821,13 +1759,11 @@ export default function EditInventoryItemPage() {
         }
       } else if (imagePreview === null && originalImageUrl) {
         // Se eliminó la imagen (imagePreview es null pero había una original)
-        console.log("🔵 Eliminando imagen del producto...")
         try {
           await deleteProductImage(originalImageUrl)
           finalImageUrl = null
           setUploadedImageUrl(null)
         } catch (error) {
-          console.error("Error al eliminar imagen:", error)
           // Continuar aunque falle la eliminación
         }
       } else {
@@ -1840,7 +1776,6 @@ export default function EditInventoryItemPage() {
 
       // Mapear a DTO del backend
       // Incluir bodegaPrincipalId si cambió la bodega principal
-      console.log("🔵 Mapeando datos a DTO...")
       const updateDto = mapProductToUpdateDto({
         name,
         sku: code,
@@ -1854,16 +1789,13 @@ export default function EditInventoryItemPage() {
         imageUrl: finalImageUrl === null ? undefined : finalImageUrl || undefined,
         bodegaPrincipalId: selectedBodegaId, // Incluir la bodega principal seleccionada
       })
-      console.log("🔵 DTO creado:", updateDto)
       
       // Iniciar la petición principal y navegar inmediatamente (optimistic navigation)
       // El hook maneja optimistic updates automáticamente
-      console.log("🔵 Iniciando actualización en background...")
       const updatePromise = updateMutation.mutateAsync({ id, data: updateDto })
 
       // Navegar inmediatamente sin esperar (optimistic navigation)
       // Pasar parámetro en URL para mostrar toast de éxito en la página destino
-      console.log("🔵 Navegando optimísticamente... createAnother:", createAnother)
       if (createAnother) {
         router.replace(`/inventory/items/add?updated=true`)
       } else {
@@ -1873,10 +1805,7 @@ export default function EditInventoryItemPage() {
       // Continuar con bodega y campos extra en background usando .then() para que continúen aunque el componente se desmonte
       updatePromise
         .then((updateResponse) => {
-          console.log("✅ Producto actualizado exitosamente, continuando con bodega y campos extra...")
-          
           // Actualizar bodega principal con las cantidades
-          console.log("🔵 Verificando si necesita actualizar bodega principal...")
           const bodegaPrincipalActual = productoBodegas.find((b: ProductoBodegaBackend) => b.esPrincipal === true)
           const bodegaPrincipalIdActual = bodegaPrincipalActual?.bodegaId || bodegaPrincipalIdFromProduct || selectedBodegaId
           
@@ -1888,9 +1817,7 @@ export default function EditInventoryItemPage() {
                bodegaPrincipalActual.cantidadMaxima !== quantityMaxValue)
             : true
 
-          console.log("🔵 bodegaCambio:", bodegaCambio, "cantidadesCambiaron:", cantidadesCambiaron)
           if (bodegaCambio || cantidadesCambiaron) {
-            console.log("🔵 Actualizando bodega principal...")
             
             // Actualizar o agregar la bodega principal
             const bodegaExiste = productoBodegas.some((b: ProductoBodegaBackend) => b.bodegaId === selectedBodegaId)
@@ -1923,7 +1850,6 @@ export default function EditInventoryItemPage() {
         })
         .then(() => {
           // Actualizar campos extra del producto
-          console.log("🔵 Actualizando campos extra...")
           
           // Obtener campos extra actuales del backend
           const camposExtraActuales = productoCamposExtra.map((ce: ProductoCampoExtraBackend) => ce.campoExtraId)
@@ -1964,7 +1890,6 @@ export default function EditInventoryItemPage() {
           // Eliminar campos extra que ya no están seleccionados
           const deletePromises = camposParaEliminar.map(campoId =>
             productosService.deleteProductoCampoExtra(id, campoId).catch((error) => {
-              console.error(`❌ Error al eliminar campo extra ${campoId}:`, error)
             })
           )
 
@@ -1980,17 +1905,11 @@ export default function EditInventoryItemPage() {
         .then(() => {
           // Invalidar query de campos extra para actualizar la UI
           queryClient.invalidateQueries({ queryKey: productoKeys.camposExtra(id) })
-          console.log("✅ Campos extra actualizados exitosamente")
         })
         .catch((error) => {
-          console.error("❌ Error en background updates:", error)
           // Los errores ya se manejan en los hooks con toasts
         })
     } catch (error: any) {
-      console.error("Error al actualizar producto:", error)
-      console.error("Error completo:", JSON.stringify(error, null, 2))
-      console.error("Error response:", error?.response)
-      console.error("Error response data:", error?.response?.data)
       
       let errorMessage = "Ha ocurrido un error al intentar actualizar el producto. Por favor, verifica los datos e intenta nuevamente."
       
@@ -2951,7 +2870,6 @@ export default function EditInventoryItemPage() {
                     onClick={(e) => {
                       e.preventDefault()
                       e.stopPropagation()
-                      console.log("🔵 Botón Guardar clickeado")
                       doSubmit(false)
                     }}
                   >
@@ -2966,7 +2884,6 @@ export default function EditInventoryItemPage() {
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
-                    console.log("🔵 Botón Guardar y crear otro clickeado")
                     doSubmit(true)
                   }}
                 >
@@ -3117,7 +3034,6 @@ export default function EditInventoryItemPage() {
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
-                  console.log("🔵 Botón Guardar bodega clickeado")
                   saveWarehouseEntry()
                 }}
                 disabled={isSavingBodega || addBodegaMutation.isPending || updateBodegaMutation.isPending}

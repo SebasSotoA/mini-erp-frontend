@@ -27,8 +27,10 @@ export function useVendedores(soloActivos?: boolean) {
     queryKey: vendedoresKeys.list(soloActivos),
     queryFn: async () => {
       const response = await vendedoresService.getVendedores(soloActivos)
-      return response.data
+      return response.data || []
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
   })
 }
 
@@ -40,8 +42,10 @@ export function useVendedoresActive() {
     queryKey: vendedoresKeys.list(true),
     queryFn: async () => {
       const response = await vendedoresService.getVendedores(true)
-      return response.data
+      return response.data || []
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
   })
 }
 

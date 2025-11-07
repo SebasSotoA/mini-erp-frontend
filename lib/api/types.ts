@@ -469,3 +469,101 @@ export interface CreateFacturaVentaDto {
   items: CreateFacturaVentaItemDto[]
 }
 
+/**
+ * Tipos para Dashboard y Analytics
+ */
+
+/**
+ * Métricas principales del dashboard
+ */
+export interface DashboardMetricsDto {
+  totalProductos: number
+  totalBodegas: number
+  ventasDelMes: number
+  comprasDelMes: number
+  productosStockBajo: number
+  valorTotalInventario: number
+  margenBruto: number
+  porcentajeMargen: number
+}
+
+/**
+ * Top producto más vendido
+ */
+export interface TopProductoVendidoDto {
+  productoId: string
+  productoNombre: string
+  productoSku: string
+  cantidadVendida: number
+  valorTotal: number
+}
+
+/**
+ * Tendencia de ventas por día
+ */
+export interface TendenciaVentaDto {
+  fecha: string
+  totalVentas: number
+  cantidadFacturas: number
+}
+
+/**
+ * Distribución de inventario por categoría
+ */
+export interface DistribucionCategoriaDto {
+  categoriaId: string | null
+  categoriaNombre: string
+  cantidadProductos: number
+  stockTotal: number
+  valorTotal: number
+}
+
+/**
+ * Movimiento de stock (entradas vs salidas)
+ */
+export interface MovimientoStockDto {
+  fecha: string
+  entradas: number
+  salidas: number
+  neto: number
+}
+
+/**
+ * Stock por bodega
+ */
+export interface StockPorBodegaDto {
+  bodegaId: string
+  bodegaNombre: string
+  cantidadProductos: number
+  stockTotal: number
+  valorTotal: number
+}
+
+/**
+ * Salud del stock
+ */
+export interface SaludStockDto {
+  productosStockOptimo: number
+  productosStockBajo: number
+  productosStockAlto: number
+  productosAgotados: number
+  totalProductos: number
+  porcentajeStockOptimo: number
+  porcentajeStockBajo: number
+  porcentajeStockAlto: number
+  porcentajeAgotados: number
+}
+
+/**
+ * Producto con stock bajo
+ */
+export interface ProductoStockBajoDto {
+  productoId: string
+  productoNombre: string
+  productoSku: string
+  stockActual: number
+  stockMinimo: number
+  diferencia: number
+  bodegaPrincipal: string
+}
+

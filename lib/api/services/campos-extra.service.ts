@@ -3,7 +3,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "../client"
-import type { ApiResponse, CampoExtraBackend, PaginatedResponse, CreateCampoExtraDto, UpdateCampoExtraDto, ProductosQueryParams, ProductoBackend } from "../types"
+import type { ApiResponse, CampoExtraBackend, PaginatedData, CreateCampoExtraDto, UpdateCampoExtraDto, ProductosQueryParams, ProductoBackend } from "../types"
 import { buildQueryString } from "../utils"
 
 /**
@@ -22,7 +22,7 @@ export const camposExtraService = {
     activo?: boolean
     orderBy?: string
     orderDesc?: boolean
-  }): Promise<PaginatedResponse<CampoExtraBackend>> {
+  }): Promise<ApiResponse<PaginatedData<CampoExtraBackend>>> {
     const queryParams: Record<string, any> = {
       page: params?.page || 1,
       pageSize: params?.pageSize || 20,
@@ -35,7 +35,7 @@ export const camposExtraService = {
     if (params?.orderDesc !== undefined) queryParams.orderDesc = params.orderDesc
 
     const queryString = buildQueryString(queryParams)
-    const response = await apiGet<PaginatedResponse<CampoExtraBackend>>(
+    const response = await apiGet<PaginatedData<CampoExtraBackend>>(
       `/campos-extra${queryString ? `?${queryString}` : ""}`,
     )
     return response
@@ -89,7 +89,7 @@ export const camposExtraService = {
   async getCampoExtraProductos(
     campoExtraId: string,
     params?: ProductosQueryParams,
-  ): Promise<PaginatedResponse<ProductoBackend>> {
+  ): Promise<ApiResponse<PaginatedData<ProductoBackend>>> {
     const queryParams: Record<string, any> = {}
     if (params?.page) queryParams.page = params.page
     if (params?.pageSize) queryParams.pageSize = params.pageSize
@@ -108,7 +108,7 @@ export const camposExtraService = {
     if (params?.orderDesc !== undefined) queryParams.orderDesc = params.orderDesc
 
     const queryString = buildQueryString(queryParams)
-    const response = await apiGet<PaginatedResponse<ProductoBackend>>(
+    const response = await apiGet<PaginatedData<ProductoBackend>>(
       `/campos-extra/${campoExtraId}/productos${queryString ? `?${queryString}` : ""}`,
     )
     return response

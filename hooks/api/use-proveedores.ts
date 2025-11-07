@@ -27,8 +27,10 @@ export function useProveedores(soloActivos?: boolean) {
     queryKey: proveedoresKeys.list(soloActivos),
     queryFn: async () => {
       const response = await proveedoresService.getProveedores(soloActivos)
-      return response.data
+      return response.data || []
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
   })
 }
 
@@ -40,8 +42,10 @@ export function useProveedoresActive() {
     queryKey: proveedoresKeys.list(true),
     queryFn: async () => {
       const response = await proveedoresService.getProveedores(true)
-      return response.data
+      return response.data || []
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
   })
 }
 

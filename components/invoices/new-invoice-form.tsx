@@ -74,6 +74,15 @@ const purchaseInvoiceSchema = createInvoiceSchema(
 type SalesInvoiceFormSchema = z.infer<typeof salesInvoiceSchema>
 type PurchaseInvoiceFormSchema = z.infer<typeof purchaseInvoiceSchema>
 
+type FormDataBase = {
+  warehouseId: string
+  supplierId?: string
+  salespersonId?: string
+  date: string
+  observations: string
+  items: any[]
+}
+
 interface NewInvoiceFormProps<T extends InvoiceItem> {
   title: string
   description: string
@@ -91,7 +100,7 @@ interface NewInvoiceFormProps<T extends InvoiceItem> {
   onSubmit: (data: any) => void
   onBack: () => void
   entityConfig: {
-    entityField: keyof typeof formData
+    entityField: keyof FormDataBase
     entityLabel: string
     entities: Array<{ id: string; name: string; identification?: string }>
     newEntityModal: React.ReactNode
@@ -234,7 +243,7 @@ export function NewInvoiceForm<T extends InvoiceItem>({
                   {entityConfig.entityLabel} *
                 </Label>
                 <div className="flex items-center gap-2">
-                  <Select value={formData[entityConfig.entityField] || ""} onValueChange={(value) => {
+                  <Select value={(formData[entityConfig.entityField] as string) || ""} onValueChange={(value) => {
                     if (value === "new-entity") {
                       // Abrir modal de nueva entidad
                     } else {

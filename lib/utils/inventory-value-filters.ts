@@ -8,38 +8,32 @@ import {
 
 // Función para evaluar filtros de búsqueda
 export const evaluateSearchFilter: FilterFunction = (product, filters) => {
-  if (!filters.search) return true
+  if (!filters.q) return true
 
-  const searchTerm = filters.search.toLowerCase()
+  const searchTerm = filters.q.toLowerCase()
   return (
-    product.name.toLowerCase().includes(searchTerm) ||
-    product.sku.toLowerCase().includes(searchTerm) ||
-    (!!product.description && product.description.toLowerCase().includes(searchTerm))
+    product.nombre.toLowerCase().includes(searchTerm) ||
+    product.codigoSku.toLowerCase().includes(searchTerm)
   )
 }
 
 // Función para evaluar filtro de bodega
 export const evaluateWarehouseFilter: FilterFunction = (product, filters) => {
-  if (!filters.warehouse || filters.warehouse === "all") return true
-  return product.warehouseId === filters.warehouse
+  if (!filters.bodegaIds || filters.bodegaIds.length === 0) return true
+  return filters.bodegaIds.includes(product.bodega)
 }
 
 // Función para evaluar filtro de categoría
 export const evaluateCategoryFilter: FilterFunction = (product, filters) => {
-  if (!filters.category || filters.category === "all") return true
-  return product.category === filters.category
+  if (!filters.categoriaIds || filters.categoriaIds.length === 0) return true
+  return filters.categoriaIds.includes(product.categoria)
 }
 
 // Función para evaluar filtro de estado
 export const evaluateStatusFilter: FilterFunction = (product, filters) => {
-  if (!filters.status || filters.status === "all") return true
-  return filters.status === "active" ? (product.isActive ?? true) : !(product.isActive ?? true)
-}
-
-// Función para evaluar filtro de fecha (hasta)
-export const evaluateDateFilter: FilterFunction = (product, filters) => {
-  if (!filters.dateUntil) return true
-  // Por ahora retornamos true, en el futuro se podría filtrar por fecha de creación o modificación
+  if (!filters.estado || filters.estado === "todos") return true
+  // Nota: El tipo InventoryValueProduct no tiene campo isActive, 
+  // este filtro se maneja en el backend, pero mantenemos la función por compatibilidad
   return true
 }
 
@@ -53,7 +47,6 @@ export const filterProducts = (
     evaluateWarehouseFilter,
     evaluateCategoryFilter,
     evaluateStatusFilter,
-    evaluateDateFilter,
   ]
 
   return products.filter((product) => filterFunctions.every((filterFn) => filterFn(product, filters)))
@@ -67,20 +60,20 @@ export const sortProducts = (products: InventoryValueProduct[], config: SortConf
 
     switch (config.field) {
       case "name":
-        aValue = a.name.toLowerCase()
-        bValue = b.name.toLowerCase()
+        aValue = a.nombre.toLowerCase()
+        bValue = b.nombre.toLowerCase()
         break
       case "sku":
-        aValue = a.sku.toLowerCase()
-        bValue = b.sku.toLowerCase()
+        aValue = a.codigoSku.toLowerCase()
+        bValue = b.codigoSku.toLowerCase()
         break
       case "stock":
-        aValue = a.stock
-        bValue = b.stock
+        aValue = a.cantidad
+        bValue = b.cantidad
         break
       case "total":
-        aValue = a.total
-        bValue = b.total
+        aValue = a.valorTotal
+        bValue = b.valorTotal
         break
       default:
         return 0
@@ -106,16 +99,16 @@ export const applyFiltersAndSort = (
 export const calculateInventoryMetrics = (products: InventoryValueProduct[], filters: InventoryValueFilters) => {
   const filteredProducts = filterProducts(products, filters)
 
-  const totalValue = filteredProducts.reduce((sum, product) => sum + product.total, 0)
-  const totalStock = filteredProducts.reduce((sum, product) => sum + product.stock, 0)
-  const totalCost = filteredProducts.reduce((sum, product) => sum + product.cost * product.stock, 0)
+  const totalValue = filteredProducts.reduce((sum, product) => sum + product.valorTotal, 0)
+  const totalStock = filteredProducts.reduce((sum, product) => sum + product.cantidad, 0)
+  const totalCost = filteredProducts.reduce((sum, product) => sum + product.costoUnitario * product.cantidad, 0)
 
   // Calcular distribución por bodega
   const warehouseMap = new Map<string, number>()
   filteredProducts.forEach((product) => {
-    const warehouse = product.warehouseId || "Sin bodega"
+    const warehouse = product.bodega || "Sin bodega"
     const current = warehouseMap.get(warehouse) || 0
-    warehouseMap.set(warehouse, current + product.total)
+    warehouseMap.set(warehouse, current + product.valorTotal)
   })
 
   const warehouseDistribution = Array.from(warehouseMap.entries()).map(([warehouse, value]) => ({

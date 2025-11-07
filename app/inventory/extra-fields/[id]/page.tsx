@@ -1083,7 +1083,7 @@ export default function ExtraFieldDetailsPage() {
               <X className="h-4 w-4" />
             </Button>
           </div>
-        </div>
+          </div>
       )}
 
       {/* Toast de éxito personalizado */}

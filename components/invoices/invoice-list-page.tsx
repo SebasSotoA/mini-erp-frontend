@@ -72,7 +72,7 @@ export function InvoiceListPage<T extends { id: string }>({
     search: "",
     dropdown: "",
     status: "",
-    dateFrom: "",
+    date: "",
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(10)
@@ -138,13 +138,13 @@ export function InvoiceListPage<T extends { id: string }>({
       search: "",
       dropdown: "",
       status: "",
-      dateFrom: "",
+      date: "",
     })
     setCurrentPage(1)
   }
 
   const handleCancelInvoice = (id: string) => {
-    updateInvoice(id, { status: "cancelled" } as Partial<T>)
+    updateInvoice(id, { status: "cancelled" } as unknown as Partial<T>)
     toast({
       title: "Factura anulada",
       description: "La factura se ha anulado correctamente.",

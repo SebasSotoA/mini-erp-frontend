@@ -86,16 +86,15 @@ export default function StockMovementsHistory() {
     }
   }
 
-  // Mapear ordenamiento del frontend al backend
-  const orderByMap: Record<string, "fecha" | "cantidad" | "tipoMovimiento" | "productoNombre" | "bodegaNombre"> = {
-    date: "fecha",
-    productName: "productoNombre",
-    quantity: "cantidad",
-    type: "tipoMovimiento",
-  }
-
   // Construir parámetros para la API
   const apiParams = useMemo<MovimientosQueryParams>(() => {
+    // Mapear ordenamiento del frontend al backend
+    const orderByMap: Record<string, "fecha" | "cantidad" | "tipoMovimiento" | "productoNombre" | "bodegaNombre"> = {
+      date: "fecha",
+      productName: "productoNombre",
+      quantity: "cantidad",
+      type: "tipoMovimiento",
+    }
     const params: MovimientosQueryParams = {
       page: currentPage,
       pageSize: itemsPerPage,

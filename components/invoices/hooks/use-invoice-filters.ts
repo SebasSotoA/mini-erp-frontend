@@ -11,9 +11,9 @@ export function useSalesInvoiceFilters(invoices: SalesInvoice[], filters: Invoic
       const matchesSalesperson = !filters.dropdown || filters.dropdown === "all" || invoice.salespersonId === filters.dropdown
       const matchesStatus = !filters.status || filters.status === "all" || invoice.status === filters.status
       
-      const matchesDateFrom = !filters.dateFrom || new Date(invoice.date) >= new Date(filters.dateFrom)
+      const matchesDate = !filters.date || new Date(invoice.date) >= new Date(filters.date)
 
-      return matchesClientSearch && matchesSalesperson && matchesStatus && matchesDateFrom
+      return matchesClientSearch && matchesSalesperson && matchesStatus && matchesDate
     })
   }, [invoices, filters])
 }
@@ -27,9 +27,9 @@ export function usePurchaseInvoiceFilters(invoices: PurchaseInvoice[], filters: 
       const matchesWarehouse = !filters.dropdown || filters.dropdown === "all" || invoice.warehouseId === filters.dropdown
       const matchesStatus = !filters.status || filters.status === "all" || invoice.status === filters.status
       
-      const matchesDateFrom = !filters.dateFrom || new Date(invoice.date) >= new Date(filters.dateFrom)
+      const matchesDate = !filters.date || new Date(invoice.date) >= new Date(filters.date)
 
-      return matchesSupplierSearch && matchesWarehouse && matchesStatus && matchesDateFrom
+      return matchesSupplierSearch && matchesWarehouse && matchesStatus && matchesDate
     })
   }, [invoices, filters])
 }

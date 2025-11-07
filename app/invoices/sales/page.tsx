@@ -78,7 +78,6 @@ export default function SalesInvoices() {
   // Obtener bodegas y vendedores para los filtros
   const { data: warehouses = [] } = useBodegasActive(true)
   const { data: salespersonsData } = useVendedoresActive()
-  const salespersons = Array.isArray(salespersonsData) ? salespersonsData : []
   
   // Estado local de filtros
   const [showFilters, setShowFilters] = useState(false)
@@ -172,6 +171,7 @@ export default function SalesInvoices() {
   
   // Configuración de filtros dinámica con bodegas y vendedores reales
   const filterConfig = useMemo(() => {
+    const salespersons = Array.isArray(salespersonsData) ? salespersonsData : []
     const warehouseOptions = warehouses.map((warehouse) => ({
       value: warehouse.id,
       label: warehouse.nombre,
@@ -193,7 +193,7 @@ export default function SalesInvoices() {
         ...salespersonOptions,
       ],
     }
-  }, [warehouses, salespersons])
+  }, [warehouses, salespersonsData])
 
   // Verificar si viene de una creación exitosa
   useEffect(() => {

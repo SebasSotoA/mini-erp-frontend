@@ -44,6 +44,7 @@ import { useCategoria, useUpdateCategoria, useActivateCategoria, useDeactivateCa
 import { useActivateProducto, useDeactivateProducto, useDeleteProducto } from "@/hooks/api/use-productos"
 import { ItemFilters, SortField, SortDirection } from "@/lib/types/items"
 import type { ProductosQueryParams, CategoriaBackend } from "@/lib/api/types"
+import type { Product } from "@/contexts/inventory-context"
 import { mapFiltersToQueryParams } from "@/lib/api/utils"
 import { uploadCategoryImage, deleteCategoryImage, moveImageToCategoryFolder } from "@/lib/storage/supabase-client"
 import { Input } from "@/components/ui/input"
@@ -138,9 +139,9 @@ export default function CategoryDetailsPage() {
   const clearSelection = () => setSelectedIds(new Set())
 
   // Lógica para determinar el estado de los botones de acciones masivas
-  const selectedProducts = categoryProducts.filter((p) => selectedIds.has(p.id))
-  const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p) => p.isActive ?? true)
-  const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p) => !(p.isActive ?? true))
+  const selectedProducts = categoryProducts.filter((p: Product) => selectedIds.has(p.id))
+  const allSelectedActive = selectedProducts.length > 0 && selectedProducts.every((p: Product) => p.isActive ?? true)
+  const allSelectedInactive = selectedProducts.length > 0 && selectedProducts.every((p: Product) => !(p.isActive ?? true))
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -179,16 +180,16 @@ export default function CategoryDetailsPage() {
   const totalPages = productosData?.totalPages || 0
   const currentProducts = categoryProducts
   const allCurrentSelected = useMemo(
-    () => currentProducts.length > 0 && currentProducts.every((p) => selectedIds.has(p.id)),
+    () => currentProducts.length > 0 && currentProducts.every((p: Product) => selectedIds.has(p.id)),
     [currentProducts, selectedIds],
   )
   const toggleSelectAllCurrent = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (allCurrentSelected) {
-        currentProducts.forEach((p) => next.delete(p.id))
+        currentProducts.forEach((p: Product) => next.delete(p.id))
       } else {
-        currentProducts.forEach((p) => next.add(p.id))
+        currentProducts.forEach((p: Product) => next.add(p.id))
       }
       return next
     })
@@ -985,7 +986,7 @@ export default function CategoryDetailsPage() {
                     </TableCell>
                   </TableRow>
                 ) : currentProducts.length > 0 ? (
-                  currentProducts.map((product) => (
+                  currentProducts.map((product: Product) => (
                     <TableRow
                       key={product.id}
                       className="border-camouflage-green-100 transition-colors hover:bg-camouflage-green-50/50"

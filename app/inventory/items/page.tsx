@@ -87,7 +87,7 @@ export default function SalesItems() {
   // Obtener productos desde la API
   const { data, isLoading, isFetching, error } = useProductos(queryParams)
 
-  const products = data?.items || []
+  const products = useMemo(() => data?.items || [], [data?.items])
   const pagination: PaginationConfig = useMemo(() => {
     if (!data) {
       return {
@@ -498,11 +498,7 @@ export default function SalesItems() {
                     <div className="pl-3">
                       <Checkbox
                         checked={allCurrentSelected}
-                        onCheckedChange={(checked) => {
-                          console.log("Select all checkbox changed:", {
-                            checked,
-                            currentProducts: products.map((p) => ({ id: p.id, name: p.name })),
-                          })
+                        onCheckedChange={() => {
                           toggleSelectAllCurrent()
                         }}
                         aria-label="Seleccionar todos"
@@ -634,7 +630,6 @@ export default function SalesItems() {
                         <Checkbox
                           checked={isSelected(product.id)}
                           onCheckedChange={() => {
-                            console.log("Individual checkbox clicked for product:", product.name, "ID:", product.id)
                             toggleSelect(product.id)
                           }}
                           aria-label={`Seleccionar ${product.name}`}

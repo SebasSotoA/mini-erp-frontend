@@ -3,7 +3,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "../client"
-import type { ApiResponse, BodegaBackend, PaginatedResponse, CreateBodegaDto, UpdateBodegaDto, ProductoBackend } from "../types"
+import type { ApiResponse, BodegaBackend, PaginatedData, CreateBodegaDto, UpdateBodegaDto, ProductoBackend } from "../types"
 import { buildQueryString } from "../utils"
 
 /**
@@ -20,7 +20,7 @@ export const bodegasService = {
     activo?: boolean
     orderBy?: string
     orderDesc?: boolean
-  }): Promise<PaginatedResponse<BodegaBackend>> {
+  }): Promise<ApiResponse<PaginatedData<BodegaBackend>>> {
     const queryParams: Record<string, any> = {
       page: params?.page || 1,
       pageSize: params?.pageSize || 20,
@@ -31,7 +31,7 @@ export const bodegasService = {
     if (params?.orderDesc !== undefined) queryParams.orderDesc = params.orderDesc
 
     const queryString = buildQueryString(queryParams)
-    const response = await apiGet<PaginatedResponse<BodegaBackend>>(
+    const response = await apiGet<PaginatedData<BodegaBackend>>(
       `/bodegas${queryString ? `?${queryString}` : ""}`,
     )
     return response
@@ -101,7 +101,7 @@ export const bodegasService = {
       orderBy?: string
       orderDesc?: boolean
     },
-  ): Promise<PaginatedResponse<ProductoBackend>> {
+  ): Promise<ApiResponse<PaginatedData<ProductoBackend>>> {
     const queryParams: Record<string, any> = {}
     if (params?.page) queryParams.page = params.page
     if (params?.pageSize) queryParams.pageSize = params.pageSize
@@ -120,7 +120,7 @@ export const bodegasService = {
     if (params?.orderDesc !== undefined) queryParams.orderDesc = params.orderDesc
 
     const queryString = buildQueryString(queryParams)
-    const response = await apiGet<PaginatedResponse<ProductoBackend>>(
+    const response = await apiGet<PaginatedData<ProductoBackend>>(
       `/bodegas/${bodegaId}/productos${queryString ? `?${queryString}` : ""}`,
     )
     return response

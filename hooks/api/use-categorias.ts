@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { categoriasService } from "@/lib/api/services/categorias.service"
-import type { CategoriaBackend, CreateCategoriaDto, UpdateCategoriaDto, ProductosQueryParams } from "@/lib/api/types"
+import type { CategoriaBackend, CreateCategoriaDto, UpdateCategoriaDto, ProductosQueryParams, ProductoBackend } from "@/lib/api/types"
 import { useToast } from "@/hooks/use-toast"
 import { NetworkError, ApiError } from "@/lib/api/errors"
 import { mapProductoToProduct } from "@/lib/api/services/productos.service"
@@ -38,13 +38,13 @@ export function useCategorias(params?: {
     queryFn: async () => {
       const response = await categoriasService.getCategorias(params)
       return {
-        items: response.data.items,
-        page: response.data.page,
-        pageSize: response.data.pageSize,
-        totalCount: response.data.totalCount,
-        totalPages: response.data.totalPages,
-        hasPreviousPage: response.data.hasPreviousPage,
-        hasNextPage: response.data.hasNextPage,
+        items: response.data?.items || [],
+        page: response.data?.page || 1,
+        pageSize: response.data?.pageSize || 20,
+        totalCount: response.data?.totalCount || 0,
+        totalPages: response.data?.totalPages || 0,
+        hasPreviousPage: response.data?.hasPreviousPage || false,
+        hasNextPage: response.data?.hasNextPage || false,
       }
     },
   })
@@ -55,14 +55,16 @@ export function useCategorias(params?: {
  */
 export function useCategoriasActive(onlyActive: boolean = true) {
   return useQuery({
-    queryKey: categoriasKeys.list({ activas: onlyActive }),
+    queryKey: categoriasKeys.list({ activo: onlyActive ? true : undefined }),
     queryFn: async () => {
       const response = await categoriasService.getCategorias({
         activo: onlyActive ? true : undefined,
         pageSize: 100,
       })
-      return response.data.items
+      return response.data?.items || []
     },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnMount: true,
   })
 }
 
@@ -302,7 +304,7 @@ export function useCategoriaProductos(categoriaId: string | undefined, params?: 
       if (!categoriaId) throw new Error("Categoria ID is required")
       const response = await categoriasService.getCategoriaProductos(categoriaId, params)
       return {
-        items: response.data.items.map((producto) => {
+        items: (response.data?.items || []).map((producto: ProductoBackend) => {
           // Mapear usando cantidad específica de la categoría si está disponible
           const mapped = mapProductoToProduct(producto)
           // Si viene cantidadEnCategoria (cantidad específica en esta categoría), usarla en lugar de stockActual
@@ -312,12 +314,12 @@ export function useCategoriaProductos(categoriaId: string | undefined, params?: 
           }
           return mapped
         }),
-        page: response.data.page,
-        pageSize: response.data.pageSize,
-        totalCount: response.data.totalCount,
-        totalPages: response.data.totalPages,
-        hasPreviousPage: response.data.hasPreviousPage,
-        hasNextPage: response.data.hasNextPage,
+        page: response.data?.page || 1,
+        pageSize: response.data?.pageSize || 20,
+        totalCount: response.data?.totalCount || 0,
+        totalPages: response.data?.totalPages || 0,
+        hasPreviousPage: response.data?.hasPreviousPage || false,
+        hasNextPage: response.data?.hasNextPage || false,
       }
     },
     enabled: !!categoriaId,

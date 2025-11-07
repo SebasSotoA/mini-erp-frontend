@@ -3,7 +3,7 @@
  */
 
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "../client"
-import type { ApiResponse, CategoriaBackend, PaginatedResponse, CreateCategoriaDto, UpdateCategoriaDto, ProductoBackend, ProductosQueryParams } from "../types"
+import type { ApiResponse, CategoriaBackend, PaginatedData, CreateCategoriaDto, UpdateCategoriaDto, ProductoBackend, ProductosQueryParams } from "../types"
 import { buildQueryString } from "../utils"
 
 /**
@@ -20,7 +20,7 @@ export const categoriasService = {
     activo?: boolean
     orderBy?: string
     orderDesc?: boolean
-  }): Promise<PaginatedResponse<CategoriaBackend>> {
+  }): Promise<ApiResponse<PaginatedData<CategoriaBackend>>> {
     const queryParams: Record<string, any> = {
       page: params?.page || 1,
       pageSize: params?.pageSize || 20,
@@ -31,7 +31,7 @@ export const categoriasService = {
     if (params?.orderDesc !== undefined) queryParams.orderDesc = params.orderDesc
 
     const queryString = buildQueryString(queryParams)
-    const response = await apiGet<PaginatedResponse<CategoriaBackend>>(
+    const response = await apiGet<PaginatedData<CategoriaBackend>>(
       `/categorias${queryString ? `?${queryString}` : ""}`,
     )
     return response
@@ -85,7 +85,7 @@ export const categoriasService = {
   async getCategoriaProductos(
     categoriaId: string,
     params?: ProductosQueryParams,
-  ): Promise<PaginatedResponse<ProductoBackend>> {
+  ): Promise<ApiResponse<PaginatedData<ProductoBackend>>> {
     const queryParams: Record<string, any> = {}
     if (params?.page) queryParams.page = params.page
     if (params?.pageSize) queryParams.pageSize = params.pageSize
@@ -104,7 +104,7 @@ export const categoriasService = {
     if (params?.orderDesc !== undefined) queryParams.orderDesc = params.orderDesc
 
     const queryString = buildQueryString(queryParams)
-    const response = await apiGet<PaginatedResponse<ProductoBackend>>(
+    const response = await apiGet<PaginatedData<ProductoBackend>>(
       `/categorias/${categoriaId}/productos${queryString ? `?${queryString}` : ""}`,
     )
     return response

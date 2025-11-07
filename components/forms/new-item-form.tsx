@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { RequiredFieldsWarning } from "./required-fields-warning"
 import { useCreateProducto } from "@/hooks/api/use-productos"
 import { mapProductToCreateDto } from "@/lib/api/services/productos.service"
-import { useCategorias } from "@/hooks/api/use-categorias"
+import { useCategoriasActive } from "@/hooks/api/use-categorias"
 import { useBodegasActive } from "@/hooks/api/use-bodegas"
 import { useCamposExtraRequeridos } from "@/hooks/api/use-campos-extra"
 
@@ -29,7 +29,7 @@ type ItemType = "product"
 
 export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
   const createMutation = useCreateProducto()
-  const { data: categorias = [], isLoading: isLoadingCategorias } = useCategorias(true)
+  const { data: categorias = [], isLoading: isLoadingCategorias } = useCategoriasActive(true)
   const { data: bodegas = [], isLoading: isLoadingBodegas } = useBodegasActive(true)
   const { data: requiredFields = [], isLoading: isLoadingCamposExtra } = useCamposExtraRequeridos()
   const itemType: ItemType = "product"

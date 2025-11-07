@@ -79,7 +79,6 @@ export default function PurchaseInvoices() {
   // Obtener bodegas y proveedores para los filtros
   const { data: warehouses = [] } = useBodegasActive(true)
   const { data: suppliersData } = useProveedoresActive()
-  const suppliers = Array.isArray(suppliersData) ? suppliersData : []
   
   // Estado local de filtros
   const [showFilters, setShowFilters] = useState(false)
@@ -171,6 +170,7 @@ export default function PurchaseInvoices() {
   
   // Configuración de filtros dinámica con bodegas y proveedores reales
   const filterConfig = useMemo(() => {
+    const suppliers = Array.isArray(suppliersData) ? suppliersData : []
     const warehouseOptions = warehouses.map((warehouse) => ({
       value: warehouse.id,
       label: warehouse.nombre,
@@ -192,7 +192,7 @@ export default function PurchaseInvoices() {
         ...supplierOptions,
       ],
     }
-  }, [warehouses, suppliers])
+  }, [warehouses, suppliersData])
 
   // Verificar si viene de una creación exitosa
   useEffect(() => {

@@ -3,7 +3,7 @@
  */
 
 import { apiGet, apiPost, apiDelete } from "../client"
-import type { ApiResponse, FacturaVentaBackend, CreateFacturaVentaDto, PaginatedResponse } from "../types"
+import type { ApiResponse, FacturaVentaBackend, CreateFacturaVentaDto, PaginatedData } from "../types"
 import { buildQueryString } from "../utils"
 
 /**
@@ -28,7 +28,7 @@ export const facturasVentaService = {
     fechaHasta?: string
     orderBy?: "numero" | "vendedor" | "bodega" | "fecha" | "estado" | "total" | "formaPago"
     orderDesc?: boolean
-  }): Promise<PaginatedResponse<FacturaVentaBackend>> {
+  }): Promise<ApiResponse<PaginatedData<FacturaVentaBackend>>> {
     const queryParams: Record<string, any> = {
       page: params?.page || 1,
       pageSize: params?.pageSize || 20,
@@ -47,7 +47,7 @@ export const facturasVentaService = {
     if (params?.orderDesc !== undefined) queryParams.orderDesc = params.orderDesc
 
     const queryString = buildQueryString(queryParams)
-    const response = await apiGet<PaginatedResponse<FacturaVentaBackend>>(
+    const response = await apiGet<PaginatedData<FacturaVentaBackend>>(
       `/facturas-venta${queryString ? `?${queryString}` : ""}`,
     )
     return response

@@ -37,7 +37,6 @@ const navigation = [
 const inventoryNavigation = [
   { name: "Items de venta", href: "/inventory/items", icon: ShoppingCart },
   { name: "Valor de Inventario", href: "/inventory/value", icon: DollarSign },
-  { name: "Gestión de Items", href: "/inventory/management", icon: Package },
   { name: "Bodegas", href: "/inventory/warehouses", icon: Warehouse },
   { name: "Categorías", href: "/inventory/categories", icon: Tags },
   { name: "Campos Extra", href: "/inventory/extra-fields", icon: Layers },

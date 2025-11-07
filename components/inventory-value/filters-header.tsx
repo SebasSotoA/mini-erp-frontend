@@ -19,11 +19,10 @@ interface FiltersHeaderProps {
 
 // Valores por defecto para los filtros
 const DEFAULT_FILTERS: InventoryValueFilters = {
-  search: "",
-  warehouse: "all",
-  dateUntil: null,
-  category: "all",
-  status: "all",
+  q: "",
+  bodegaIds: [],
+  categoriaIds: [],
+  estado: "todos",
 }
 
 export function FiltersHeader({
@@ -60,11 +59,10 @@ export function FiltersHeader({
   // Contar filtros activos para mostrar en el botón
   const activeFiltersCount = useMemo(() => {
     let count = 0
-    if (filters.search) count++
-    if (filters.warehouse && filters.warehouse !== "all") count++
-    if (filters.dateUntil) count++
-    if (filters.category && filters.category !== "all") count++
-    if (filters.status && filters.status !== "all") count++
+    if (filters.q) count++
+    if (filters.bodegaIds && filters.bodegaIds.length > 0) count++
+    if (filters.categoriaIds && filters.categoriaIds.length > 0) count++
+    if (filters.estado && filters.estado !== "todos") count++
     return count
   }, [filters])
 
@@ -74,23 +72,12 @@ export function FiltersHeader({
       <div className="flex flex-col items-stretch justify-between gap-4 xl:flex-row xl:items-center">
         {/* Filtros principales */}
         <div className="flex min-h-[40px] flex-1 flex-col gap-3 sm:flex-row">
-          {/* Selector de fecha */}
-          <div className="flex h-10 items-center gap-2">
-            <input
-              type="date"
-              value={filters.dateUntil ? new Date(filters.dateUntil).toISOString().split('T')[0] : ""}
-              onChange={(e) => handleFilterChange("dateUntil", e.target.value ? new Date(e.target.value).toISOString() : null)}
-              className="h-10 w-full rounded-lg border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 sm:w-[180px] disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            />
-          </div>
-
           {/* Selector de bodega */}
           <div className="flex h-10 items-center gap-2">
             <Warehouse className="h-4 w-4 flex-shrink-0 text-camouflage-green-600" />
             <Select
-              value={filters.warehouse}
-              onValueChange={(value) => handleFilterChange("warehouse", value)}
+              value={filters.bodegaIds.length > 0 ? filters.bodegaIds[0] : "all"}
+              onValueChange={(value) => handleFilterChange("bodegaIds", value === "all" ? [] : [value])}
               disabled={isLoading}
             >
               <SelectTrigger className="h-10 w-full border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500 sm:w-[230px]">
@@ -118,17 +105,17 @@ export function FiltersHeader({
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 transform text-camouflage-green-600" />
             <Input
               placeholder="Buscar por nombre o referencia..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange("search", e.target.value)}
+              value={filters.q}
+              onChange={(e) => handleFilterChange("q", e.target.value)}
               className="h-10 border-camouflage-green-300 bg-white pl-10 text-camouflage-green-900 placeholder:text-camouflage-green-500 focus:border-camouflage-green-500"
               disabled={isLoading}
             />
             {/* Botón para limpiar búsqueda */}
-            {filters.search && (
+            {filters.q && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleFilterChange("search", "")}
+                onClick={() => handleFilterChange("q", "")}
                 className="absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 transform p-0 hover:bg-camouflage-green-100"
               >
                 <X className="h-3 w-3" />
@@ -176,8 +163,8 @@ export function FiltersHeader({
           <div className="space-y-2">
             <label className="text-sm font-medium text-camouflage-green-700">Categoría</label>
             <Select
-              value={filters.category}
-              onValueChange={(value) => handleFilterChange("category", value)}
+              value={filters.categoriaIds.length > 0 ? filters.categoriaIds[0] : "all"}
+              onValueChange={(value) => handleFilterChange("categoriaIds", value === "all" ? [] : [value])}
               disabled={isLoading}
             >
               <SelectTrigger className="border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500">
@@ -204,21 +191,21 @@ export function FiltersHeader({
           <div className="space-y-2">
             <label className="text-sm font-medium text-camouflage-green-700">Estado</label>
             <Select
-              value={filters.status}
-              onValueChange={(value) => handleFilterChange("status", value)}
+              value={filters.estado}
+              onValueChange={(value) => handleFilterChange("estado", value as "activo" | "inactivo" | "todos")}
               disabled={isLoading}
             >
               <SelectTrigger className="border-camouflage-green-300 bg-white text-camouflage-green-900 focus:border-camouflage-green-500">
                 <SelectValue placeholder="Todos los estados" />
               </SelectTrigger>
               <SelectContent className="border-camouflage-green-200 bg-white rounded-3xl">
-                <SelectItem value="all" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
+                <SelectItem value="todos" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Todos los estados
                 </SelectItem>
-                <SelectItem value="active" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
+                <SelectItem value="activo" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Activos
                 </SelectItem>
-                <SelectItem value="inactive" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
+                <SelectItem value="inactivo" className="text-camouflage-green-900 hover:bg-camouflage-green-50">
                   Inactivos
                 </SelectItem>
               </SelectContent>
