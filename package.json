@@ -57,6 +57,8 @@
     "react-dom": "^18",
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
+    "@tanstack/react-query": "^5.0.0",
+    "axios": "^1.6.0",
     "recharts": "latest",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.5.5",
@@ -65,6 +67,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@tanstack/react-query-devtools": "^5.0.0",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
