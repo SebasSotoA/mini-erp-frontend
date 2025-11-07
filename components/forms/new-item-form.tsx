@@ -22,7 +22,7 @@ import { useCamposExtraRequeridos } from "@/hooks/api/use-campos-extra"
 
 interface NewItemFormProps {
   onClose: () => void
-  onSuccess?: () => void
+  onSuccess?: (productName?: string) => void
 }
 
 type ItemType = "product"
@@ -203,7 +203,8 @@ export function NewItemForm({ onClose, onSuccess }: NewItemFormProps) {
 
       await createMutation.mutateAsync(createDto)
       
-      onSuccess?.()
+      // Llamar al callback de éxito con el nombre del producto para mostrar la tarjeta flotante
+      onSuccess?.(data.name)
       onClose()
     } catch (error) {
       // Los errores de API ya se manejan en el hook

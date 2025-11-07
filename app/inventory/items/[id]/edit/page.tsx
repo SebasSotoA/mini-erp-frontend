@@ -465,38 +465,53 @@ export default function EditInventoryItemPage() {
       setSelectedExtraFields(allSelectedFields)
       
       // Cargar valores de productoCamposExtra, pero PRESERVAR valores que el usuario ya ingresó
-      // Usar valores por defecto solo si el valor está vacío y no hay un valor ingresado por el usuario
+      // IMPORTANTE: El valor guardado en el backend es la fuente de verdad absoluta
       setExtraFieldValues(prev => {
-        const valores: Record<string, string> = { ...prev } // Preservar valores existentes
+        const valores: Record<string, string> = {}
         
-    productoCamposExtra.forEach((ce: ProductoCampoExtraBackend) => {
-          const campoExtra = extraFields.find(f => f.id === ce.campoExtraId)
-          if (!campoExtra) return
-          
-          // Si el usuario ya ingresó un valor, preservarlo
-          const valorUsuario = prev[ce.campoExtraId]
-          if (valorUsuario && valorUsuario.trim() !== "") {
-            valores[ce.campoExtraId] = valorUsuario
-            return
+        // PRIMERO: Cargar directamente los valores que vienen del backend
+        // CRÍTICO: El valor del backend SIEMPRE tiene prioridad absoluta sobre el estado previo
+        // El estado previo puede contener valores por defecto aplicados antes de cargar los datos del backend
+        productoCamposExtra.forEach((ce: ProductoCampoExtraBackend) => {
+          // CRÍTICO: Si el backend tiene un valor, SIEMPRE usarlo (ignorar estado previo completamente)
+          // Esto asegura que valores guardados como "Gris" se muestren incluso si el estado previo tiene "Blanco"
+          if (ce.valor !== null && ce.valor !== undefined && String(ce.valor).trim() !== "") {
+            // Hay un valor guardado en el backend - usarlo SIEMPRE (es la fuente de verdad absoluta)
+            valores[ce.campoExtraId] = String(ce.valor).trim()
+          } else {
+            // El campo existe en el backend pero no tiene valor (null/undefined/vacío)
+            // En este caso, solo preservar el valor del estado previo si realmente fue modificado por el usuario
+            // Si el estado previo tiene un valor por defecto, se sobrescribirá en el siguiente paso si es necesario
+            const valorUsuarioModificado = prev[ce.campoExtraId]
+            if (valorUsuarioModificado !== undefined && valorUsuarioModificado !== null) {
+              valores[ce.campoExtraId] = valorUsuarioModificado
+            } else {
+              // No hay valor del usuario, usar valor por defecto
+              const campoExtra = extraFields.find(f => f.id === ce.campoExtraId)
+              valores[ce.campoExtraId] = campoExtra?.defaultValue || ""
+            }
           }
-          
-          // Si no hay valor del usuario, usar el valor del producto o el valor por defecto
-          const valorProducto = ce.valor?.trim() || ""
-          const valorPorDefecto = campoExtra.defaultValue || ""
-          valores[ce.campoExtraId] = valorProducto || valorPorDefecto
         })
         
-        // También asegurar que todos los campos seleccionados (incluyendo requeridos) tengan valores (usar defaults si no tienen)
+        // SEGUNDO: Para campos requeridos que NO están en productoCamposExtra, usar valores por defecto
         allSelectedFields.forEach((campoId) => {
-          // Si ya tiene un valor (del usuario o del backend), no sobrescribirlo
-          if (valores[campoId] && valores[campoId].trim() !== "") {
+          // Si ya procesamos este campo arriba (está en productoCamposExtra), saltarlo
+          if (productoCamposExtra.some(ce => ce.campoExtraId === campoId)) {
             return
           }
           
           const campoExtra = extraFields.find(f => f.id === campoId)
-          if (campoExtra?.defaultValue) {
-            valores[campoId] = campoExtra.defaultValue
+          if (!campoExtra) return
+          
+          // Si el usuario ya modificó el valor, preservarlo
+          const valorUsuarioModificado = prev[campoId]
+          if (valorUsuarioModificado !== undefined && valorUsuarioModificado !== null) {
+            valores[campoId] = valorUsuarioModificado
+            return
           }
+          
+          // Campo nuevo que no está en el backend - usar valor por defecto
+          valores[campoId] = campoExtra.defaultValue || ""
         })
         
         return valores
@@ -515,6 +530,8 @@ export default function EditInventoryItemPage() {
     if (!extraFields.length || !isInitializedRef.current) return
     if (initializedProductIdRef.current !== id) return
     if (isProcessingExtraFieldsRef.current) return // Prevenir ejecución concurrente
+    // Esperar a que se carguen los campos extra del producto antes de aplicar valores por defecto
+    if (!productoCamposExtra || productoCamposExtra.length === 0) return
     
     const requiredFields = extraFields.filter(f => f.isRequired && f.isActive)
     const requiredFieldIds = requiredFields.map(f => f.id)
@@ -533,15 +550,49 @@ export default function EditInventoryItemPage() {
       return Array.from(new Set([...prev, ...newIds]))
     })
     
-    // Inicializar valores por defecto para TODOS los campos requeridos que no tienen valor
+    // Inicializar valores por defecto SOLO para campos requeridos que:
+    // 1. No tienen valor en el estado actual (undefined)
+    // 2. NO tienen valor guardado en el producto (productoCamposExtra)
+    // IMPORTANTE: NUNCA sobrescribir valores que ya están en el estado (vengan del backend o del usuario)
     setExtraFieldValues(prev => {
       const defaultValues: Record<string, string> = {}
       
-      // Asegurar que los campos requeridos tengan valores por defecto si no los tienen
+      // Crear un mapa de campos que tienen valores guardados en el backend
+      // CRÍTICO: Si un campo está en productoCamposExtra, significa que existe en el backend
+      // y debería tener prioridad, incluso si su valor es null/undefined (el backend lo guardó así)
+      const camposEnBackend = new Set<string>()
+      const camposConValorBackend = new Set<string>()
+      productoCamposExtra.forEach((ce: ProductoCampoExtraBackend) => {
+        // Si el campo está en productoCamposExtra, existe en el backend
+        camposEnBackend.add(ce.campoExtraId)
+        // Si además tiene un valor no-null/undefined, tiene un valor guardado
+        if (ce.valor !== null && ce.valor !== undefined && String(ce.valor).trim() !== "") {
+          camposConValorBackend.add(ce.campoExtraId)
+        }
+      })
+      
+      // Asegurar que los campos requeridos tengan valores por defecto SOLO si:
+      // - No tienen valor en el estado actual (undefined)
+      // - Y NO tienen un valor guardado en el backend
+      // - Y el campo tiene un valor por defecto
+      // CRÍTICO: NO tocar campos que ya tienen un valor (venga del backend o del usuario)
       requiredFields.forEach(field => {
-        const currentValue = prev[field.id]
-        // Si no tiene valor o el valor es "undefined" (string), usar el defaultValue
-        if (field.defaultValue && (!currentValue || currentValue === "undefined" || currentValue.trim() === "")) {
+        // Si ya tiene un valor en el estado, NO TOCARLO (venga de donde venga)
+        if (prev[field.id] !== undefined && prev[field.id] !== null) {
+          return // Ya tiene valor, no sobrescribir
+        }
+        
+        // Si el campo está en el backend (incluso sin valor), NO aplicar valor por defecto
+        // El efecto principal de carga ya debería haberlo manejado
+        if (camposEnBackend.has(field.id)) {
+          return // Campo existe en backend, no aplicar default (el efecto principal lo maneja)
+        }
+        
+        // Solo aplicar valor por defecto si:
+        // 1. No hay valor en el estado (undefined o null)
+        // 2. El campo NO existe en el backend (es un campo nuevo)
+        // 3. Y el campo tiene un valor por defecto
+        if (field.defaultValue) {
           defaultValues[field.id] = field.defaultValue
         }
       })
@@ -550,7 +601,7 @@ export default function EditInventoryItemPage() {
       return { ...prev, ...defaultValues }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [extraFields.length, id, extraFields])
+  }, [extraFields.length, id, extraFields, productoCamposExtra])
   
   // Efecto separado para aplicar valores por defecto a campos opcionales seleccionados
   // Este efecto solo se ejecuta cuando cambian los campos seleccionados, pero de forma segura
@@ -559,18 +610,32 @@ export default function EditInventoryItemPage() {
     if (initializedProductIdRef.current !== id) return
     if (isProcessingExtraFieldsRef.current) return
     if (selectedExtraFields.length === 0) return
+    // Esperar a que se carguen los campos extra del producto
+    if (!productoCamposExtra) return
     
     // Aplicar valores por defecto solo a campos opcionales seleccionados que no tienen valor
+    // IMPORTANTE: NO sobrescribir valores que ya están cargados desde el backend
     setExtraFieldValues(prev => {
       const defaultValues: Record<string, string> = {}
+      
+      // Crear un mapa de campos que tienen valores guardados en el backend
+      const valoresBackendMap = new Map<string, boolean>()
+      productoCamposExtra.forEach((ce: ProductoCampoExtraBackend) => {
+        valoresBackendMap.set(ce.campoExtraId, true)
+      })
       
       selectedExtraFields.forEach((campoId) => {
         const field = extraFields.find(f => f.id === campoId)
         if (!field || field.isRequired) return // Saltar campos requeridos (ya se manejan arriba)
         
         const currentValue = prev[campoId]
-        // Si no tiene valor o está vacío, y el campo tiene un valor por defecto, usarlo
-        if (field.defaultValue && (!currentValue || currentValue.trim() === "")) {
+        const tieneValorBackend = valoresBackendMap.has(campoId)
+        
+        // Solo aplicar valor por defecto si:
+        // 1. No hay valor en el estado actual (undefined, no solo vacío)
+        // 2. Y NO tiene un valor guardado en el backend
+        // 3. Y el campo tiene un valor por defecto
+        if (field.defaultValue && currentValue === undefined && !tieneValorBackend) {
           defaultValues[campoId] = field.defaultValue
         }
       })
@@ -579,7 +644,7 @@ export default function EditInventoryItemPage() {
       return { ...prev, ...defaultValues }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedExtraFields.length, id]) // Solo dependemos de la longitud, no del array completo
+  }, [selectedExtraFields.length, id, productoCamposExtra]) // Agregar productoCamposExtra como dependencia
 
   const resetWarehouseModal = () => {
     setMwWarehouseId("")
@@ -1093,14 +1158,10 @@ export default function EditInventoryItemPage() {
 
   // Función para renderizar inputs de campos adicionales
   const renderExtraFieldInput = (field: any) => {
-    // Si hay un valor en extraFieldValues, usarlo (incluso si está vacío, para permitir edición)
-    // Si no hay valor pero hay defaultValue, usar defaultValue como valor inicial
+    // Siempre usar el valor de extraFieldValues si existe
+    // Este estado ya contiene el valor correcto (priorizando el valor guardado del backend)
     const currentValue = extraFieldValues[field.id]
-    const hasValueInState = field.id in extraFieldValues // Verificar si existe la clave, incluso si el valor está vacío
-    
-    // Si ya se ha modificado el campo (existe en extraFieldValues), usar ese valor (puede estar vacío)
-    // Si no se ha modificado, usar el defaultValue como valor inicial
-    const value = hasValueInState ? (currentValue || "") : (field.defaultValue || "")
+    const value = currentValue !== undefined && currentValue !== null ? currentValue : ""
     
     switch (field.type) {
       case "texto":

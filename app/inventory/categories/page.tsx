@@ -1299,14 +1299,6 @@ export default function Categories() {
             <p className="text-sm font-medium text-green-800">
               {successMessage || "Operación completada exitosamente."}
             </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowSuccessToast(false)}
-              className="h-6 w-6 p-0 text-green-600 hover:bg-green-100 hover:text-green-800"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       )}

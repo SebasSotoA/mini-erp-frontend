@@ -13,6 +13,7 @@ import {
   ChevronUp,
   ChevronDown,
   X,
+  CheckCircle,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useMemo, useState, useEffect } from "react"
@@ -58,6 +59,10 @@ export default function SalesItems() {
 
   // Estado para el modal de nuevo item
   const [isNewItemModalOpen, setIsNewItemModalOpen] = useState(false)
+  
+  // Estado para la tarjeta de éxito al crear producto
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
+  const [createdProductName, setCreatedProductName] = useState<string>("")
 
   // Estado para filtros y ordenamiento
   const [showFilters, setShowFilters] = useState(false)
@@ -815,12 +820,34 @@ export default function SalesItems() {
       >
         <NewItemForm
           onClose={() => setIsNewItemModalOpen(false)}
-          onSuccess={() => {
+          onSuccess={(productName?: string) => {
             // Resetear página actual cuando se agrega un nuevo producto
             setCurrentPage(1)
+            
+            // Mostrar tarjeta de éxito si se proporciona el nombre del producto
+            if (productName) {
+              setCreatedProductName(productName)
+              setShowSuccessToast(true)
+              // Ocultar la tarjeta después de 5 segundos
+              setTimeout(() => {
+                setShowSuccessToast(false)
+              }, 5000)
+            }
           }}
         />
       </Modal>
+
+      {/* Tarjeta flotante de éxito */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <CheckCircle className="h-5 w-5 text-green-600" />
+            <p className="text-sm font-medium text-green-800">
+              Producto "{createdProductName}" creado con éxito
+            </p>
+          </div>
+        </div>
+      )}
     </MainLayout>
   )
 }
