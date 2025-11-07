@@ -829,34 +829,54 @@ export default function Dashboard() {
                     {/* Gauge Principal */}
                     <div className="flex items-center justify-center">
                       <div className="relative h-64 w-64">
-                        <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
-                          <path
-                            d="M 20 80 A 30 30 0 0 1 80 80"
-                            fill="none"
-                            stroke="#e5e7eb"
-                            strokeWidth="10"
-                          />
-                          <path
-                            d="M 20 80 A 30 30 0 0 1 80 80"
-                            fill="none"
-                            stroke={
-                              saludStock.porcentajeStockOptimo >= 70
-                                ? CHART_COLORS.success
-                                : saludStock.porcentajeStockOptimo >= 50
-                                  ? CHART_COLORS.warning
-                                  : CHART_COLORS.danger
-                            }
-                            strokeWidth="10"
-                            strokeDasharray={`${saludStock.porcentajeStockOptimo * 1.88} 188`}
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className="text-4xl font-bold text-camouflage-green-900">
-                            {saludStock.porcentajeStockOptimo.toFixed(1)}%
-                          </span>
-                          <span className="mt-1 text-sm font-medium text-camouflage-green-600">Stock Óptimo</span>
-                        </div>
+                        {(() => {
+                          // Calcular la longitud del arco semicircular (π * radio)
+                          // El arco va de (20, 80) a (80, 80) con radio 30
+                          const arcRadius = 30
+                          const arcLength = Math.PI * arcRadius // Longitud del semicírculo ≈ 94.25
+                          // Asegurar que el porcentaje esté entre 0 y 100
+                          const porcentaje = Math.max(0, Math.min(100, saludStock.porcentajeStockOptimo))
+                          // Calcular la longitud del trazo basado en el porcentaje
+                          const strokeLength = (porcentaje / 100) * arcLength
+                          // Determinar el color basado en el porcentaje
+                          const strokeColor =
+                            porcentaje >= 70
+                              ? CHART_COLORS.success
+                              : porcentaje >= 50
+                                ? CHART_COLORS.warning
+                                : CHART_COLORS.danger
+
+                          return (
+                            <>
+                              <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">
+                                {/* Arco de fondo (gris) */}
+                                <path
+                                  d="M 20 80 A 30 30 0 0 1 80 80"
+                                  fill="none"
+                                  stroke="#e5e7eb"
+                                  strokeWidth="10"
+                                />
+                                {/* Arco de porcentaje (coloreado) */}
+                                <path
+                                  d="M 20 80 A 30 30 0 0 1 80 80"
+                                  fill="none"
+                                  stroke={strokeColor}
+                                  strokeWidth="10"
+                                  strokeDasharray={`${strokeLength} ${arcLength}`}
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-4xl font-bold text-camouflage-green-900">
+                                  {porcentaje.toFixed(1)}%
+                                </span>
+                                <span className="mt-1 text-sm font-medium text-camouflage-green-600">
+                                  Stock Óptimo
+                                </span>
+                              </div>
+                            </>
+                          )
+                        })()}
                       </div>
                     </div>
 
@@ -884,7 +904,11 @@ export default function Dashboard() {
                           <div>
                             <p className="text-xs font-medium text-red-700">Bajo Stock</p>
                             <p className="text-xl font-bold text-red-900">
-                              {formatNumber(saludStock.productosStockBajo)}
+                              {formatNumber(
+                                productosStockBajo && productosStockBajo.length > 0
+                                  ? productosStockBajo.length
+                                  : saludStock.productosStockBajo
+                              )}
                             </p>
                           </div>
                         </div>
