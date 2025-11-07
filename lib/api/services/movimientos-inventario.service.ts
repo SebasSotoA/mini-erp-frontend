@@ -40,16 +40,18 @@ export function mapMovimientoToStockMovement(
   const absoluteQuantity = Math.abs(movimiento.cantidad)
   
   // Mapear tipo VENTA/COMPRA a in/out
+  // Mantener el tipo original del backend para que el filtrado funcione correctamente
+  // Las reversiones se identifican por isReversal, no cambiando el tipo
   let type: "in" | "out" | "adjustment" | "return"
   let quantity: number
   let reason: string
 
   if (movimiento.tipoMovimiento === "COMPRA") {
-    type = isReversal ? "out" : "in" // Si es reversión de compra, es salida
+    type = "in" // Siempre "in" para COMPRA, independientemente de si es reversión
     quantity = absoluteQuantity
     reason = isReversal ? "Anulación de Compra" : "Compra"
   } else if (movimiento.tipoMovimiento === "VENTA") {
-    type = isReversal ? "in" : "out" // Si es reversión de venta, es entrada
+    type = "out" // Siempre "out" para VENTA, independientemente de si es reversión
     quantity = absoluteQuantity
     reason = isReversal ? "Anulación de Venta" : "Venta"
   } else {

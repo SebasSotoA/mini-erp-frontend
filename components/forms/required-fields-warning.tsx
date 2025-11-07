@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DatePicker } from "@/components/ui/date-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 interface RequiredFieldsWarningProps {
   onFieldChange: (fieldId: string, value: string) => void
@@ -91,11 +90,11 @@ export function RequiredFieldsWarning({ onFieldChange, fieldValues, requiredFiel
       
       case "fecha":
         return (
-          <DatePicker
-            value={value ? new Date(value) : null}
-            onChange={(date) => onFieldChange(field.id, date ? date.toISOString().split('T')[0] : "")}
-            placeholder="Seleccionar fecha"
-            className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          <input
+            type="date"
+            value={value || ""}
+            onChange={(e) => onFieldChange(field.id, e.target.value)}
+            className="w-full rounded-lg border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500"
           />
         )
       

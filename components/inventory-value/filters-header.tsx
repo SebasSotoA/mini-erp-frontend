@@ -4,7 +4,6 @@ import { Search, Filter, Download, Calendar, Warehouse, X } from "lucide-react"
 import { useState, useMemo } from "react"
 
 import { Button } from "@/components/ui/button"
-import { DatePicker } from "@/components/ui/date-picker"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { InventoryValueFilters } from "@/lib/types/inventory-value"
@@ -77,13 +76,12 @@ export function FiltersHeader({
         <div className="flex min-h-[40px] flex-1 flex-col gap-3 sm:flex-row">
           {/* Selector de fecha */}
           <div className="flex h-10 items-center gap-2">
-            <DatePicker
-              value={filters.dateUntil ?? undefined}
-              onChange={(d) => handleFilterChange("dateUntil", d ?? null)}
-              placeholder="Fecha hasta"
-              className="h-10 w-full sm:w-[180px]"
+            <input
+              type="date"
+              value={filters.dateUntil ? new Date(filters.dateUntil).toISOString().split('T')[0] : ""}
+              onChange={(e) => handleFilterChange("dateUntil", e.target.value ? new Date(e.target.value).toISOString() : null)}
+              className="h-10 w-full rounded-lg border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 sm:w-[180px] disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
-              showIcon={true}
             />
           </div>
 

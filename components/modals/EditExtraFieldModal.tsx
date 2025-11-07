@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DatePicker } from "@/components/ui/date-picker"
 import { useToast } from "@/hooks/use-toast"
 import { mapTipoDatoFrontendToBackend, mapTipoDatoBackendToFrontend } from "@/hooks/api/use-campos-extra"
 
@@ -150,14 +149,12 @@ export function EditExtraFieldModal({ isOpen, onClose, field, onSave, isLoading 
         )
       
       case "fecha":
-        const dateValue = value && value !== "" ? new Date(value) : null
-        const isValidDate = dateValue && !isNaN(dateValue.getTime())
         return (
-          <DatePicker
-            value={isValidDate ? dateValue : null}
-            onChange={(date) => onChange(date ? date.toISOString().split('T')[0] : "")}
-            placeholder="Seleccionar fecha por defecto"
-            className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          <input
+            type="date"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full rounded-lg border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading}
           />
         )

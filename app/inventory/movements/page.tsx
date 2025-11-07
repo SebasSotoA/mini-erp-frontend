@@ -22,7 +22,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DatePicker } from "@/components/ui/date-picker"
 import { PaginationConfig } from "@/lib/types/inventory-value"
 import { useMovimientos } from "@/hooks/api/use-movimientos-inventario"
 import { useBodegasActive } from "@/hooks/api/use-bodegas"
@@ -122,9 +121,17 @@ export default function StockMovementsHistory() {
       // Para "adjustment" y "return" no enviamos filtro (mostrar todos)
     }
 
-    // Filtro por fecha desde
+    // Filtro por fecha exacta (usar fechaDesde y fechaHasta con la misma fecha para filtrar todo el día)
     if (filters.dateFrom) {
-      params.fechaDesde = filters.dateFrom
+      // El input type="date" devuelve formato YYYY-MM-DD
+      // Convertir a UTC midnight para fechaDesde (inicio del día)
+      const [year, month, day] = filters.dateFrom.split('-').map(Number)
+      const utcDateStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+      params.fechaDesde = utcDateStart.toISOString()
+      
+      // Convertir a UTC end of day para fechaHasta (fin del día)
+      const utcDateEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
+      params.fechaHasta = utcDateEnd.toISOString()
     }
 
     // Ordenamiento
@@ -253,11 +260,11 @@ export default function StockMovementsHistory() {
                   <TableRow className="border-camouflage-green-200 bg-camouflage-green-50/30 hover:bg-camouflage-green-50/30">
                     <TableHead className="w-[200px]">
                       <div className="flex items-center gap-1 py-3 hover:bg-transparent">
-                        <DatePicker
-                          value={filters.dateFrom ? new Date(filters.dateFrom) : null}
-                          onChange={(date) => handleFilterChange("dateFrom", date ? date.toISOString().split('T')[0] : "")}
-                          placeholder="Fecha"
-                          className="w-full"
+                        <input
+                          type="date"
+                          value={filters.dateFrom || ""}
+                          onChange={(e) => handleFilterChange("dateFrom", e.target.value)}
+                          className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500"
                         />
                       </div>
                     </TableHead>
@@ -274,8 +281,6 @@ export default function StockMovementsHistory() {
                             <SelectItem value="all">Tipo</SelectItem>
                             <SelectItem value="in">Compra</SelectItem>
                             <SelectItem value="out">Venta</SelectItem>
-                            <SelectItem value="adjustment">Ajuste</SelectItem>
-                            <SelectItem value="return">Devolución</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

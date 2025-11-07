@@ -14,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { DatePicker } from "@/components/ui/date-picker"
 import { Modal } from "@/components/ui/modal"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -1027,14 +1026,12 @@ export default function EditInventoryItemPage() {
           />
         )
       case "fecha":
-        const dateValue = value && value !== "" ? new Date(value) : null
-        const isValidDate = dateValue && !isNaN(dateValue.getTime())
         return (
-          <DatePicker
-            value={isValidDate ? dateValue : null}
-            onChange={(date) => onChange(date ? date.toISOString().split('T')[0] : "")}
-            placeholder="Seleccionar fecha por defecto"
-            className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          <input
+            type="date"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full rounded-lg border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500"
           />
         )
       case "si/no":
@@ -1156,11 +1153,11 @@ export default function EditInventoryItemPage() {
         )
       case "fecha":
         return (
-          <DatePicker
-            value={value ? new Date(value) : null}
-            onChange={(date) => handleExtraFieldValueChange(field.id, date ? date.toISOString().split('T')[0] : "")}
-            placeholder="Seleccionar fecha"
-            className="h-10"
+          <input
+            type="date"
+            value={value || ""}
+            onChange={(e) => handleExtraFieldValueChange(field.id, e.target.value)}
+            className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 focus:outline-none focus:border-camouflage-green-500"
           />
         )
       case "si/no":

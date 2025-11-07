@@ -42,7 +42,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { DatePicker } from "@/components/ui/date-picker"
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 import {
   useCamposExtra,
@@ -116,15 +115,12 @@ export default function ExtraFields() {
         )
       
       case "fecha":
-        const dateValue = value && value !== "" ? new Date(value) : null
-        // Verificar si la fecha es válida
-        const isValidDate = dateValue && !isNaN(dateValue.getTime())
         return (
-          <DatePicker
-            value={isValidDate ? dateValue : null}
-            onChange={(date) => onChange(date ? date.toISOString().split('T')[0] : "")}
-            placeholder="Seleccionar fecha por defecto"
-            className="border-camouflage-green-300 bg-white focus:border-camouflage-green-500 focus:ring-camouflage-green-500"
+          <input
+            type="date"
+            value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full rounded-lg border border-camouflage-green-300 bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 focus:border-camouflage-green-500"
             disabled={disabled}
           />
         )

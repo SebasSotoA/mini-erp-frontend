@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DatePicker } from "@/components/ui/date-picker"
 import { PaginationControls } from "@/components/inventory-value/pagination-controls"
 import { PaginationConfig } from "@/lib/types/inventory-value"
 import { InvoiceFilters, InvoiceColumn, FilterConfig } from "./types"
@@ -206,11 +205,11 @@ export function InvoiceTable<T extends { id: string }>({
               {/* Fecha de creación */}
               <TableHead className="w-[140px]">
                 <div className="flex items-center gap-1 py-3 hover:bg-transparent">
-                  <DatePicker
-                    value={filters.date ? new Date(filters.date) : null}
-                    onChange={(date) => onFilterChange("date", date ? date.toISOString().split('T')[0] : "")}
-                    placeholder="Fecha"
-                    className="w-full text-sm h-9"
+                  <input
+                    type="date"
+                    value={filters.date || ""}
+                    onChange={(e) => onFilterChange("date", e.target.value)}
+                    className="w-full rounded-3xl border border-camouflage-green-300 bg-white hover:bg-white focus:bg-white active:bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 h-9"
                   />
                 </div>
               </TableHead>

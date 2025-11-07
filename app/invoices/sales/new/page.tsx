@@ -28,7 +28,6 @@ import { Modal } from "@/components/ui/modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
-import { DatePicker } from "@/components/ui/date-picker"
 import { useToast } from "@/hooks/use-toast"
 import { SalesInvoiceItem } from "@/lib/types/invoices"
 import { useBodegasActive, useBodegaProductos } from "@/hooks/api/use-bodegas"
@@ -1062,11 +1061,14 @@ export default function NewSalesInvoice() {
                 <Label htmlFor="date" className="text-camouflage-green-700">
                   Fecha *
                 </Label>
-                <DatePicker
-                  value={formData.date ? new Date(formData.date) : null}
-                  onChange={(date) => handleInputChange("date", date ? date.toISOString().split('T')[0] : "")}
-                  placeholder="Seleccionar fecha"
-                  className={errors?.date ? "border-red-500" : ""}
+                <input
+                  type="date"
+                  id="date"
+                  value={formData.date || ""}
+                  onChange={(e) => handleInputChange("date", e.target.value)}
+                  className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-camouflage-green-900 placeholder-camouflage-green-400 focus:outline-none focus:ring-2 focus:ring-camouflage-green-500 ${
+                    errors?.date ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "border-camouflage-green-300 focus:border-camouflage-green-500"
+                  }`}
                 />
               </div>
 
