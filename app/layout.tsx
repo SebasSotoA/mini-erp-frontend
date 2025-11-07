@@ -10,22 +10,13 @@ import { QueryProvider } from "@/components/providers/query-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Inventory Management Dashboard",
-  description: "A comprehensive inventory management system",
+  title: "Inventa",
+  description: "Sistema de gestión de inventario",
   generator: "v0.app",
   icons: {
-    icon: [
-      {
-        url: "/placeholder-logo.svg",
-        type: "image/svg+xml",
-      },
-      {
-        url: "/placeholder-logo.png",
-        type: "image/png",
-      },
-    ],
-    shortcut: "/placeholder-logo.png",
-    apple: "/placeholder-logo.png",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
   },
 }
 

@@ -45,7 +45,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             >
               <Menu className="h-6 w-6" />
             </button>
-            <h1 className="text-lg font-semibold text-camouflage-green-800">Inventory Pro</h1>
+            <h1 className="text-lg font-semibold text-camouflage-green-800">Inventa</h1>
             <div className="w-10" /> {/* Spacer for centering */}
           </div>
         </header>

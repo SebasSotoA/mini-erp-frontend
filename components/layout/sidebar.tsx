@@ -90,7 +90,7 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-camouflage-green-500 shadow-md">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-white">Inventory Pro</h1>
+          <h1 className="text-xl font-bold text-white">Inventa</h1>
         </div>
       </div>
 
@@ -357,7 +357,7 @@ export function Sidebar({ onClose }: SidebarProps = {}) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-white">Usuario</p>
-            <p className="truncate text-xs text-camouflage-green-200">admin@inventorypro.com</p>
+            <p className="truncate text-xs text-camouflage-green-200">admin@inventa.com</p>
           </div>
         </div>
       </div>
