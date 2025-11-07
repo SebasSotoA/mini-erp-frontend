@@ -54,8 +54,11 @@
   * {
     @apply border-border;
   }
+  html {
+    @apply bg-camouflage-green-50;
+  }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-camouflage-green-50 text-foreground;
   }
 }
 

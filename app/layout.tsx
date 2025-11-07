@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="bg-camouflage-green-50">
+      <body className={`${inter.className} bg-camouflage-green-50 antialiased`}>
         <QueryProvider>
           <InventoryProvider>
             <ExtraFieldsProvider>{children}</ExtraFieldsProvider>
