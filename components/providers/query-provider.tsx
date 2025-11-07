@@ -8,7 +8,7 @@ import { useState } from "react"
 let ReactQueryDevtools: React.ComponentType<{ initialIsOpen?: boolean }> | null = null
 
 if (process.env.NODE_ENV === "development") {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const Devtools = require("@tanstack/react-query-devtools").ReactQueryDevtools
   ReactQueryDevtools = Devtools
 }
