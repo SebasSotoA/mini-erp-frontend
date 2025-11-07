@@ -145,9 +145,16 @@ export default function SalesInvoices() {
     }
     
     // Filtro de fecha exacta (usar la misma fecha para desde y hasta)
+    // Convertir el formato YYYY-MM-DD del input a UTC ISO para el backend
     if (filters.date) {
-      params.fechaDesde = filters.date
-      params.fechaHasta = filters.date
+      // Parsear la fecha directamente desde el string YYYY-MM-DD
+      const [year, month, day] = filters.date.split('-').map(Number)
+      // Crear fecha UTC para inicio del día (00:00:00)
+      const fechaDesdeUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+      // Crear fecha UTC para fin del día (23:59:59.999)
+      const fechaHastaUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
+      params.fechaDesde = fechaDesdeUTC.toISOString()
+      params.fechaHasta = fechaHastaUTC.toISOString()
     }
     
     return params

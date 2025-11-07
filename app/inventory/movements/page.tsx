@@ -447,7 +447,17 @@ export default function StockMovementsHistory() {
                         >
                           <TableCell className="w-[200px] pl-3">
                             <div className="text-sm text-camouflage-green-900">
-                              {format(new Date(movement.date), "dd/MM/yyyy", { locale: es })}
+                              {(() => {
+                                // Parsear la fecha correctamente para evitar problemas de zona horaria
+                                // Si viene como string ISO, extraer solo la parte de fecha (YYYY-MM-DD)
+                                const dateStr = typeof movement.date === 'string' 
+                                  ? movement.date.split('T')[0] 
+                                  : movement.date
+                                const [year, month, day] = dateStr.split('-').map(Number)
+                                // Crear fecha local sin problemas de zona horaria
+                                const date = new Date(year, month - 1, day)
+                                return format(date, "dd/MM/yyyy", { locale: es })
+                              })()}
                             </div>
                           </TableCell>
                           <TableCell className="w-[150px] pl-3">
