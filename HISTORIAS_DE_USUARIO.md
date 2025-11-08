@@ -222,37 +222,37 @@ And debe mostrar un mensaje de éxito "Bodega creada exitosamente"
 
 **Como:** Gerente de Inventario
 
-**Quiero:** Visualizar reportes de valor de inventario filtrados por fecha y bodega
+**Quiero:** Visualizar reportes de valor de inventario filtrados por categorías y bodega
 
-**Para:** Tomar decisiones financieras informadas sobre el stock disponible
+**Para:** Tomar decisiones financieras informadas sobre el stock disponible agrupado por categorías y ubicaciones
 
 **Descripción:**
 
-El sistema debe permitir a los gerentes consultar el valor total del inventario en un momento específico, filtrando por fecha y bodega. Debe mostrar métricas financieras clave, una tabla detallada de productos con sus valores, y permitir exportar esta información en formatos Excel o PDF para análisis externo.
+El sistema debe permitir a los gerentes consultar el valor total del inventario filtrando por categorías y bodegas. Debe mostrar métricas financieras clave, una tabla detallada de productos con sus valores, y permitir exportar esta información en formatos Excel o PDF para análisis externo. Los filtros deben permitir seleccionar múltiples categorías y múltiples bodegas simultáneamente.
 
 **Criterios de aceptación (Gherkin):**
 
-Scenario: Visualización del valor de inventario con filtros por fecha y bodega
+Scenario: Visualización del valor de inventario con filtros por categoría y bodega
 
 Given que soy un Gerente de Inventario autenticado
 
 And que accedo al módulo "Valor de Inventario"
 
-And que existen productos en el sistema con movimientos registrados
+And que existen productos en el sistema distribuidos en diferentes categorías y bodegas
 
-When selecciono la fecha "15/01/2024" en el filtro "Hasta"
+When selecciono la categoría "Electrónica" en el filtro de categorías
 
 And selecciono la bodega "Bodega Central" en el filtro de bodegas
 
-And hago clic en el botón "Aplicar Filtros"
+And hago clic en el botón "Buscar"
 
-Then el sistema debe calcular el valor del inventario hasta esa fecha
+Then el sistema debe calcular el valor del inventario para los productos que pertenecen a la categoría "Electrónica" y están en "Bodega Central"
 
 And debe mostrar el valor total del inventario en formato de moneda (ej: "$50.000")
 
 And debe mostrar el stock total de unidades (ej: "125 unidades")
 
-And debe mostrar una tabla con los productos de esa bodega que existían hasta esa fecha
+And debe mostrar una tabla con los productos que cumplen con los filtros aplicados
 
 And cada fila de la tabla debe mostrar: Nombre del producto, Referencia/SKU, Descripción, Cantidad, Unidad, Estado, Costo promedio, y Total
 
@@ -260,27 +260,109 @@ And el valor total debe ser la suma de (Cantidad × Costo promedio) de todos los
 
 
 
-Scenario: Filtrado por todas las bodegas con distribución porcentual
+Scenario: Filtrado por múltiples categorías y bodegas
 
 Given que soy un Gerente de Inventario autenticado
 
 And que accedo al módulo "Valor de Inventario"
 
-And que existen productos en múltiples bodegas
+And que existen productos en múltiples categorías y bodegas
 
-When selecciono "Todas las bodegas" en el filtro de bodegas
+When selecciono las categorías "Electrónica" y "Ropa" en el filtro de categorías
 
-And aplico los filtros
+And selecciono las bodegas "Bodega Central" y "Bodega Norte" en el filtro de bodegas
 
-Then el sistema debe mostrar el valor total del inventario de todas las bodegas
+And hago clic en el botón "Buscar"
 
-And debe mostrar el stock total de todas las bodegas
+Then el sistema debe mostrar productos que pertenezcan a cualquiera de las categorías seleccionadas
 
-And debe mostrar una distribución porcentual del valor por bodega (ej: "Bodega Central: 70%, Bodega Norte: 30%")
+And debe mostrar productos que estén en cualquiera de las bodegas seleccionadas
 
-And la tabla debe incluir productos de todas las bodegas
+And debe mostrar el valor total del inventario de los productos que cumplan con los filtros (categoría Y bodega)
+
+And debe mostrar el stock total de unidades filtradas
+
+And la tabla debe mostrar solo los productos que cumplan ambos criterios (categoría seleccionada Y bodega seleccionada)
+
+
+
+Scenario: Filtrado por todas las categorías y una bodega específica
+
+Given que soy un Gerente de Inventario autenticado
+
+And que accedo al módulo "Valor de Inventario"
+
+And que existen productos en múltiples categorías y bodegas
+
+When no selecciono ninguna categoría (o selecciono "Todas las categorías")
+
+And selecciono la bodega "Bodega Central" en el filtro de bodegas
+
+And hago clic en el botón "Buscar"
+
+Then el sistema debe mostrar todos los productos de "Bodega Central" sin importar su categoría
+
+And debe mostrar el valor total del inventario de esa bodega
+
+And debe mostrar el stock total de unidades de esa bodega
+
+And la tabla debe incluir productos de todas las categorías que estén en "Bodega Central"
+
+
+
+Scenario: Filtrado por una categoría específica y todas las bodegas
+
+Given que soy un Gerente de Inventario autenticado
+
+And que accedo al módulo "Valor de Inventario"
+
+And que existen productos de la categoría "Electrónica" en múltiples bodegas
+
+When selecciono la categoría "Electrónica" en el filtro de categorías
+
+And no selecciono ninguna bodega (o selecciono "Todas las bodegas")
+
+And hago clic en el botón "Buscar"
+
+Then el sistema debe mostrar todos los productos de la categoría "Electrónica" sin importar en qué bodega estén
+
+And debe mostrar el valor total del inventario de productos "Electrónica" en todas las bodegas
+
+And debe mostrar el stock total de unidades de productos "Electrónica"
+
+And la tabla debe incluir productos de la categoría "Electrónica" de todas las bodegas
 
 And cada fila debe indicar en qué bodega se encuentra el producto
+
+
+
+Scenario: Visualización de filtros aplicados como badges
+
+Given que soy un Gerente de Inventario autenticado
+
+And que accedo al módulo "Valor de Inventario"
+
+And que he aplicado filtros de categorías y bodegas
+
+When visualizo la página de valor de inventario
+
+Then el sistema debe mostrar los filtros aplicados como badges o etiquetas visibles
+
+And cada badge debe mostrar el nombre de la categoría o bodega filtrada
+
+And cada badge debe tener un botón para eliminarlo individualmente (ícono X)
+
+When hago clic en el ícono X de un badge de categoría
+
+Then el sistema debe eliminar ese filtro de categoría
+
+And debe actualizar automáticamente los resultados sin necesidad de hacer clic en "Buscar"
+
+When hago clic en el ícono X de un badge de bodega
+
+Then el sistema debe eliminar ese filtro de bodega
+
+And debe actualizar automáticamente los resultados
 
 
 
@@ -292,9 +374,11 @@ And que estoy visualizando la tabla de valor de inventario con productos filtrad
 
 When ingreso el texto "Camiseta" en el campo de búsqueda
 
-Then el sistema debe filtrar la tabla en tiempo real
+And hago clic en el botón "Buscar"
 
-And debe mostrar solo los productos cuyo nombre o referencia contenga "Camiseta"
+Then el sistema debe filtrar los productos cuyo nombre o referencia contenga "Camiseta"
+
+And debe mantener los filtros de categoría y bodega aplicados previamente
 
 And debe actualizar el contador de resultados mostrando cuántos productos coinciden
 
@@ -302,33 +386,31 @@ And si no hay coincidencias, debe mostrar el mensaje "No se encontraron producto
 
 
 
-Scenario: Exportación del reporte a Excel
+Scenario: Limpiar todos los filtros
 
 Given que soy un Gerente de Inventario autenticado
 
-And que he aplicado filtros de fecha y bodega en el módulo "Valor de Inventario"
+And que he aplicado múltiples filtros (categorías, bodegas, búsqueda) en el módulo "Valor de Inventario"
 
-And que estoy visualizando la tabla de productos con los datos filtrados
+When hago clic en el botón "Limpiar"
 
-When hago clic en el botón "Exportar a Excel"
+Then el sistema debe eliminar todos los filtros aplicados
 
-Then el sistema debe generar un archivo Excel (.xlsx)
+And debe resetear los filtros a sus valores por defecto (todas las categorías, todas las bodegas, sin búsqueda)
 
-And el archivo debe incluir todas las columnas de la tabla: Nombre, Referencia, Descripción, Cantidad, Unidad, Estado, Costo promedio, Total
+And debe mostrar todos los productos del inventario sin filtrar
 
-And el archivo debe incluir los productos que cumplen con los filtros aplicados
+And debe actualizar el valor total y stock total para incluir todos los productos
 
-And el archivo debe incluir una hoja de resumen con: Fecha del reporte, Bodega(s) filtrada(s), Valor total, Stock total
-
-And el archivo debe descargarse automáticamente con un nombre descriptivo (ej: "Reporte_Inventario_2024-01-15_BodegaCentral.xlsx")
+And los badges de filtros aplicados deben desaparecer
 
 
 
-Scenario: Exportación del reporte a PDF
+Scenario: Exportación del reporte a PDF con filtros de categorías y bodegas
 
 Given que soy un Gerente de Inventario autenticado
 
-And que he aplicado filtros de fecha y bodega en el módulo "Valor de Inventario"
+And que he aplicado filtros de categorías y bodegas en el módulo "Valor de Inventario"
 
 And que estoy visualizando la tabla de productos con los datos filtrados
 
@@ -336,33 +418,15 @@ When hago clic en el botón "Exportar a PDF"
 
 Then el sistema debe generar un archivo PDF
 
-And el PDF debe incluir un encabezado con: Título "Reporte de Valor de Inventario", Fecha del reporte, Bodega(s) filtrada(s)
+And el PDF debe incluir un encabezado con: Título "Reporte de Valor de Inventario", Fecha de generación
 
-And el PDF debe incluir una sección de resumen con: Valor total, Stock total, Número de productos
+And el PDF debe incluir una sección de resumen con: Categoría(s) filtrada(s), Bodega(s) filtrada(s), Valor total, Stock total, Número de productos
 
 And el PDF debe incluir una tabla con todas las columnas: Nombre, Referencia, Descripción, Cantidad, Unidad, Estado, Costo promedio, Total
 
 And el PDF debe incluir un pie de página con: Fecha de generación, Página X de Y
 
-And el archivo debe descargarse automáticamente con un nombre descriptivo (ej: "Reporte_Inventario_2024-01-15_BodegaCentral.pdf")
-
-
-
-Scenario: Validación de fecha futura
-
-Given que soy un Gerente de Inventario autenticado
-
-And que estoy en el módulo "Valor de Inventario"
-
-When selecciono una fecha futura en el filtro "Hasta"
-
-And aplico los filtros
-
-Then el sistema debe mostrar un mensaje de advertencia "No se puede consultar el inventario de una fecha futura"
-
-And debe sugerir seleccionar una fecha igual o anterior a la fecha actual
-
-And no debe realizar el cálculo del inventario
+And el archivo debe descargarse automáticamente con un nombre descriptivo (ej: "Reporte_Inventario_Electronica_BodegaCentral.pdf")
 
 ---
 
