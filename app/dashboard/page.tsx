@@ -230,10 +230,78 @@ export default function Dashboard() {
     }))
   }, [topProductos])
 
+  // Función helper para normalizar texto y corregir problemas de codificación
+  const normalizeText = (text: string | null | undefined): string => {
+    if (!text || text.trim() === "") return "Sin categoría"
+    
+    // Mapeo manual de textos comúnmente mal codificados del backend
+    // Estos son casos conocidos donde el backend devuelve texto con codificación incorrecta
+    const textCorrections: Record<string, string> = {
+      "Sin Categora": "Sin categoría",
+      "Sin categora": "Sin categoría",
+      "sin categora": "Sin categoría",
+      "SIN CATEGORA": "Sin categoría",
+      "Sin Categoria": "Sin categoría",
+      "Sin CategorÃa": "Sin categoría", // UTF-8 interpretado como Latin-1
+    }
+    
+    // Verificar si el texto necesita corrección
+    let normalizedText = text.trim()
+    if (textCorrections[normalizedText]) {
+      return textCorrections[normalizedText]
+    }
+    
+    // Detectar el patrón "Sin Categor" - caso más común del problema
+    if (normalizedText.match(/^Sin\s+Categor/i)) {
+      // Verificar si termina correctamente con "categoría" o "categoria"
+      const endsCorrectly = normalizedText.match(/Sin\s+Categor[iíía]\w*$/i)
+      if (!endsCorrectly) {
+        // No termina correctamente, reemplazar todo por "Sin categoría"
+        return "Sin categoría"
+      }
+    }
+    
+    // Detectar el carácter de reemplazo Unicode (U+FFFD, código 65533) que aparece cuando hay problemas de codificación
+    // Este carácter aparece como "" en el navegador cuando UTF-8 se interpreta incorrectamente
+    if (normalizedText.includes(String.fromCharCode(65533))) {
+      // Si contiene el carácter de reemplazo, intentar corregir el texto completo
+      normalizedText = normalizedText.replace(/Categor[^\s]*/gi, "Categoría")
+    }
+    
+    // Detectar caracteres mal codificados después de "Categor"
+    // Buscar cualquier carácter que no sea una letra válida después de "Categor"
+    const categorPattern = /Categor(.)/i
+    const categorMatch = normalizedText.match(categorPattern)
+    if (categorMatch && categorMatch[1]) {
+      const charAfterCategor = categorMatch[1]
+      const charCode = charAfterCategor.charCodeAt(0)
+      
+      // Caracteres válidos después de "Categor": í (237), i, a, y otras letras
+      // El código 237 es 'í' en Latin-1, que debería ser 'í' en UTF-8
+      const isValidChar = /[iaíáéóúñIAÍÁÉÓÚÑ]/.test(charAfterCategor)
+      
+      // Si NO es una letra válida O es el carácter de reemplazo (65533)
+      if (charCode === 65533 || (!isValidChar && (charCode < 65 || charCode > 122 || (charCode > 90 && charCode < 97)))) {
+        // Reemplazar "Categor" + carácter inválido por "Categoría"
+        normalizedText = normalizedText.replace(/Categor./i, "Categoría")
+      }
+    }
+    
+    // Reemplazar "Categora" (sin tilde) por "Categoría" en cualquier contexto
+    normalizedText = normalizedText.replace(/Categora\b/gi, "Categoría")
+    
+    // Última verificación: si contiene "Sin" y "Categor" pero no termina en "categoría", corregirlo
+    if (normalizedText.match(/Sin\s+Categor/i) && !normalizedText.match(/Sin\s+Categor[iíía]/i)) {
+      normalizedText = "Sin categoría"
+    }
+    
+    return normalizedText
+  }
+
   const distribucionCategoriasData = useMemo(() => {
     if (!distribucionCategorias) return []
     return distribucionCategorias.map((c) => ({
-      name: c.categoriaNombre,
+      name: normalizeText(c.categoriaNombre),
       value: c.valorTotal,
       stock: c.stockTotal,
       productos: c.cantidadProductos,
