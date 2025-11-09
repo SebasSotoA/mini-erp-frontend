@@ -57,7 +57,7 @@
 
 **Casos negativos / de borde:**
 - Cantidad inicial = 0 → debe crear el producto exitosamente.  
-- Cantidad inicial con decimales (ej. 100.5) → debe mostrar error.  
+- Cantidad inicial con decimales (ej. 1.5) → debe mostrar error.  
 
 **Ambiente / Dependencias:**
 - Base de datos con bodegas activas.  
@@ -533,270 +533,450 @@ El sistema bloquea el guardado y resalta el campo en error.
 - ¿Se requiere control de concurrencia al actualizar stock si varios usuarios registran facturas simultáneamente?  
 - ¿Debe generarse automáticamente un número de factura interno además del número del proveedor?  
 
-🧩 Contexto del sistema
+## 🧩 Contexto del Sistema
 
-Sistema: ERP de gestión comercial
+**Sistema:** ERP de gestión comercial
 
-Módulo relevante: Administración → Vendedores
+**Módulo relevante:** Administración → Vendedores
 
-Tipo de usuarios: Administrador del Sistema (rol con permisos de gestión)
+**Tipo de usuarios:**
 
-Restricciones:
+- Administrador del Sistema (rol con permisos de gestión)
 
-Los campos obligatorios deben validarse en frontend y backend.
-El documento de vendedor debe ser único (clave primaria).
-Los vendedores inactivos no deben aparecer en listas de selección de facturas.
-Persistencia de histórico en base de datos (referencial con facturas).
+**Restricciones:**
 
-🧪 Casos de prueba manuales
+- Los campos obligatorios deben validarse en frontend y backend.
 
-ID	Título	Prioridad	Riesgo	Criterio de aceptación asociado
-TC-04-01	Crear nuevo vendedor con datos válidos	Alta	Alto	“Scenario - Crear un nuevo vendedor”
-TC-04-02	Validar documento duplicado al crear vendedor	Alta	Alto	“Scenario - Validación de documento único”
-TC-04-03	Editar información de un vendedor existente	Media	Medio	“Scenario - Editar información de un vendedor existente”
-TC-04-04	Desactivar vendedor con facturas asociadas	Alta	Alto	“Scenario - Desactivar un vendedor”
+- El documento de vendedor debe ser único (clave primaria).
 
-🧩 TC-04-01: Crear nuevo vendedor con datos válidos
+- Los vendedores inactivos no deben aparecer en listas de selección de facturas.
 
-Precondiciones
+- Persistencia de histórico en base de datos (referencial con facturas).
 
-Usuario autenticado con rol “Administrador de Sistema”.
+### 🧪 Casos de Prueba Manuales
 
-No existe un vendedor con documento “12345678”.
+#### TC-04-01: Crear nuevo vendedor con datos válidos
 
-Datos de prueba
-Campo	Valor
-Nombre	Juan Pérez
-Documento	12345678
-Email	juan.perez@empresa.com
-Teléfono	3001234567
-Dirección	Calle 123 #45-67
-Pasos y resultados esperados
+| Campo        | Valor                                       |
+| ------------ | ------------------------------------------- |
+| ID           | TC-04-01                                    |
+| Título       | Crear nuevo vendedor con datos válidos      |
+| Prioridad    | Alta                                        |
+| Riesgo       | Alto                                        |
+| Trazabilidad | "Scenario - Crear un nuevo vendedor"        |
 
-#	Paso	Resultado esperado	Validación
-1	Acceder al módulo “Vendedores”.	Se visualiza la lista actual de vendedores.	UI
-2	Hacer clic en “Nuevo Vendedor”.	Se muestra el formulario vacío.	UI
-3	Completar los campos con los datos válidos.	Todos los campos muestran formato válido.	UI
-4	Hacer clic en “Guardar”.	Sistema valida campos requeridos, formato de email y unicidad del documento.	API/UI
-5	Confirmar creación exitosa.	Mensaje “Vendedor creado exitosamente”. Vendedor aparece en la lista con estado “Activo”.	UI
-6	Revisar disponibilidad en facturación.	En módulo de facturas, “Juan Pérez” aparece como opción en campo “Vendedor”.	UI
+**Precondiciones:**
 
-Casos negativos / borde
-Email sin “@” → error de formato.
-Documento vacío → error requerido.
-Ambiente: QA / base de datos limpia
-Dependencias: API /vendedores (POST, GET)
+- Usuario autenticado con rol "Administrador de Sistema".
 
-🧩 TC-04-02: Validar documento duplicado al crear vendedor
+- No existe un vendedor con documento "12345678".
 
-Precondiciones
+**Datos de Prueba:**
 
-Usuario autenticado con rol “Administrador de Sistema”.
-Existe vendedor con documento “12345678”.
+| Campo     | Valor                  |
+| --------- | ---------------------- |
+| Nombre    | Juan Pérez             |
+| Documento | 12345678               |
+| Email     | juan.perez@empresa.com |
+| Teléfono  | 3001234567             |
+| Dirección | Calle 123 #45-67       |
 
-Datos de prueba
-Campo	Valor
-Nombre	Juan Gómez
-Documento	12345678
-Email	juan.gomez@empresa.com
-Teléfono	3019999999
-Dirección	Calle 55 #10-10
+**Pasos y Resultados Esperados:**
 
-Pasos
-#	Paso	Resultado esperado	Validación
-1	Ingresar al módulo “Vendedores” → “Nuevo Vendedor”.	Formulario visible.	UI
-2	Completar campos con documento ya existente.	Sin errores iniciales.	UI
-3	Hacer clic en “Guardar”.	Sistema detecta duplicado y muestra mensaje “Ya existe un vendedor con este documento”. Campo “Documento” resaltado en rojo.	API/UI
-4	Intentar guardar nuevamente sin cambiar el documento.	No se crea registro duplicado.	BD/API
+| #   | Paso                                                         | Resultado Esperado                                                                                      | Validación                     |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| 1   | Acceder al módulo "Vendedores".                              | Se visualiza la lista actual de vendedores.                                                             | UI                             |
+| 2   | Hacer clic en "Nuevo Vendedor".                              | Se muestra el formulario vacío.                                                                         | UI                             |
+| 3   | Completar los campos con los datos válidos.                  | Todos los campos muestran formato válido.                                                               | UI                             |
+| 4   | Hacer clic en "Guardar".                                     | Sistema valida campos requeridos, formato de email y unicidad del documento.                            | API/UI                         |
+| 5   | Confirmar creación exitosa.                                  | Mensaje "Vendedor creado exitosamente". Vendedor aparece en la lista con estado "Activo".               | UI                             |
+| 6   | Revisar disponibilidad en facturación.                       | En módulo de facturas, "Juan Pérez" aparece como opción en campo "Vendedor".                            | UI                             |
 
-Casos negativos / borde
+**Casos negativos / de borde:**
 
-Documento con espacios o guiones → validar normalización.
-Documento con caracteres no numéricos → error de validación.
+- Email sin "@" → error de formato.
 
-## 🧩 TC-04-03: Editar información de un vendedor existente
+- Documento vacío → error requerido.
 
-Precondiciones
-Usuario autenticado.
-Existe “Juan Pérez” con documento “12345678”.
-Datos de prueba
-Campo	Valor anterior	Valor nuevo
-Email	juan.perez@empresa.com	juan.perez.nuevo@empresa.com
-Teléfono	3001234567	3009876543
+**Ambiente / Dependencias:**
 
-Pasos
-#	Paso	Resultado esperado	Validación
-1	Acceder al módulo “Vendedores”.	Lista visible.	UI
-2	Hacer clic en “Editar” del vendedor “Juan Pérez”.	Se abre formulario con datos actuales.	UI
-3	Modificar email y teléfono.	Campos actualizados en formulario.	UI
-4	Hacer clic en “Guardar Cambios”.	Validación de formato de email, documento inmutable.	API/UI
-5	Confirmar mensaje “Vendedor actualizado exitosamente”.	Lista refleja nuevos datos.	UI
-6	Consultar factura donde aparezca el vendedor.	Factura muestra el email/telefono actualizado.	API/UI
+- QA / base de datos limpia
 
-Casos negativos / borde
-Email inválido → error “Formato de correo no válido”.
-Intentar cambiar documento → campo bloqueado.
+- API /vendedores (POST, GET)
 
-🧩 TC-04-04: Desactivar vendedor con facturas asociadas
+#### TC-04-02: Validar documento duplicado al crear vendedor
 
-Precondiciones
-Usuario autenticado.
-Vendedor “Juan Pérez” activo con facturas en histórico.
+| Campo        | Valor                                         |
+| ------------ | --------------------------------------------- |
+| ID           | TC-04-02                                      |
+| Título       | Validar documento duplicado al crear vendedor |
+| Prioridad    | Alta                                          |
+| Riesgo       | Alto                                          |
+| Trazabilidad | "Scenario - Validación de documento único"    |
 
-Pasos
-#	Paso	Resultado esperado	Validación
-1	Acceder a “Vendedores”.	Lista visible.	UI
-2	Hacer clic en “Desactivar” junto a “Juan Pérez”.	Se muestra cuadro de confirmación.	UI
-3	Confirmar acción.	Estado cambia a “Inactivo”. Mensaje “Vendedor desactivado exitosamente”.	UI/API
-4	Revisar módulo de facturas.	“Juan Pérez” no aparece en lista de selección.	UI
-5	Consultar factura histórica.	Factura mantiene referencia al vendedor (información preservada).	API/BD
+**Precondiciones:**
 
-Casos negativos / borde
+- Usuario autenticado con rol "Administrador de Sistema".
 
-Cancelar en confirmación → no cambia estado.
-Intentar crear factura con vendedor inactivo → error esperado.
+- Existe vendedor con documento "12345678".
 
-✅ Checklist de calidad del QA
-Criterio	Verificado
-Validaciones de frontend (campos obligatorios, formatos)	☐
-Validaciones backend (unicidad, integridad referencial)	☐
-Mensajes de éxito/error coherentes con guías de UX	☐
-Cambios reflejados inmediatamente en UI (sin refrescar)	☐
-Persistencia en base de datos confirmada	☐
-No se pierden datos históricos (facturas referenciadas)	☐
-Diferenciación visual de estados (Activo/Inactivo)	☐
-Cobertura de escenarios negativos	☐
+**Datos de Prueba:**
 
-🧩 Contexto del sistema
+| Campo     | Valor                   |
+| --------- | ----------------------- |
+| Nombre    | Juan Gómez              |
+| Documento | 12345678                |
+| Email     | juan.gomez@empresa.com  |
+| Teléfono  | 3019999999              |
+| Dirección | Calle 55 #10-10         |
 
-Sistema: ERP de Gestión de Inventario
-Módulo relevante: Inventario → Historial de Movimientos
-Tipo de usuarios: Operador de Inventario (rol autenticado con permisos de lectura)
+**Pasos y Resultados Esperados:**
 
-Restricciones:
+| #   | Paso                                                         | Resultado Esperado                                                                                           | Validación |
+| --- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ---------- |
+| 1   | Ingresar al módulo "Vendedores" → "Nuevo Vendedor".          | Formulario visible.                                                                                          | UI         |
+| 2   | Completar campos con documento ya existente.                 | Sin errores iniciales.                                                                                       | UI         |
+| 3   | Hacer clic en "Guardar".                                     | Sistema detecta duplicado y muestra mensaje "Ya existe un vendedor con este documento". Campo "Documento" resaltado en rojo. | API/UI     |
+| 4   | Intentar guardar nuevamente sin cambiar el documento.        | No se crea registro duplicado.                                                                               | BD/API     |
 
-El sistema debe soportar grandes volúmenes de datos con paginación y ordenamiento.
-Los filtros pueden combinarse entre sí (fecha, tipo, bodega, producto).
-Debe haber búsqueda reactiva (debounce ≤ 500 ms).
-La API /movimientos debe devolver resultados paginados y filtrados.
+**Casos negativos / de borde:**
 
-🧪 Casos de prueba manuales
+- Documento con espacios o guiones → validar normalización.
 
-ID	Título	Prioridad	Riesgo	Criterio de aceptación asociado
-TC-05-01	Consultar historial de movimientos inicial	Alta	Medio	“Scenario: Consultar historial de movimientos con filtros básicos”
-TC-05-02	Filtrar movimientos por fecha específica	Alta	Alto	“Scenario: Filtrar movimientos por fecha específica”
-TC-05-03	Filtrar movimientos por tipo de movimiento	Media	Medio	“Scenario: Filtrar movimientos por tipo”
-TC-05-04	Combinación múltiple de filtros (fecha + tipo + bodega + producto)	Alta	Alto	“Scenario: Combinar múltiples filtros”
+- Documento con caracteres no numéricos → error de validación.
 
-🧩 TC-05-01: Consultar historial de movimientos inicial
+**Ambiente / Dependencias:**
 
-Precondiciones
+- API /vendedores (POST, GET)
 
-Usuario autenticado como “Operador de Inventario”.
-Existen movimientos registrados en la base de datos.
+#### TC-04-03: Editar información de un vendedor existente
 
-Pasos y resultados esperados
-#	Paso	Resultado esperado	Validación
-1	Acceder al módulo “Historial de Movimientos”.	Se muestra tabla con los movimientos más recientes.	UI/API
-2	Verificar columnas visibles.	Se muestran: Fecha, Tipo, Bodega, Producto, Cantidad, Observación.	UI
-3	Revisar contador de resultados.	Muestra el total de movimientos (ej: “Mostrando 1–20 de 250”).	UI
-4	Validar paginación.	Aparecen controles “Anterior / Siguiente” y selector de items por página.	UI
-5	Verificar botón “Filtros”.	Al hacer clic, se despliega panel de filtros.	UI
+| Campo        | Valor                                              |
+| ------------ | -------------------------------------------------- |
+| ID           | TC-04-03                                           |
+| Título       | Editar información de un vendedor existente        |
+| Prioridad    | Media                                              |
+| Riesgo       | Medio                                              |
+| Trazabilidad | "Scenario - Editar información de un vendedor existente" |
 
-Casos negativos / borde
+**Precondiciones:**
 
-No existen movimientos → mensaje “No se encontraron movimientos”.
-Error API → mostrar mensaje de error controlado (sin romper UI).
-Ambiente: QA
-Dependencias: API /movimientos?limit=20&page=1
+- Usuario autenticado.
 
-🧩 TC-05-02: Filtrar movimientos por fecha específica
+- Existe "Juan Pérez" con documento "12345678".
 
-Precondiciones
-Usuario autenticado.
-Existen movimientos registrados en diferentes fechas.
-Datos de prueba
-Campo	Valor
-Fecha filtro	15/01/2024
+**Datos de Prueba:**
 
-Pasos
-#	Paso	Resultado esperado	Validación
-1	Ingresar a “Historial de Movimientos”.	Tabla visible.	UI
-2	Hacer clic en “Filtros”.	Panel de filtros se abre.	UI
-3	Seleccionar fecha “15/01/2024”.	Filtro cargado correctamente.	UI
-4	Hacer clic en “Aplicar Filtros”.	Se envía petición a API con parámetro fecha=2024-01-15.	API
-5	Validar tabla.	Solo se muestran movimientos con esa fecha.	UI/API
-6	Revisar contador.	Muestra número exacto de coincidencias.	UI
-7	Si no hay resultados.	Muestra mensaje “No se encontraron movimientos para la fecha seleccionada”.	UI
+| Campo    | Valor anterior              | Valor nuevo                       |
+| -------- | --------------------------- | --------------------------------- |
+| Email    | juan.perez@empresa.com      | juan.perez.nuevo@empresa.com      |
+| Teléfono | 3001234567                  | 3009876543                        |
 
-Casos negativos / borde
+**Pasos y Resultados Esperados:**
 
-Fecha futura sin registros → mensaje vacío.
-Fecha inválida → error de validación.
-Ambiente: QA
-Dependencias: API /movimientos?fecha=2024-01-15
+| #   | Paso                                                     | Resultado Esperado                                    | Validación |
+| --- | -------------------------------------------------------- | ----------------------------------------------------- | ---------- |
+| 1   | Acceder al módulo "Vendedores".                          | Lista visible.                                         | UI         |
+| 2   | Hacer clic en "Editar" del vendedor "Juan Pérez".        | Se abre formulario con datos actuales.                | UI         |
+| 3   | Modificar email y teléfono.                              | Campos actualizados en formulario.                    | UI         |
+| 4   | Hacer clic en "Guardar Cambios".                         | Validación de formato de email, documento inmutable.  | API/UI     |
+| 5   | Confirmar mensaje "Vendedor actualizado exitosamente".   | Lista refleja nuevos datos.                           | UI         |
+| 6   | Consultar factura donde aparezca el vendedor.            | Factura muestra el email/telefono actualizado.        | API/UI     |
 
-🧩 TC-05-03: Filtrar movimientos por tipo de movimiento
+**Casos negativos / de borde:**
 
-Precondiciones
-Usuario autenticado.
-Existen movimientos de tipo “Compra”, “Venta” y “Ajuste”.
-Datos de prueba
-Campo	Valor
-Tipo filtro	Compra / Venta / Todos
+- Email inválido → error "Formato de correo no válido".
 
-Pasos
-#	Paso	Resultado esperado	Validación
-1	Acceder al módulo “Historial de Movimientos”.	Tabla cargada.	UI
-2	Abrir panel de filtros.	Visible.	UI
-3	Seleccionar tipo “Compra”.	Campo tipo = Compra.	UI
-4	Aplicar filtros.	Tabla muestra solo compras, con badge verde “Compra”.	UI/API
-5	Cambiar tipo a “Venta”.	Tabla muestra solo ventas, con badge rojo o correspondiente.	UI/API
-6	Seleccionar “Todos”.	Tabla muestra todos los tipos.	UI
-Casos negativos / borde
-No existen movimientos del tipo → mensaje “No se encontraron movimientos”.
-Cambio rápido de filtro → validar debounce funcional (no recarga excesiva).
-Ambiente: QA
-Dependencias: API /movimientos?tipo=compra
+- Intentar cambiar documento → campo bloqueado.
 
-## 🧩 TC-05-04: Combinación múltiple de filtros (fecha + tipo + bodega + producto)
+**Ambiente / Dependencias:**
 
-Precondiciones
-Usuario autenticado.
-Existen registros que cumplen y no cumplen la combinación de filtros.
-Datos de prueba
-Campo	Valor
-Fecha	15/01/2024
-Tipo	Compra
-Bodega	Bodega Central
-Producto	Camiseta
+- API /vendedores (PUT, GET)
 
-Pasos
-#	Paso	Resultado esperado	Validación
-1	Acceder al módulo “Historial de Movimientos”.	Tabla inicial cargada.	UI
-2	Abrir “Filtros”.	Panel visible.	UI
-3	Completar filtros con los valores indicados.	Filtros visibles con resumen.	UI
-4	Hacer clic en “Aplicar Filtros”.	Se realiza petición a API con todos los parámetros combinados.	API
-5	Verificar resultados.	Solo se muestran movimientos que cumplen todos los criterios.	UI/API
-6	Revisar contador de resultados.	Actualizado correctamente.	UI
-7	Hacer clic en “Limpiar Filtros”.	Se eliminan todos los filtros, tabla vuelve a estado inicial.	UI
+#### TC-04-04: Desactivar vendedor con facturas asociadas
 
-Casos negativos / borde
+| Campo        | Valor                                      |
+| ------------ | ------------------------------------------ |
+| ID           | TC-04-04                                   |
+| Título       | Desactivar vendedor con facturas asociadas |
+| Prioridad    | Alta                                       |
+| Riesgo       | Alto                                       |
+| Trazabilidad | "Scenario - Desactivar un vendedor"        |
 
-No existen coincidencias → mensaje de “sin resultados”.
-Filtro combinado incompatible (ej. producto sin registro en esa bodega) → respuesta vacía.
-Búsqueda parcial de producto (“Camis”) → resultados con coincidencias parciales.
-Ambiente: QA
-Dependencias: API /movimientos?fecha=2024-01-15&tipo=compra&bodega=central&producto=camiseta
+**Precondiciones:**
 
-✅ Checklist de calidad del QA
+- Usuario autenticado.
 
-Criterio	Verificado
-Campos y filtros cargan con valores por defecto	☐
-Filtros aplican correctamente y combinan resultados	☐
-Paginación y ordenamiento se mantienen al cambiar filtros	☐
-Mensajes de “sin resultados” visibles y coherentes	☐
-API responde con datos correctos según parámetros enviados	☐
-Orden visual consistente (badges, columnas, fechas)	☐
-Desempeño aceptable (<2s por consulta)	☐
-Búsqueda reactiva con debounce ≤500 ms	☐
+- Vendedor "Juan Pérez" activo con facturas en histórico.
+
+**Pasos y Resultados Esperados:**
+
+| #   | Paso                                            | Resultado Esperado                                                         | Validación |
+| --- | ----------------------------------------------- | -------------------------------------------------------------------------- | ---------- |
+| 1   | Acceder a "Vendedores".                         | Lista visible.                                                             | UI         |
+| 2   | Hacer clic en "Desactivar" junto a "Juan Pérez". | Se muestra cuadro de confirmación.                                         | UI         |
+| 3   | Confirmar acción.                               | Estado cambia a "Inactivo". Mensaje "Vendedor desactivado exitosamente".   | UI/API     |
+| 4   | Revisar módulo de facturas.                     | "Juan Pérez" no aparece en lista de selección.                             | UI         |
+| 5   | Consultar factura histórica.                    | Factura mantiene referencia al vendedor (información preservada).          | API/BD     |
+
+**Casos negativos / de borde:**
+
+- Cancelar en confirmación → no cambia estado.
+
+- Intentar crear factura con vendedor inactivo → error esperado.
+
+**Ambiente / Dependencias:**
+
+- API /vendedores (PUT, GET)
+
+### ✅ Checklist de Calidad QA
+
+| Ítem | Verificación                                                              |
+| ---- | ------------------------------------------------------------------------- |
+| 🔲   | Validaciones de frontend (campos obligatorios, formatos)                  |
+| 🔲   | Validaciones backend (unicidad, integridad referencial)                   |
+| 🔲   | Mensajes de éxito/error coherentes con guías de UX                        |
+| 🔲   | Cambios reflejados inmediatamente en UI (sin refrescar)                   |
+| 🔲   | Persistencia en base de datos confirmada                                  |
+| 🔲   | No se pierden datos históricos (facturas referenciadas)                   |
+| 🔲   | Diferenciación visual de estados (Activo/Inactivo)                        |
+| 🔲   | Cobertura de escenarios negativos                                         |
+
+### ❓ Supuestos y Preguntas Abiertas para el Product Owner
+
+- ¿Se permite editar el documento de un vendedor existente o debe ser inmutable?
+
+- ¿Qué ocurre con las facturas pendientes cuando se desactiva un vendedor?
+
+- ¿Debe existir un límite en el número de vendedores activos en el sistema?
+
+- ¿Se requiere registro de auditoría para cambios en información de vendedores?
+
+- ¿Debe permitirse reactivar un vendedor previamente desactivado?
+
+## 🧩 Contexto del Sistema
+
+**Sistema:** ERP de Gestión de Inventario
+
+**Módulo relevante:** Inventario → Historial de Movimientos
+
+**Tipo de usuarios:**
+
+- Operador de Inventario (rol autenticado con permisos de lectura)
+
+**Restricciones:**
+
+- El sistema debe soportar grandes volúmenes de datos con paginación y ordenamiento.
+
+- Los filtros pueden combinarse entre sí (fecha, tipo, bodega, producto).
+
+- Debe haber búsqueda reactiva (debounce ≤ 500 ms).
+
+- La API /movimientos debe devolver resultados paginados y filtrados.
+
+### 🧪 Casos de Prueba Manuales
+
+#### TC-05-01: Consultar historial de movimientos inicial
+
+| Campo        | Valor                                                          |
+| ------------ | -------------------------------------------------------------- |
+| ID           | TC-05-01                                                       |
+| Título       | Consultar historial de movimientos inicial                     |
+| Prioridad    | Alta                                                            |
+| Riesgo       | Medio                                                           |
+| Trazabilidad | "Scenario: Consultar historial de movimientos con filtros básicos" |
+
+**Precondiciones:**
+
+- Usuario autenticado como "Operador de Inventario".
+
+- Existen movimientos registrados en la base de datos.
+
+**Pasos y Resultados Esperados:**
+
+| #   | Paso                                      | Resultado Esperado                                                          | Validación |
+| --- | ----------------------------------------- | ---------------------------------------------------------------------------- | ---------- |
+| 1   | Acceder al módulo "Historial de Movimientos". | Se muestra tabla con los movimientos más recientes.                           | UI/API     |
+| 2   | Verificar columnas visibles.              | Se muestran: Fecha, Tipo, Bodega, Producto, Cantidad, Observación.          | UI         |
+| 3   | Revisar contador de resultados.           | Muestra el total de movimientos (ej: "Mostrando 1–20 de 250").              | UI         |
+| 4   | Validar paginación.                       | Aparecen controles "Anterior / Siguiente" y selector de items por página.    | UI         |
+| 5   | Verificar botón "Filtros".                | Al hacer clic, se despliega panel de filtros.                                | UI         |
+
+**Casos negativos / de borde:**
+
+- No existen movimientos → mensaje "No se encontraron movimientos".
+
+- Error API → mostrar mensaje de error controlado (sin romper UI).
+
+**Ambiente / Dependencias:**
+
+- QA
+
+- API /movimientos?limit=20&page=1
+
+#### TC-05-02: Filtrar movimientos por fecha específica
+
+| Campo        | Valor                                                |
+| ------------ | ---------------------------------------------------- |
+| ID           | TC-05-02                                             |
+| Título       | Filtrar movimientos por fecha específica             |
+| Prioridad    | Alta                                                 |
+| Riesgo       | Alto                                                 |
+| Trazabilidad | "Scenario: Filtrar movimientos por fecha específica" |
+
+**Precondiciones:**
+
+- Usuario autenticado.
+
+- Existen movimientos registrados en diferentes fechas.
+
+**Datos de Prueba:**
+
+| Campo        | Valor       |
+| ------------ | ----------- |
+| Fecha filtro | 15/01/2024  |
+
+**Pasos y Resultados Esperados:**
+
+| #   | Paso                                      | Resultado Esperado                                                           | Validación |
+| --- | ----------------------------------------- | ----------------------------------------------------------------------------- | ---------- |
+| 1   | Ingresar a "Historial de Movimientos".    | Tabla visible.                                                                | UI         |
+| 2   | Hacer clic en "Filtros".                  | Panel de filtros se abre.                                                    | UI         |
+| 3   | Seleccionar fecha "15/01/2024".           | Filtro cargado correctamente.                                                | UI         |
+| 4   | Hacer clic en "Aplicar Filtros".          | Se envía petición a API con parámetro fecha=2024-01-15.                      | API        |
+| 5   | Validar tabla.                            | Solo se muestran movimientos con esa fecha.                                  | UI/API     |
+| 6   | Revisar contador.                         | Muestra número exacto de coincidencias.                                      | UI         |
+| 7   | Si no hay resultados.                     | Muestra mensaje "No se encontraron movimientos para la fecha seleccionada".  | UI         |
+
+**Casos negativos / de borde:**
+
+- Fecha futura sin registros → mensaje vacío.
+
+- Fecha inválida → error de validación.
+
+**Ambiente / Dependencias:**
+
+- QA
+
+- API /movimientos?fecha=2024-01-15
+
+#### TC-05-03: Filtrar movimientos por tipo de movimiento
+
+| Campo        | Valor                                       |
+| ------------ | ------------------------------------------- |
+| ID           | TC-05-03                                    |
+| Título       | Filtrar movimientos por tipo de movimiento  |
+| Prioridad    | Media                                       |
+| Riesgo       | Medio                                       |
+| Trazabilidad | "Scenario: Filtrar movimientos por tipo"    |
+
+**Precondiciones:**
+
+- Usuario autenticado.
+
+- Existen movimientos de tipo "Compra", "Venta" y "Ajuste".
+
+**Datos de Prueba:**
+
+| Campo       | Valor                    |
+| ----------- | ------------------------ |
+| Tipo filtro | Compra / Venta / Todos   |
+
+**Pasos y Resultados Esperados:**
+
+| #   | Paso                                      | Resultado Esperado                                                           | Validación |
+| --- | ----------------------------------------- | ----------------------------------------------------------------------------- | ---------- |
+| 1   | Acceder al módulo "Historial de Movimientos". | Tabla cargada.                                                                 | UI         |
+| 2   | Abrir panel de filtros.                   | Visible.                                                                      | UI         |
+| 3   | Seleccionar tipo "Compra".                | Campo tipo = Compra.                                                          | UI         |
+| 4   | Aplicar filtros.                          | Tabla muestra solo compras, con badge verde "Compra".                         | UI/API     |
+| 5   | Cambiar tipo a "Venta".                   | Tabla muestra solo ventas, con badge rojo o correspondiente.                  | UI/API     |
+| 6   | Seleccionar "Todos".                      | Tabla muestra todos los tipos.                                               | UI         |
+
+**Casos negativos / de borde:**
+
+- No existen movimientos del tipo → mensaje "No se encontraron movimientos".
+
+- Cambio rápido de filtro → validar debounce funcional (no recarga excesiva).
+
+**Ambiente / Dependencias:**
+
+- QA
+
+- API /movimientos?tipo=compra
+
+#### TC-05-04: Combinación múltiple de filtros (fecha + tipo + bodega + producto)
+
+| Campo        | Valor                                          |
+| ------------ | ---------------------------------------------- |
+| ID           | TC-05-04                                       |
+| Título       | Combinación múltiple de filtros (fecha + tipo + bodega + producto) |
+| Prioridad    | Alta                                           |
+| Riesgo       | Alto                                           |
+| Trazabilidad | "Scenario: Combinar múltiples filtros"         |
+
+**Precondiciones:**
+
+- Usuario autenticado.
+
+- Existen registros que cumplen y no cumplen la combinación de filtros.
+
+**Datos de Prueba:**
+
+| Campo    | Valor            |
+| -------- | ---------------- |
+| Fecha    | 15/01/2024       |
+| Tipo     | Compra           |
+| Bodega   | Bodega Central   |
+| Producto | Camiseta         |
+
+**Pasos y Resultados Esperados:**
+
+| #   | Paso                                      | Resultado Esperado                                                           | Validación |
+| --- | ----------------------------------------- | ----------------------------------------------------------------------------- | ---------- |
+| 1   | Acceder al módulo "Historial de Movimientos". | Tabla inicial cargada.                                                         | UI         |
+| 2   | Abrir "Filtros".                          | Panel visible.                                                                | UI         |
+| 3   | Completar filtros con los valores indicados. | Filtros visibles con resumen.                                                 | UI         |
+| 4   | Hacer clic en "Aplicar Filtros".          | Se realiza petición a API con todos los parámetros combinados.                | API        |
+| 5   | Verificar resultados.                     | Solo se muestran movimientos que cumplen todos los criterios.                 | UI/API     |
+| 6   | Revisar contador de resultados.           | Actualizado correctamente.                                                    | UI         |
+| 7   | Hacer clic en "Limpiar Filtros".          | Se eliminan todos los filtros, tabla vuelve a estado inicial.                 | UI         |
+
+**Casos negativos / de borde:**
+
+- No existen coincidencias → mensaje de "sin resultados".
+
+- Filtro combinado incompatible (ej. producto sin registro en esa bodega) → respuesta vacía.
+
+- Búsqueda parcial de producto ("Camis") → resultados con coincidencias parciales.
+
+**Ambiente / Dependencias:**
+
+- QA
+
+- API /movimientos?fecha=2024-01-15&tipo=compra&bodega=central&producto=camiseta
+
+### ✅ Checklist de Calidad QA
+
+| Ítem | Verificación                                                          |
+| ---- | --------------------------------------------------------------------- |
+| 🔲   | Campos y filtros cargan con valores por defecto                      |
+| 🔲   | Filtros aplican correctamente y combinan resultados                   |
+| 🔲   | Paginación y ordenamiento se mantienen al cambiar filtros             |
+| 🔲   | Mensajes de "sin resultados" visibles y coherentes                    |
+| 🔲   | API responde con datos correctos según parámetros enviados            |
+| 🔲   | Orden visual consistente (badges, columnas, fechas)                   |
+| 🔲   | Desempeño aceptable (<2s por consulta)                                |
+| 🔲   | Búsqueda reactiva con debounce ≤500 ms                                |
+
+### ❓ Supuestos y Preguntas Abiertas para el Product Owner
+
+- ¿Debe existir un filtro por rango de fechas además de fecha específica?
+
+- ¿Qué ocurre si se seleccionan múltiples tipos de movimiento simultáneamente?
+
+- ¿Debe permitirse exportar el historial filtrado a PDF o Excel?
+
+- ¿Se requiere límite máximo en la cantidad de resultados mostrados por página?
+
+- ¿Debe existir una función de búsqueda por texto libre además de los filtros estructurados?
