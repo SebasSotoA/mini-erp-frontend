@@ -1,549 +1,537 @@
-🧩 Contexto del Sistema
+# 🧩 Contexto del Sistema
 
-Sistema: Plataforma de gestión de inventarios multibodega.
-Módulo relevante: Módulo de Productos → Submódulo “Crear Producto”.
-Usuarios:
+**Sistema:** Plataforma de gestión de inventarios multibodega.  
+**Módulo relevante:** Módulo de Productos → Submódulo “Crear Producto”.  
+**Usuarios:**  
+- Administrador de Inventario (rol con permisos de creación y asignación de bodegas).  
 
-Administrador de Inventario (rol con permisos de creación y asignación de bodegas).
+**Restricciones:**  
+- Cada producto debe tener una bodega principal obligatoria.  
+- Solo se pueden asignar bodegas activas.  
+- La cantidad inicial debe ser un entero ≥ 0.  
+- El sistema debe validar duplicidad de bodegas.  
 
-Restricciones:
+---
 
-Cada producto debe tener una bodega principal obligatoria.
+# 🧪 Casos de Prueba Manuales
 
-Solo se pueden asignar bodegas activas.
+## TC-HU01-01: Creación de producto con bodega existente
 
-La cantidad inicial debe ser un entero ≥ 0.
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU01-001 |
+| Título | Crear producto con bodega existente |
+| Prioridad | Alta |
+| Riesgo | Medio |
+| Trazabilidad | Cubre escenario 1 de los criterios de aceptación |
 
-El sistema debe validar duplicidad de bodegas.
+**Precondiciones:**
+- Usuario autenticado como Administrador de Inventario.  
+- Existen bodegas activas en el sistema (ej: “Principal”).  
+- No existen productos duplicados con el mismo nombre.  
 
-🧪 Casos de Prueba Manuales
-## TC-01: Creación de producto con bodega principal
-Campo	Valor
-ID	TC-HU01-001
-Título	Crear producto con bodega principal válida
-Prioridad	Alta
-Riesgo	Medio
-Trazabilidad	Cubre escenario 1 de los criterios de aceptación
+**Datos de Prueba:**
 
-Precondiciones:
+| Campo | Valor |
+|--------|--------|
+| Nombre | “Fertilizante Orgánico A” |
+| Unidad | “kg” |
+| Precio base | “20000” |
+| Impuesto | “19%” |
+| Precio total | “23800” |
+| Costo inicial | “15000” |
+| Bodega principal | “Principal” |
+| Cantidad inicial | “100” |
 
-Usuario autenticado como Administrador de Inventario.
+**Pasos y Resultados Esperados:**
 
-Existen bodegas activas en el sistema (ej: “Bodega Central”).
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Acceder al módulo “Items de venta” → “Nuevo item de venta” | Se muestra formulario de creación | UI |
+| 2 | Completar los campos requeridos | Los campos se completan correctamente | UI |
+| 3 | Seleccionar “Principal” como bodega principal | Campo se llena correctamente | UI |
+| 4 | Ingresar cantidad “100” | Valor aceptado (entero positivo) | UI |
+| 5 | Clic en “Crear Producto” | Se valida información y se guarda | API (POST /products) |
+| 6 | Validar mensaje “Producto creado exitosamente” | Mensaje visible | UI |
+| 7 | Revisar lista de productos | Producto aparece con stock 100 en “Principal” | UI / API GET /products |
 
-No existen productos duplicados con el mismo nombre.
+**Casos negativos / de borde:**
+- Cantidad inicial = 0 → debe crear el producto exitosamente.  
+- Cantidad inicial con decimales (ej. 100.5) → debe mostrar error.  
 
-Datos de Prueba:
+**Ambiente / Dependencias:**
+- Base de datos con bodegas activas.  
+- API /products funcional.  
 
-Nombre: “Fertilizante Orgánico A”
+---
 
-Unidad: “kg”
+## TC-HU01-02: Agregar bodegas adicionales al crear producto
 
-Precio base: “20000”
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU01-002 |
+| Título | Crear producto con bodegas adicionales |
+| Prioridad | Media |
+| Riesgo | Medio |
+| Trazabilidad | Cubre escenario 2 de los criterios de aceptación |
 
-Impuesto: “19%”
+**Precondiciones:**
+- Usuario autenticado.  
+- Existen bodegas: “Central”, “Norte”, “Sur”.  
 
-Precio total: “23800”
+**Datos de Prueba:**
 
-Costo inicial: “15000”
+| Campo | Valor |
+|--------|--------|
+| Producto | “Semilla Premium” |
+| Bodega principal | “Bodega Central” (100) |
+| Bodega adicional 1 | “Bodega Norte” (50) |
+| Bodega adicional 2 | “Bodega Sur” (30) |
 
-Bodega principal: “Bodega Central”
+**Pasos y Resultados Esperados:**
 
-Cantidad inicial: “100”
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Crear producto con datos básicos | Datos aceptados | UI |
+| 2 | Seleccionar “Bodega Central” (100) como principal | Correcto | UI |
+| 3 | Clic en “Agregar Bodega” → Seleccionar “Bodega Norte” (50) → Guardar | Bodega agregada exitosamente | UI |
+| 4 | Repetir con “Bodega Sur” (30) | Agregada correctamente | UI |
+| 5 | Clic en “Crear Producto” | Producto creado con tres bodegas | API |
+| 6 | Validar que el producto aparece con: Central (100), Norte (50), Sur (30) | Correcto | UI/API |
 
-Pasos y Resultados Esperados:
+**Casos negativos / de borde:**
+- Intentar agregar “Bodega Central” como adicional → error “La bodega seleccionada no puede ser la principal”.  
+- Repetir una bodega → error “Bodega ya asignada”.  
 
-#	Paso	Resultado Esperado	Validación
-1	Acceder al módulo “Productos” → “Crear Producto”	Se muestra formulario de creación	UI
-2	Completar los campos requeridos	Los campos se completan correctamente	UI
-3	Seleccionar “Bodega Central” como bodega principal	Campo se llena correctamente	UI
-4	Ingresar cantidad “100”	Valor aceptado (entero positivo)	UI
-5	Clic en “Crear Producto”	Se valida información y se guarda	API (POST /products)
-6	Validar mensaje “Producto creado exitosamente”	Mensaje visible	UI
-7	Revisar lista de productos	Producto aparece con stock 100 en “Bodega Central”	UI / API GET /products
+**Ambiente / Dependencias:**
+- Bodegas activas cargadas.  
+- Modal “Agregar Bodega” funcional.  
 
-Casos negativos / de borde:
+---
 
-Cantidad inicial = 0 → debe crear el producto exitosamente.
+## TC-HU01-03: Validación de bodega principal requerida
 
-Cantidad inicial con decimales (ej. 100.5) → debe mostrar error.
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU01-003 |
+| Título | Validar error al no seleccionar bodega principal |
+| Prioridad | Alta |
+| Riesgo | Alto |
+| Trazabilidad | Cubre escenario 3 de los criterios de aceptación |
 
-Ambiente / Dependencias:
+**Precondiciones:**
+- Usuario autenticado.  
+- Existen bodegas activas.  
 
-Base de datos con bodegas activas.
+**Datos de Prueba:**
 
-API /products funcional.
+| Campo | Valor |
+|--------|--------|
+| Producto | “Abono Verde” |
+| Bodega | Sin bodega seleccionada |
 
-TC-02: Agregar bodegas adicionales al crear producto
-Campo	Valor
-ID	TC-HU01-002
-Título	Crear producto con bodegas adicionales
-Prioridad	Media
-Riesgo	Medio
-Trazabilidad	Cubre escenario 2 de los criterios de aceptación
+**Pasos y Resultados Esperados:**
 
-Precondiciones:
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Acceder a “Crear Producto” | Formulario visible | UI |
+| 2 | Completar todos los campos excepto la bodega | Campos correctos | UI |
+| 3 | Clic en “Crear Producto” | Error mostrado “La bodega principal es obligatoria” | UI |
+| 4 | Validar que el campo bodega se resalta | Se muestra en color de error | UI |
+| 5 | No se crea producto | Sin registro nuevo en base de datos | API |
 
-Usuario autenticado.
+---
 
-Existen bodegas: “Central”, “Norte”, “Sur”.
+# ✅ Checklist de Calidad QA
 
-Datos de Prueba:
+| Ítem | Verificación |
+|------|---------------|
+| 🔲 | Validaciones de campos requeridos (nombre, unidad, precios, bodega, cantidad) |
+| 🔲 | Validación numérica en cantidad (solo enteros ≥ 0) |
+| 🔲 | Prevención de bodegas duplicadas |
+| 🔲 | Mensajes de error y éxito claros |
+| 🔲 | Persistencia del producto y bodegas asociadas |
+| 🔲 | Prueba de API (POST /products, GET /products/:id) |
+| 🔲 | Validación visual de campos obligatorios en UI |
+| 🔲 | Casos límite (cantidad = 0, sin bodegas activas, duplicados) |
 
-Producto: “Semilla Premium”
+---
 
-Bodega principal: “Bodega Central” (100)
+# ❓ Supuestos y Preguntas para el Product Owner
 
-Bodega adicional 1: “Bodega Norte” (50)
+- ¿Se permite crear productos sin stock inicial (cantidad = 0)?  
+- ¿La validación de bodegas duplicadas se realiza por nombre o ID interno?  
+- ¿Qué ocurre si no existen bodegas activas en el sistema al intentar crear un producto?  
+- ¿Debe existir control transaccional (rollback) si falla la asignación a una bodega secundaria?  
+- ¿Los mensajes de error deben estar localizados (multilenguaje) o solo en español?  
 
-Bodega adicional 2: “Bodega Sur” (30)
-
-Pasos y Resultados Esperados:
-
-#	Paso	Resultado Esperado	Validación
-1	Crear producto con datos básicos	Datos aceptados	UI
-2	Seleccionar “Bodega Central” (100) como principal	Correcto	UI
-3	Clic en “Agregar Bodega” → Seleccionar “Bodega Norte” (50) → Guardar	Bodega agregada exitosamente	UI
-4	Repetir con “Bodega Sur” (30)	Agregada correctamente	UI
-5	Clic en “Crear Producto”	Producto creado con tres bodegas	API
-6	Validar que el producto aparece con: Central (100), Norte (50), Sur (30)	Correcto	UI/API
-
-Casos negativos / de borde:
-
-Intentar agregar “Bodega Central” como adicional → error “La bodega seleccionada no puede ser la principal”.
-
-Repetir una bodega → error “Bodega ya asignada”.
-
-Ambiente / Dependencias:
-
-Bodegas activas cargadas.
-
-Modal “Agregar Bodega” funcional.
-
-TC-03: Validación de bodega principal requerida
-Campo	Valor
-ID	TC-HU01-003
-Título	Validar error al no seleccionar bodega principal
-Prioridad	Alta
-Riesgo	Alto
-Trazabilidad	Cubre escenario 3 de los criterios de aceptación
-
-Precondiciones:
-
-Usuario autenticado.
-
-Existen bodegas activas.
-
-Datos de Prueba:
-
-Producto: “Abono Verde”
-
-Sin bodega seleccionada.
-
-Pasos y Resultados Esperados:
-
-#	Paso	Resultado Esperado	Validación
-1	Acceder a “Crear Producto”	Formulario visible	UI
-2	Completar todos los campos excepto la bodega	Campos correctos	UI
-3	Clic en “Crear Producto”	Error mostrado “La bodega principal es obligatoria”	UI
-4	Validar que el campo bodega se resalta	Se muestra en color de error	UI
-5	No se crea producto	Sin registro nuevo en base de datos	API
-✅ Checklist de Calidad QA
-Ítem	Verificación
-🔲	Validaciones de campos requeridos (nombre, unidad, precios, bodega, cantidad)
-🔲	Validación numérica en cantidad (solo enteros ≥ 0)
-🔲	Prevención de bodegas duplicadas
-🔲	Mensajes de error y éxito claros
-🔲	Persistencia del producto y bodegas asociadas
-🔲	Prueba de API (POST /products, GET /products/:id)
-🔲	Validación visual de campos obligatorios en UI
-🔲	Casos límite (cantidad = 0, sin bodegas activas, duplicados)
-❓ Supuestos y Preguntas para el Product Owner
-
-¿Se permite crear productos sin stock inicial (cantidad = 0)?
-
-¿La validación de bodegas duplicadas se realiza por nombre o ID interno?
-
-¿Qué ocurre si no existen bodegas activas en el sistema al intentar crear un producto?
-
-¿Debe existir control transaccional (rollback) si falla la asignación a una bodega secundaria?
-
-¿Los mensajes de error deben estar localizados (multilenguaje) o solo en español?
 
 # 🧩 Contexto del Sistema
 
-Sistema: Plataforma de gestión de inventarios corporativos
-Módulo relevante: Reportes → “Valor de Inventario”
-Tipo de usuarios:
+**Sistema:** Plataforma de gestión de inventarios corporativos  
+**Módulo relevante:** Inventario → “Valor de Inventario”  
+**Tipo de usuarios:**  
+- Administrador de Inventario (permiso de visualización y exportación de reportes financieros)
+
+**Restricciones:**  
+- El usuario debe estar autenticado con rol "Administrador de Inventario”.  
+- Los filtros deben soportar selección múltiple.  
+- Los cálculos deben usar el costo unitario actual por producto.  
+- Los valores deben mostrarse en formato de moneda local.  
+- Exportación solo disponible si existe al menos un resultado.  
+
+---
+
+# 🧪 Casos de Prueba Manuales
+
+## TC-HU02-01: Visualización del valor de inventario con filtros simples
+
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU02-001 |
+| Título | Visualizar valor de inventario filtrando por una categoría y una bodega |
+| Prioridad | Alta |
+| Riesgo | Medio |
+| Trazabilidad | Cubre escenario 1 de los criterios de aceptación |
+
+**Precondiciones:**
+- Usuario autenticado como Gerente de Inventario.  
+- Existen productos en el sistema con las siguientes características:  
+  - Categoría: “Electrónica”  
+  - Bodega: “Bodega Central”  
+
+**Datos de ejemplo:**
+
+| Producto | Cantidad | Costo Promedio |
+|-----------|-----------|----------------|
+| Laptop X | 10 | $3.000 |
+| Teclado Y | 15 | $500 |
+
+**Datos de Prueba:**
+
+| Campo | Valor |
+|--------|--------|
+| Categoría seleccionada | “Electrónica” |
+| Bodega seleccionada | “Bodega Central” |
+
+**Pasos y Resultados Esperados:**
+
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Acceder al módulo “Valor de Inventario” | Se visualiza la pantalla con filtros y tabla vacía | UI |
+| 2 | Seleccionar categoría “Electrónica” | Campo muestra selección correcta | UI |
+| 3 | Seleccionar bodega “Bodega Central” | Campo muestra selección correcta | UI |
+| 4 | Clic en “Buscar” | Se consulta API con filtros aplicados | API (GET /inventory/value?category=Electrónica&warehouse=Central) |
+| 5 | Validar resultados en pantalla | Se muestran los productos correctos (Laptop X, Teclado Y) | UI |
+| 6 | Validar valor total | Muestra $37.500 (10×3.000 + 15×500) | UI/API |
+| 7 | Validar stock total | Muestra “25 unidades” | UI |
+| 8 | Validar formato de moneda | Valores en formato “$xx.xxx” | UI |
+
+**Casos negativos / de borde:**
+- No existen productos con esos filtros → mensaje “No se encontraron resultados”.  
+- Filtro con cantidad = 0 → producto no debe aparecer.  
+
+**Ambiente / Dependencias:**
+- API de productos e inventarios disponible.  
+- Base de datos con categorías y bodegas activas.  
+
+---
+
+## TC-HU02-02: Filtrado por múltiples categorías y bodegas
+
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU02-002 |
+| Título | Visualizar inventario combinando múltiples categorías y bodegas |
+| Prioridad | Media |
+| Riesgo | Medio |
+| Trazabilidad | Cubre escenario 2 de los criterios de aceptación |
+
+**Precondiciones:**
+- Usuario autenticado como Administrador de Inventario.  
+- Existen productos en las siguientes combinaciones:  
+  - Electrónica → Bodega Central (Laptop X)  
+  - Ropa → Bodega Norte (Camisa Y)  
+  - Electrónica → Bodega Norte (Audífonos Z)  
+
+**Datos de Prueba:**
+
+| Campo | Valor |
+|--------|--------|
+| Categorías | [“Electrónica”, “Ropa”] |
+| Bodegas | [“Bodega Central”, “Bodega Norte”] |
+
+**Pasos y Resultados Esperados:**
+
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Acceder a módulo “Valor de Inventario” | Interfaz visible | UI |
+| 2 | Seleccionar categorías “Electrónica”, “Ropa” | Selección múltiple visible | UI |
+| 3 | Seleccionar bodegas “Principal” y "Secundaria" | Selección múltiple visible | UI |
+| 4 | Clic en “Buscar” | Consulta generada correctamente | API (GET /inventory/value?category=Electrónica,Ropa&warehouse=Central,Norte) |
+| 5 | Validar productos mostrados | Solo productos de las categorías y bodegas seleccionadas | UI |
+| 6 | Validar valor total y cantidad | Suma correcta de todos los productos filtrados | UI/API |
+| 7 | Validar totales (suma = Σ Cantidad × Costo Unitario) | Correcto | UI |
 
-Gerente de Inventario (permiso de visualización y exportación de reportes financieros)
+**Casos negativos / de borde:**
+- Si se selecciona una categoría sin productos en ninguna bodega → no debe afectar resultados.  
+- Si se deselecciona una bodega → resultados deben actualizarse dinámicamente.  
 
-Restricciones:
+**Ambiente / Dependencias:**
+- Endpoints `/categories`, `/warehouses`, `/inventory/value` activos.  
 
-El usuario debe estar autenticado con rol “Gerente de Inventario”.
+---
 
-Los filtros deben soportar selección múltiple.
+## TC-HU02-03: Exportar reporte en PDF
 
-Los cálculos deben usar el costo promedio actual por producto.
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU02-003 |
+| Título | Exportar el reporte de valor de inventario a PDF |
+| Prioridad | Alta |
+| Riesgo | Alto |
+| Trazabilidad | Extiende escenarios 1 y 2 (exportación derivada del resultado visualizado) |
 
-Los valores deben mostrarse en formato de moneda local.
+**Precondiciones:**
+- Haber ejecutado una búsqueda válida con resultados.  
 
-Exportación solo disponible si existe al menos un resultado.
+**Pasos y Resultados Esperados:**
 
-🧪 Casos de Prueba Manuales
-TC-HU02-001: Visualización del valor de inventario con filtros simples
-Campo	Valor
-ID	TC-HU02-001
-Título	Visualizar valor de inventario filtrando por una categoría y una bodega
-Prioridad	Alta
-Riesgo	Medio
-Trazabilidad	Cubre escenario 1 de los criterios de aceptación
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Clic en “Exportar a PDF” | Sistema genera archivo PDF | UI |
+| 2 | Validar descarga de archivo | Se descarga `valor_inventario.pdf` | UI |
+| 3 | Abrir PDF | Contiene encabezado, filtros aplicados, fecha, totales y tabla de productos | Manual |
+| 4 | Validar formato | Valores numéricos en formato moneda, totales correctos | Manual |
+| 5 | Validar coincidencia con vista en pantalla | Datos en PDF = Datos del sistema | Manual / Comparativo |
 
-Precondiciones:
+**Casos negativos / de borde:**
+- Intentar exportar sin resultados → mensaje “No hay datos para exportar”.  
+- Error de servidor → mensaje “No se pudo generar el archivo. Intente nuevamente”.  
 
-Usuario autenticado como Gerente de Inventario.
+**Ambiente / Dependencias:**
+- Servicio de generación de PDF funcional.  
+- Conexión estable a API `/inventory/value/export/pdf`.  
 
-Existen productos en el sistema con las siguientes características:
+---
 
-Categoría: “Electrónica”
+# ✅ Checklist de Calidad QA
 
-Bodega: “Bodega Central”
+| Ítem | Verificación |
+|------|---------------|
+| 🔲 | Cálculo correcto de valor total (Σ cantidad × costo promedio) |
+| 🔲 | Formato monetario aplicado en UI y PDF |
+| 🔲 | Filtros permiten selección múltiple y combinada |
+| 🔲 | Paginación y ordenamiento funcional en tabla |
+| 🔲 | Mensajes de error y éxito claros y consistentes |
+| 🔲 | Exportación PDF conserva formato y totales |
+| 🔲 | Validación de endpoints /inventory/value y /export/pdf |
+| 🔲 | Rendimiento adecuado (<2s en búsqueda promedio) |
 
-Datos de ejemplo:
+---
 
-Producto	Cantidad	Costo Promedio
-Laptop X	10	$3.000
-Teclado Y	15	$500
+# ❓ Supuestos y Preguntas Abiertas para el Product Owner
 
-Datos de Prueba:
+- ¿Debe existir un filtro por rango de fechas o la consulta es siempre en tiempo real?  
+- ¿El cálculo del costo promedio se realiza en base al histórico o al último registro?  
+- ¿Se espera que la exportación incluya logos corporativos o metadatos del usuario?  
+- ¿Qué formato debe usarse para los valores (símbolo $, separador de miles, decimales)?  
+- ¿Debe limitarse la cantidad máxima de categorías o bodegas seleccionables?  
 
-Categoría seleccionada: “Electrónica”
+# 🧩 Contexto del Sistema
 
-Bodega seleccionada: “Bodega Central”
+**Sistema:** Plataforma de gestión de inventario empresarial.  
+**Módulo relevante:** Facturación → Facturas de Compra.  
+**Tipo de usuarios:**  
+- Administrador de Inventario (rol con permisos de registro de compras y actualización de stock).  
 
-Pasos y Resultados Esperados:
+**Restricciones:**  
+- Solo usuarios autenticados pueden registrar facturas.  
+- Una factura debe tener al menos un producto.  
+- El proveedor, la fecha, la bodega y el número de factura son campos obligatorios.  
+- Cantidades, precios y descuentos deben ser válidos (no negativos, descuentos ≤ 100%).  
+- La creación de factura debe actualizar el stock en la bodega destino y registrar movimientos tipo “COMPRA”.  
 
-#	Paso	Resultado Esperado	Validación
-1	Acceder al módulo “Valor de Inventario”	Se visualiza la pantalla con filtros y tabla vacía	UI
-2	Seleccionar categoría “Electrónica”	Campo muestra selección correcta	UI
-3	Seleccionar bodega “Bodega Central”	Campo muestra selección correcta	UI
-4	Clic en “Buscar”	Se consulta API con filtros aplicados	API (GET /inventory/value?category=Electrónica&warehouse=Central)
-5	Validar resultados en pantalla	Se muestran los productos correctos (Laptop X, Teclado Y)	UI
-6	Validar valor total	Muestra $37.500 (10×3.000 + 15×500)	UI/API
-7	Validar stock total	Muestra “25 unidades”	UI
-8	Validar formato de moneda	Valores en formato “$xx.xxx”	UI
+---
 
-Casos negativos / de borde:
+# 🧪 Casos de Prueba Manuales
 
-No existen productos con esos filtros → mensaje “No se encontraron resultados”.
-
-Filtro con cantidad = 0 → producto no debe aparecer.
-
-Ambiente / Dependencias:
-
-API de productos e inventarios disponible.
-
-Base de datos con categorías y bodegas activas.
-
-## TC-HU02-002: Filtrado por múltiples categorías y bodegas
-Campo	Valor
-ID	TC-HU02-002
-Título	Visualizar inventario combinando múltiples categorías y bodegas
-Prioridad	Media
-Riesgo	Medio
-Trazabilidad	Cubre escenario 2 de los criterios de aceptación
-
-Precondiciones:
-
-Usuario autenticado como Gerente de Inventario.
-
-Existen productos en las siguientes combinaciones:
-
-Electrónica → Bodega Central (Laptop X)
-
-Ropa → Bodega Norte (Camisa Y)
-
-Electrónica → Bodega Norte (Audífonos Z)
-
-Datos de Prueba:
-
-Categorías: [“Electrónica”, “Ropa”]
-
-Bodegas: [“Bodega Central”, “Bodega Norte”]
-
-Pasos y Resultados Esperados:
-
-#	Paso	Resultado Esperado	Validación
-1	Acceder a módulo “Valor de Inventario”	Interfaz visible	UI
-2	Seleccionar categorías “Electrónica”, “Ropa”	Selección múltiple visible	UI
-3	Seleccionar bodegas “Central” y “Norte”	Selección múltiple visible	UI
-4	Clic en “Buscar”	Consulta generada correctamente	API (GET /inventory/value?category=Electrónica,Ropa&warehouse=Central,Norte)
-5	Validar productos mostrados	Solo productos de las categorías y bodegas seleccionadas	UI
-6	Validar valor total y unidades	Suma correcta de todos los productos filtrados	UI/API
-7	Validar totales (suma = Σ Cantidad × Costo promedio)	Correcto	UI
-
-Casos negativos / de borde:
-
-Si se selecciona una categoría sin productos en ninguna bodega → no debe afectar resultados.
-
-Si se deselecciona una bodega → resultados deben actualizarse dinámicamente.
-
-Ambiente / Dependencias:
-
-Endpoints /categories, /warehouses, /inventory/value activos.
-
-TC-HU02-003: Exportar reporte en PDF
-Campo	Valor
-ID	TC-HU02-003
-Título	Exportar el reporte de valor de inventario a PDF
-Prioridad	Alta
-Riesgo	Alto
-Trazabilidad	Extiende escenarios 1 y 2 (exportación derivada del resultado visualizado)
-
-Precondiciones:
-
-Haber ejecutado una búsqueda válida con resultados.
-
-Pasos y Resultados Esperados:
-
-#	Paso	Resultado Esperado	Validación
-1	Clic en “Exportar a PDF”	Sistema genera archivo PDF	UI
-2	Validar descarga de archivo	Se descarga valor_inventario.pdf	UI
-3	Abrir PDF	Contiene encabezado, filtros aplicados, fecha, totales y tabla de productos	Manual
-4	Validar formato	Valores numéricos en formato moneda, totales correctos	Manual
-5	Validar coincidencia con vista en pantalla	Datos en PDF = Datos del sistema	Manual / Comparativo
-
-Casos negativos / de borde:
-
-Intentar exportar sin resultados → mensaje “No hay datos para exportar”.
-
-Error de servidor → mensaje “No se pudo generar el archivo. Intente nuevamente”.
-
-Ambiente / Dependencias:
-
-Servicio de generación de PDF funcional.
-
-Conexión estable a API /inventory/value/export/pdf.
-
-✅ Checklist de Calidad QA
-Ítem	Verificación
-🔲	Cálculo correcto de valor total (Σ cantidad × costo promedio)
-🔲	Formato monetario aplicado en UI y PDF
-🔲	Filtros permiten selección múltiple y combinada
-🔲	Paginación y ordenamiento funcional en tabla
-🔲	Mensajes de error y éxito claros y consistentes
-🔲	Exportación PDF conserva formato y totales
-🔲	Validación de endpoints /inventory/value y /export/pdf
-🔲	Rendimiento adecuado (<2s en búsqueda promedio)
-❓ Supuestos y Preguntas Abiertas para el Product Owner
-
-¿Debe existir un filtro por rango de fechas o la consulta es siempre en tiempo real?
-
-¿El cálculo del costo promedio se realiza en base al histórico o al último registro?
-
-¿Se espera que la exportación incluya logos corporativos o metadatos del usuario?
-
-¿Qué formato debe usarse para los valores (símbolo $, separador de miles, decimales)?
-
-¿Debe limitarse la cantidad máxima de categorías o bodegas seleccionables?
-
-¿Deseas que te genere también una matriz de trazabilidad (HU → Escenarios → Casos → API/UI) para esta historia? Puedo hacerlo en el mismo estilo para seguimiento en JIRA o TestRail.
-
-🧩 Contexto del Sistema
-
-Sistema: Plataforma de gestión de inventario empresarial.
-Módulo relevante: Compras → Facturas de Compra.
-Tipo de usuarios:
-
-Operador de Inventario (rol con permisos de registro de compras y actualización de stock).
-
-Restricciones:
-
-Solo usuarios autenticados pueden registrar facturas.
-
-Una factura debe tener al menos un producto.
-
-El proveedor, la fecha, la bodega y el número de factura son campos obligatorios.
-
-Cantidades, precios y descuentos deben ser válidos (no negativos, descuentos ≤ 100%).
-
-La creación de factura debe actualizar el stock en la bodega destino y registrar movimientos tipo “COMPRA”.
-
-🧪 Casos de Prueba Manuales
 ## TC-HU03-001: Creación de factura de compra con múltiples productos
-Campo	Valor
-ID	TC-HU03-001
-Título	Registrar una factura de compra válida con varios productos
-Prioridad	Alta
-Riesgo	Alto
-Trazabilidad	Cubre escenario 1 (Creación de factura de compra con múltiples productos)
 
-Precondiciones:
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU03-001 |
+| Título | Registrar una factura de compra válida con varios productos |
+| Prioridad | Alta |
+| Riesgo | Alto |
+| Trazabilidad | Cubre escenario 1 (Creación de factura de compra con múltiples productos) |
 
-Usuario autenticado como Operador de Inventario.
+**Precondiciones:**
+- Usuario autenticado como Administrador de Inventario.  
+- Existen proveedores activos (“Proveedor ABC”).  
+- Existen productos activos (“Camiseta Básica”, “Pantalón Deportivo”).  
+- Existe una bodega activa (“Bodega Central”).  
 
-Existen proveedores activos (“Proveedor ABC”).
+**Datos de prueba:**
 
-Existen productos activos (“Camiseta Básica”, “Pantalón Deportivo”).
+| Producto | Cantidad | Precio Unitario | Descuento | Bodega |
+|-----------|-----------|----------------|------------|---------|
+| Camiseta Básica | 50 | 15.00 | 5% | Bodega Central |
+| Pantalón Deportivo | 30 | 25.00 | 0% | Bodega Central |
 
-Existe una bodega activa (“Bodega Central”).
+**Pasos y Resultados Esperados:**
 
-Datos de prueba:
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Acceder al módulo “Facturas de Compra” y hacer clic en “Nueva Factura” | Se muestra el formulario vacío | UI |
+| 2 | Seleccionar proveedor “Proveedor ABC” | Campo se llena correctamente | UI |
+| 3 | Ingresar fecha “20/01/2024” y una observación genérica | Datos aceptados | UI |
+| 4 | Seleccionar bodega “Bodega Central” | Selección correcta | UI |
+| 5 | Agregar producto “Camiseta Básica” (50 × 15.00, 5%) | Se calcula subtotal: 50 × 15 = 750; descuento 5% = 37.5; subtotal neto 712.5 | UI |
+| 6 | Agregar producto “Pantalón Deportivo” (30 × 25.00, 0%) | Subtotal: 750.00 | UI |
+| 7 | Validar total factura = 712.5 + 750 = 1,462.5 | Total correcto mostrado | UI/API |
+| 8 | Clic en “Guardar Factura” y confirmar | Factura registrada con estado “Registrada” | API (POST /purchases) |
+| 9 | Validar actualización de stock | Camiseta +50, Pantalón +30 en “Bodega Central” | API (GET /stock) |
+| 10 | Validar registro de movimientos tipo “COMPRA” | Dos movimientos generados | API (GET /inventory/movements) |
+| 11 | Validar mensaje “Factura de compra registrada exitosamente” | Mensaje visible y redirección al detalle | UI |
 
-Producto	Cantidad	Precio Unitario	Descuento	Bodega
-Camiseta Básica	50	15.00	5%	Bodega Central
-Pantalón Deportivo	30	25.00	0%	Bodega Central
+**Casos negativos / de borde:**
+- Descuento en blanco → debe asumirse 0%.  
 
-Pasos y Resultados Esperados:
+**Ambiente / Dependencias:**
+- Base de datos con bodegas y productos activos.  
+- APIs `/purchases`, `/stock`, `/inventory/movements` activas.  
 
-#	Paso	Resultado Esperado	Validación
-1	Acceder al módulo “Facturas de Compra” y hacer clic en “Nueva Factura”	Se muestra el formulario vacío	UI
-2	Seleccionar proveedor “Proveedor ABC”	Campo se llena correctamente	UI
-3	Ingresar número “FAC-2024-001”, fecha “20/01/2024”, medio de pago “Efectivo”	Datos aceptados	UI
-4	Seleccionar bodega “Bodega Central”	Selección correcta	UI
-5	Agregar producto “Camiseta Básica” (50 × 15.00, 5%)	Se calcula subtotal: 50 × 15 = 750; descuento 5% = 37.5; subtotal neto 712.5	UI
-6	Agregar producto “Pantalón Deportivo” (30 × 25.00, 0%)	Subtotal: 750.00	UI
-7	Validar total factura = 712.5 + 750 = 1,462.5	Total correcto mostrado	UI/API
-8	Clic en “Guardar Factura” y confirmar	Factura registrada con estado “Registrada”	API (POST /purchases)
-9	Validar actualización de stock	Camiseta +50, Pantalón +30 en “Bodega Central”	API (GET /stock)
-10	Validar registro de movimientos tipo “COMPRA”	Dos movimientos generados	API (GET /inventory/movements)
-11	Validar mensaje “Factura de compra registrada exitosamente”	Mensaje visible y redirección al detalle	UI
+---
 
-Casos negativos / de borde:
+## TC-HU03-002: Validación de campos requeridos
 
-Mismo número de factura duplicado → error “Número de factura ya existente”.
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU03-002 |
+| Título | Validar errores al omitir campos obligatorios en factura |
+| Prioridad | Alta |
+| Riesgo | Alto |
+| Trazabilidad | Cubre escenario 2 (Validación de campos requeridos en factura de compra) |
 
-Descuento en blanco → debe asumirse 0%.
+**Precondiciones:**
+- Usuario autenticado como Operador de Inventario.  
 
-Ambiente / Dependencias:
+**Datos de prueba:**
+- Proveedor vacío  
+- Número de factura vacío  
+- Sin productos agregados  
 
-Base de datos con bodegas y productos activos.
+**Pasos y Resultados Esperados:**
 
-APIs /purchases, /stock, /inventory/movements activas.
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Acceder al formulario “Nueva Factura de Compra” | Formulario visible | UI |
+| 2 | Dejar campos obligatorios vacíos y hacer clic en “Guardar Factura” | Campos marcados en rojo | UI |
+| 3 | Verificar mensajes específicos (“El proveedor es obligatorio”, etc.) | Mensajes visibles | UI |
+| 4 | Botón “Guardar Factura” deshabilitado | No permite envío | UI |
+| 5 | Completar todos los campos → verificar que se habilita el botón | Validación correcta | UI |
 
-TC-HU03-002: Validación de campos requeridos
-Campo	Valor
-ID	TC-HU03-002
-Título	Validar errores al omitir campos obligatorios en factura
-Prioridad	Alta
-Riesgo	Alto
-Trazabilidad	Cubre escenario 2 (Validación de campos requeridos en factura de compra)
+**Casos negativos / de borde:**
+- Intentar enviar el formulario vía API con campos nulos → error HTTP 400.  
 
-Precondiciones:
+**Ambiente / Dependencias:**
+- Validaciones front y backend activas.  
 
-Usuario autenticado como Operador de Inventario.
+---
 
-Datos de prueba:
+## TC-HU03-003: Agregar y eliminar productos de la factura
 
-Proveedor vacío
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU03-003 |
+| Título | Validar agregar y eliminar productos en factura |
+| Prioridad | Media |
+| Riesgo | Medio |
+| Trazabilidad | Cubre escenario 3 (Agregar y eliminar productos en la factura) |
 
-Número de factura vacío
+**Precondiciones:**
+- Factura en edición, con proveedor, fecha y bodega completados.  
 
-Sin productos agregados
+**Datos de prueba:**
 
-Pasos y Resultados Esperados:
+| Producto | Cantidad | Precio |
+|-----------|-----------|--------|
+| Camiseta Básica | 10 | 20.00 |
+| Pantalón Deportivo | 5 | 25.00 |
 
-#	Paso	Resultado Esperado	Validación
-1	Acceder al formulario “Nueva Factura de Compra”	Formulario visible	UI
-2	Dejar campos obligatorios vacíos y hacer clic en “Guardar Factura”	Campos marcados en rojo	UI
-3	Verificar mensajes específicos (“El proveedor es obligatorio”, etc.)	Mensajes visibles	UI
-4	Botón “Guardar Factura” deshabilitado	No permite envío	UI
-5	Completar todos los campos → verificar que se habilita el botón	Validación correcta	UI
+**Pasos y Resultados Esperados:**
 
-Casos negativos / de borde:
+| # | Paso | Resultado Esperado | Validación |
+|---|------|--------------------|-------------|
+| 1 | Hacer clic en “Agregar Producto” | Se muestra selector de productos | UI |
+| 2 | Buscar “Camiseta” y seleccionarlo | Producto agregado a la tabla | UI |
+| 3 | Ingresar cantidad 10 y precio 20 | Subtotal calculado 200.00 | UI |
+| 4 | Repetir con “Pantalón Deportivo” (5 × 25 = 125.00) | Total factura = 325.00 | UI |
+| 5 | Clic en “Eliminar” sobre “Pantalón Deportivo” | Fila eliminada y total actualizado (200.00) | UI |
+| 6 | Validar que no queda rastro del producto eliminado | Fila desaparece de tabla | UI |
 
-Intentar enviar el formulario vía API con campos nulos → error HTTP 400.
+**Casos negativos / de borde:**
+- Eliminar el único producto → total = 0, botón “Guardar” deshabilitado.  
 
-Ambiente / Dependencias:
+**Ambiente / Dependencias:**
+- API `/products` y `/purchases/temp` activas.  
 
-Validaciones front y backend activas.
+---
 
-TC-HU03-003: Agregar y eliminar productos de la factura
-Campo	Valor
-ID	TC-HU03-003
-Título	Validar agregar y eliminar productos en factura
-Prioridad	Media
-Riesgo	Medio
-Trazabilidad	Cubre escenario 3 (Agregar y eliminar productos en la factura)
+## TC-HU03-004: Validación de cantidad, precio y descuento
 
-Precondiciones:
+| Campo | Valor |
+|--------|--------|
+| ID | TC-HU03-004 |
+| Título | Validar reglas numéricas de cantidad, precio y descuento |
+| Prioridad | Alta |
+| Riesgo | Alto |
+| Trazabilidad | Cubre escenario 5 (Validación de cantidad y precios en productos) |
 
-Factura en edición, con proveedor, fecha y bodega completados.
+**Datos de prueba:**
 
-Datos de prueba:
+| Campo | Valor Inválido | Mensaje Esperado |
+|--------|----------------|------------------|
+| Cantidad | 0 | “La cantidad debe ser mayor a 0” |
+| Precio | -10 | “El precio unitario no puede ser negativo” |
+| Descuento | 150 | “El descuento no puede superar 100%” |
+| Descuento | -5 | “El descuento no puede ser negativo” |
 
-Producto 1: “Camiseta Básica” (10 × 20.00)
+**Pasos:**
+1. Ingresar cada valor inválido en los campos correspondientes.  
+2. Verificar mensaje de error.  
+3. Intentar guardar la factura.  
 
-Producto 2: “Pantalón Deportivo” (5 × 25.00)
+**Resultado esperado:**  
+El sistema bloquea el guardado y resalta el campo en error.  
 
-Pasos y Resultados Esperados:
+**Validación:** UI y API (respuestas 400 o 422).  
 
-#	Paso	Resultado Esperado	Validación
-1	Hacer clic en “Agregar Producto”	Se muestra selector de productos	UI
-2	Buscar “Camiseta” y seleccionarlo	Producto agregado a la tabla	UI
-3	Ingresar cantidad 10 y precio 20	Subtotal calculado 200.00	UI
-4	Repetir con “Pantalón Deportivo” (5 × 25 = 125.00)	Total factura = 325.00	UI
-5	Clic en “Eliminar” sobre “Pantalón Deportivo”	Fila eliminada y total actualizado (200.00)	UI
-6	Validar que no queda rastro del producto eliminado	Fila desaparece de tabla	UI
+---
 
-Casos negativos / de borde:
+# ✅ Checklist de Calidad QA
 
-Eliminar el único producto → total = 0, botón “Guardar” deshabilitado.
+| Ítem | Verificación |
+|------|---------------|
+| 🔲 | Validaciones de campos requeridos (proveedor, fecha, bodega, productos) |
+| 🔲 | Cálculo correcto de totales y descuentos |
+| 🔲 | Actualización de stock tras guardar factura |
+| 🔲 | Registro de movimientos tipo “COMPRA” |
+| 🔲 | Mensajes de error y éxito consistentes |
+| 🔲 | Prevención de valores negativos o nulos |
+| 🔲 | Validación del formato monetario |
+| 🔲 | Redirección correcta al detalle de factura |
 
-Ambiente / Dependencias:
+---
 
-API /products y /purchases/temp activas.
+# ❓ Supuestos y Preguntas Abiertas para el Product Owner
 
-TC-HU03-004: Validación de cantidad, precio y descuento
-Campo	Valor
-ID	TC-HU03-004
-Título	Validar reglas numéricas de cantidad, precio y descuento
-Prioridad	Alta
-Riesgo	Alto
-Trazabilidad	Cubre escenario 5 (Validación de cantidad y precios en productos)
-
-Datos de prueba:
-
-Campo	Valor Inválido	Mensaje Esperado
-Cantidad	0	“La cantidad debe ser mayor a 0”
-Precio	-10	“El precio unitario no puede ser negativo”
-Descuento	150	“El descuento no puede superar 100%”
-Descuento	-5	“El descuento no puede ser negativo”
-
-Pasos:
-
-Ingresar cada valor inválido en los campos correspondientes.
-
-Verificar mensaje de error.
-
-Intentar guardar la factura.
-
-Resultado esperado:
-El sistema bloquea el guardado y resalta el campo en error.
-
-Validación: UI y API (respuestas 400 o 422).
-
-✅ Checklist de Calidad QA
-Ítem	Verificación
-🔲	Validaciones de campos requeridos (proveedor, fecha, bodega, productos)
-🔲	Cálculo correcto de totales y descuentos
-🔲	Actualización de stock tras guardar factura
-🔲	Registro de movimientos tipo “COMPRA”
-🔲	Mensajes de error y éxito consistentes
-🔲	Prevención de valores negativos o nulos
-🔲	Validación del formato monetario
-🔲	Redirección correcta al detalle de factura
-❓ Supuestos y Preguntas Abiertas para el Product Owner
-
-¿Se permite repetir el mismo producto más de una vez en la misma factura?
-
-¿El descuento se aplica antes o después de impuestos (si los hubiera)?
-
-¿Qué ocurre si el proveedor está inactivo en el momento de guardar la factura?
-
-¿Se requiere control de concurrencia al actualizar stock si varios usuarios registran facturas simultáneamente?
-
-¿Debe generarse automáticamente un número de factura interno además del número del proveedor?
+- ¿Se permite repetir el mismo producto más de una vez en la misma factura?  
+- ¿El descuento se aplica antes o después de impuestos (si los hubiera)?  
+- ¿Qué ocurre si el proveedor está inactivo en el momento de guardar la factura?  
+- ¿Se requiere control de concurrencia al actualizar stock si varios usuarios registran facturas simultáneamente?  
+- ¿Debe generarse automáticamente un número de factura interno además del número del proveedor?  
 
 🧩 Contexto del sistema
 
