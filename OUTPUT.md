@@ -165,6 +165,11 @@
 - ¿Debe existir control transaccional (rollback) si falla la asignación a una bodega secundaria?  
 - ¿Los mensajes de error deben estar localizados (multilenguaje) o solo en español?  
 
+## Revisión crítica del estudiante.
+
+Se selecciona la `TC-HU01-01` como el caso de prueba a revisar para la historia de usuario puesto que es la función crítica de la historia de usuario. En caso de que no funcionara la creación de producto, los demás casos de prueba quedarían obsoletos. Además, se puede implementar de forma sencilla la creación de nuevas bodegas en el caso de prueba, pero se mantiene de esta forma para testing aislado de la función descrita. Modificaciones de terminología fueron implementados para que el caso de prueba corresponda en su totalidad con la funcionalidad desarrollada en la aplicación.
+
+---
 
 # 🧩 Contexto del Sistema
 
@@ -338,6 +343,12 @@
 - ¿Qué formato debe usarse para los valores (símbolo $, separador de miles, decimales)?  
 - ¿Debe limitarse la cantidad máxima de categorías o bodegas seleccionables?  
 
+## Revisión crítica del estudiante.
+
+Se selecciona la `TC-HU02-02` como el caso de prueba a revisar puesto que es la funcionalidad principal de la historia de usuario e incluye a la `TC-HU02-01` propuesta por el mismo modelo de inteligencia artificial. Modificaciones de terminología fueron implementados para que el caso de prueba corresponda en su totalidad con la funcionalidad desarrollada en la aplicación.
+
+---
+
 # 🧩 Contexto del Sistema
 
 **Sistema:** Plataforma de gestión de inventario empresarial.  
@@ -401,8 +412,6 @@
 **Ambiente / Dependencias:**
 - Base de datos con bodegas y productos activos.  
 - APIs `/purchases`, `/stock`, `/inventory/movements` activas.  
-
----
 
 ## TC-HU03-002: Validación de campos requeridos
 
@@ -531,7 +540,13 @@ El sistema bloquea el guardado y resalta el campo en error.
 - ¿El descuento se aplica antes o después de impuestos (si los hubiera)?  
 - ¿Qué ocurre si el proveedor está inactivo en el momento de guardar la factura?  
 - ¿Se requiere control de concurrencia al actualizar stock si varios usuarios registran facturas simultáneamente?  
-- ¿Debe generarse automáticamente un número de factura interno además del número del proveedor?  
+- ¿Debe generarse automáticamente un número de factura interno además del número del proveedor? 
+
+## Revisión crítica del estudiante.
+
+Se selecciona la `TC-HU03-01` como el caso de prueba a revisar para la historia de usuario puesto que es la función crítica de la historia de usuario. En caso de que no funcionara la creación de factura, los demás casos de prueba quedarían obsoletos. Modificaciones de terminología fueron implementados para que el caso de prueba corresponda en su totalidad con la funcionalidad desarrollada en la aplicación.
+
+---
 
 ## 🧩 Contexto del Sistema
 
