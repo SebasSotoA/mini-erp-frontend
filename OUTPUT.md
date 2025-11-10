@@ -156,8 +156,6 @@
 | 4   | Validar que el campo bodega se resalta.                      | Se muestra en color de error.                                                                           | UI         |
 | 5   | No se crea producto.                                          | Sin registro nuevo en base de datos.                                                                   | API        |
 
----
-
 # ✅ Checklist de Calidad QA
 
 | Ítem | Verificación |
@@ -171,7 +169,6 @@
 | 🔲 | Validación visual de campos obligatorios en UI |
 | 🔲 | Casos límite (cantidad = 0, sin bodegas activas, duplicados) |
 
----
 
 # ❓ Supuestos y Preguntas para el Product Owner
 
@@ -578,8 +575,6 @@ El sistema bloquea el guardado y resalta el campo en error.
 
 **Validación:** UI y API (respuestas 400 o 422).
 
----
-
 # ✅ Checklist de Calidad QA
 
 | Ítem | Verificación |
@@ -593,8 +588,6 @@ El sistema bloquea el guardado y resalta el campo en error.
 | 🔲 | Validación del formato monetario |
 | 🔲 | Redirección correcta al detalle de factura |
 
----
-
 # ❓ Supuestos y Preguntas Abiertas para el Product Owner
 
 - ¿Se permite repetir el mismo producto más de una vez en la misma factura?  
@@ -605,7 +598,7 @@ El sistema bloquea el guardado y resalta el campo en error.
 
 ## Revisión crítica del estudiante.
 
-Se selecciona la `TC-HU03-01` como el caso de prueba a revisar para la historia de usuario puesto que es la función crítica de la historia de usuario. En caso de que no funcionara la creación de factura, los demás casos de prueba quedarían obsoletos. Modificaciones de terminología fueron implementados para que el caso de prueba corresponda en su totalidad con la funcionalidad desarrollada en la aplicación.
+Se selecciona la `TC-HU03-01` como el caso de prueba a revisar para la historia de usuario puesto que es la función crítica de la misma. En caso de que no funcionara la creación de factura, los demás casos de prueba quedarían obsoletos. Modificaciones de terminología fueron implementados para que el caso de prueba corresponda en su totalidad con la funcionalidad desarrollada en la aplicación.
 
 ---
 
@@ -829,6 +822,12 @@ Se selecciona la `TC-HU03-01` como el caso de prueba a revisar para la historia 
 - ¿Se requiere registro de auditoría para cambios en información de vendedores?
 
 - ¿Debe permitirse reactivar un vendedor previamente desactivado?
+
+## Revisión crítica del estudiante.
+
+Se selecciona la `TC-HU04-01` como el caso de prueba crítico a revisar puesto que la creación de vendedor es la funcionalidad principal de la historia de usuario. Las demás pruebas son importantes para una mayor cobertura de la feature, sin embargo, se prioriza el testing de la funcionalidad principal. Modificaciones de terminología fueron implementados para que el caso de prueba corresponda en su totalidad con la funcionalidad desarrollada en la aplicación.
+
+---
 
 ## 🧩 Contexto del Sistema
 
@@ -1056,3 +1055,9 @@ Se selecciona la `TC-HU03-01` como el caso de prueba a revisar para la historia 
 - ¿Se requiere límite máximo en la cantidad de resultados mostrados por página?
 
 - ¿Debe existir una función de búsqueda por texto libre además de los filtros estructurados?
+
+## Revisión crítica del estudiante.
+
+Se selecciona la `TC-HU04-04` como el caso de prueba a revisar para la historia de usuario puesto que es una funcionalidad que involucra a las demás para la visualización del historial de movimientos. El caso de prueba cubre múltiples componentes de la aplicación como lo son el front-end, que interactua con la API, y sobre los resultados de la misma se le aplica lógica de filtrado. Modificaciones de terminología fueron implementados para que el caso de prueba corresponda en su totalidad con la funcionalidad desarrollada en la aplicación.
+
+---
